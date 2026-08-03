@@ -1,0 +1,3 @@
+# Netlify 只保護教師管理頁。變更密碼後，請重新拖曳整個資料夾部署。
+/teacher.html
+  Basic-Auth: teacher:vfbtvrmher

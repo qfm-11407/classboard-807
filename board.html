@@ -1,0 +1,1128 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>未來教室大屏儀表板</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="cloud-config.js"></script>
+    <!-- FontAwesome 圖示 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&display=swap');
+
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #000;
+            font-family: 'Nunito', 'Microsoft JhengHei', sans-serif;
+        }
+        body.cloud-loading { visibility: hidden; }
+
+        /* 絕對比例結界 */
+        #scale-wrapper {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 1920px;
+            height: 1080px;
+            transform-origin: top left;
+            overflow: hidden;
+            background-color: #1a3626;
+        }
+
+        /* 毛玻璃特效 */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        /* 動態光球 */
+        .orb {
+            position: absolute;
+            border-radius: 18px;
+            filter: blur(120px);
+            opacity: 0.5;
+            animation: float 20s infinite ease-in-out alternate;
+            z-index: 0;
+        }
+        .orb-1 { width: 600px; height: 600px; background: #e3c158; top: -100px; left: -100px; }
+        .orb-2 { width: 500px; height: 500px; background: #58a4e3; bottom: -100px; right: -50px; animation-delay: -5s; }
+        .orb-3 { width: 700px; height: 700px; background: #e37758; top: 40%; left: 30%; animation-delay: -10s; }
+
+        @keyframes float {
+            0% { transform: translate(0, 0) scale(1); }
+            50% { transform: translate(150px, 100px) scale(1.1); }
+            100% { transform: translate(-50px, 200px) scale(0.9); }
+        }
+
+        /* iOS 圓角與顏色 */
+        .squircle {
+            border-radius: 22.5%;
+            box-shadow: inset 0px 4px 10px rgba(255,255,255,0.3), 0 10px 20px rgba(0,0,0,0.4);
+            transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .squircle:active { transform: scale(0.9) rotate(-2deg); }
+
+        .bg-pastel-rose { background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%); }
+        .bg-pastel-blue { background: linear-gradient(135deg, #a1c4fd 0%, #c2e9fb 100%); }
+        .bg-pastel-yellow { background: linear-gradient(135deg, #f6d365 0%, #fda085 100%); }
+        .bg-pastel-green { background: linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%); }
+        .bg-pastel-purple { background: linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%); }
+        .bg-pastel-orange { background: linear-gradient(135deg, #ff9a44 0%, #fc6076 100%); }
+        .bg-pastel-teal { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
+        .bg-pastel-mint { background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); }
+
+        /* 霓虹按鈕 */
+        .neon-btn {
+            position: relative;
+            background-color: rgba(0, 0, 0, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            color: rgba(255,255,255,0.4);
+            border-radius: 18px;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            cursor: pointer;
+            overflow: hidden;
+            box-shadow: inset 0 5px 15px rgba(0,0,0,0.5);
+        }
+        .neon-btn.active-green {
+            border-color: #4ade80;
+            color: #4ade80;
+            background-color: rgba(20, 50, 30, 0.6);
+            box-shadow: inset 0 2px 10px rgba(255,255,255,0.3), inset 0 -5px 15px rgba(0,0,0,0.5), 0 0 15px rgba(74, 222, 128, 0.6), 0 0 30px rgba(74, 222, 128, 0.3);
+            text-shadow: 0 0 8px rgba(74, 222, 128, 0.8), 0 0 15px rgba(255, 255, 255, 0.8);
+            transform: scale(1.05);
+        }
+        .neon-btn.active-red {
+            border-color: #fb7185;
+            color: #fb7185;
+            background-color: rgba(50, 20, 20, 0.6);
+            box-shadow: inset 0 2px 10px rgba(255,255,255,0.3), inset 0 -5px 15px rgba(0,0,0,0.5), 0 0 15px rgba(251, 113, 133, 0.6), 0 0 30px rgba(251, 113, 133, 0.3);
+            text-shadow: 0 0 8px rgba(251, 113, 133, 0.8), 0 0 15px rgba(255, 255, 255, 0.8);
+            transform: scale(1.05);
+        }
+        .neon-btn:hover { filter: brightness(1.3); }
+
+        .corkboard { background-color: #CDAA7D; border: 14px solid #8B5A2B; }
+        .blackboard-exam { background-color: #2b4c3b; border: 16px solid #4A2F1D; }
+        
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        .timetable-active-cell {
+            background-color: rgba(255, 255, 255, 0.15);
+            border: 2px solid #4ade80 !important;
+            box-shadow: 0 0 15px rgba(74, 222, 128, 0.5), inset 0 0 15px rgba(74, 222, 128, 0.2);
+            color: #4ade80;
+            text-shadow: 0 0 5px rgba(74,222,128,0.8);
+            transform: scale(1.02);
+            z-index: 10;
+        }
+
+        /* 公開顯示端固定為 6 排 × 5 位，整張座位表可在同一頁看完 */
+        .seating-display-grid {
+            display: grid;
+            grid-template-columns: repeat(5, minmax(0, 1fr));
+            grid-template-rows: repeat(6, minmax(0, 1fr));
+            gap: 12px 22px;
+            width: min(100%, 980px);
+            height: min(560px, calc(100vh - 300px));
+            min-height: 390px;
+            margin: 0 auto;
+        }
+
+        .seating-display-grid > * {
+            min-width: 0;
+            min-height: 0;
+        }
+
+        /* 全班小卡依座號分為四列：1–8、9–15、16–22、23–28 */
+        .student-display-rows {
+            display: grid;
+            grid-template-rows: repeat(4, minmax(0, 1fr));
+            gap: 16px;
+            width: 100%;
+            max-width: 1180px;
+            flex: 1;
+            min-height: 0;
+            padding-bottom: 12px;
+        }
+
+        .student-display-row {
+            display: grid;
+            grid-template-columns: repeat(var(--columns), minmax(0, 1fr));
+            gap: 16px;
+            min-width: 0;
+            min-height: 0;
+        }
+
+        .handwriting-pad { width:100%; height:190px; touch-action:none; background:#f8fafc; border-radius:18px; border:2px solid rgba(255,255,255,.5); cursor:crosshair; }
+        .notebook-frame { width: 100%; height: 100%; border: 0; background: transparent; }
+        .app-grid > :nth-child(1) { order:3; } .app-grid > :nth-child(2) { order:2; } .app-grid > :nth-child(3) { order:1; }
+        .app-grid > :nth-child(4) { order:6; } .app-grid > :nth-child(5) { order:5; } .app-grid > :nth-child(6) { order:4; }
+        .app-grid > :nth-child(7) { order:8; } .app-grid > :nth-child(8) { order:7; } .app-grid > :nth-child(9) { order:9; }
+    </style>
+</head>
+<body class="cloud-loading">
+
+<div id="scale-wrapper">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+
+    <!-- 頂部狀態列 -->
+    <div class="absolute top-0 w-full h-12 flex justify-between items-center px-8 text-white/80 font-bold z-10 text-xl tracking-wider">
+        <div>高雄市立前峰國中 807</div>
+        <div class="flex items-center space-x-6">
+            <span><i class="fa-solid fa-wifi mr-2"></i></span>
+            <span><i class="fa-solid fa-battery-three-quarters mr-2"></i>98%</span>
+            <span id="header-time">12:00 AM</span>
+        </div>
+    </div>
+
+    <div class="absolute inset-0 pt-20 pb-10 px-16 flex flex-row gap-12 z-10">
+        <!-- 左側：Widgets -->
+        <div class="w-1/3 flex flex-col gap-5 h-full">
+            <div class="glass-panel rounded-[3rem] p-8 flex-[.9] flex flex-col items-center justify-center">
+                <div id="widget-time" class="text-[8rem] font-black text-white leading-none drop-shadow-lg tracking-tighter">12:00</div>
+                <div id="widget-date" class="text-3xl text-white/80 mt-4 font-bold tracking-widest">1月1日 星期一</div>
+            </div>
+            <div class="glass-panel rounded-[2.5rem] p-6 flex-[.55] flex flex-col">
+                <h2 class="text-2xl text-white font-bold mb-3 flex items-center border-b border-white/20 pb-3"><i class="fa-solid fa-broom-ball mr-3 text-[#f6d365]"></i>今日值日生</h2>
+                <div id="widget-duty" class="flex-1 flex flex-wrap items-center content-center gap-3"></div>
+            </div>
+            <div class="glass-panel rounded-[3rem] p-7 flex-[1.7] flex flex-col">
+                <h2 class="text-3xl text-white font-bold mb-6 flex items-center border-b border-white/20 pb-4">
+                    <i class="fa-solid fa-list-check mr-4 text-[#8fd3f4]"></i> 今日任務
+                </h2>
+                <div id="widget-tasks" class="flex-1 flex flex-col gap-4 overflow-hidden"></div>
+            </div>
+        </div>
+
+        <!-- 右側：App 網格 -->
+        <div class="w-2/3 h-full content-start">
+            <div class="app-grid grid grid-cols-3 gap-x-10 gap-y-9 w-full p-4">
+                <div class="flex flex-col items-center gap-3 cursor-pointer group" onclick="openApp('courses')">
+                    <div class="w-32 h-32 squircle bg-pastel-blue flex items-center justify-center"><i class="fa-solid fa-folder-tree text-6xl text-white/90 drop-shadow-md"></i></div>
+                    <span class="text-white font-bold text-2xl tracking-widest group-hover:text-[#8fd3f4] transition-colors">課程任務</span>
+                </div>
+                <div class="flex flex-col items-center gap-3 cursor-pointer group" onclick="openApp('seating')">
+                    <div class="w-32 h-32 squircle bg-pastel-teal flex items-center justify-center"><i class="fa-solid fa-chair text-6xl text-white/90 drop-shadow-md"></i></div>
+                    <span class="text-white font-bold text-2xl tracking-widest group-hover:text-[#8fd3f4] transition-colors">座位表</span>
+                </div>
+                <div class="flex flex-col items-center gap-3 cursor-pointer group" onclick="openApp('timetable')">
+                    <div class="w-32 h-32 squircle bg-pastel-purple flex items-center justify-center"><i class="fa-solid fa-calendar-alt text-6xl text-white/90 drop-shadow-md"></i></div>
+                    <span class="text-white font-bold text-2xl tracking-widest group-hover:text-[#8fd3f4] transition-colors">課表</span>
+                </div>
+                <div class="flex flex-col items-center gap-3 cursor-pointer group" onclick="openApp('cleaning')">
+                    <div class="w-32 h-32 squircle bg-pastel-yellow flex items-center justify-center"><i class="fa-solid fa-broom text-6xl text-white/90 drop-shadow-md"></i></div>
+                    <span class="text-white font-bold text-2xl tracking-widest group-hover:text-[#8fd3f4] transition-colors">打掃任務</span>
+                </div>
+                <div class="flex flex-col items-center gap-3 cursor-pointer group" onclick="openApp('lunch')">
+                    <div class="w-32 h-32 squircle bg-pastel-green flex items-center justify-center"><i class="fa-solid fa-utensils text-6xl text-white/90 drop-shadow-md"></i></div>
+                    <span class="text-white font-bold text-2xl tracking-widest group-hover:text-[#8fd3f4] transition-colors">午餐小組</span>
+                </div>
+                <div class="flex flex-col items-center gap-3 cursor-pointer group" onclick="openApp('notebook')">
+                    <div class="w-32 h-32 squircle bg-pastel-purple flex items-center justify-center"><i class="fa-solid fa-book-journal-whills text-6xl text-white/90 drop-shadow-md"></i></div>
+                    <span class="text-white font-bold text-2xl tracking-widest group-hover:text-[#8fd3f4] transition-colors">聯絡簿</span>
+                </div>
+                <div class="flex flex-col items-center gap-3 cursor-pointer group" onclick="openApp('tasks')">
+                    <div class="w-32 h-32 squircle bg-pastel-green flex items-center justify-center"><i class="fa-solid fa-list-check text-6xl text-white/90 drop-shadow-md"></i></div>
+                    <span class="text-white font-bold text-2xl tracking-widest group-hover:text-[#8fd3f4] transition-colors">今日任務</span>
+                </div>
+                <div class="flex flex-col items-center gap-3 cursor-pointer group" onclick="openApp('tomorrow')">
+                    <div class="w-32 h-32 squircle bg-pastel-orange flex items-center justify-center"><i class="fa-solid fa-calendar-plus text-6xl text-white/90 drop-shadow-md"></i></div>
+                    <span class="text-white font-bold text-2xl tracking-widest group-hover:text-[#8fd3f4] transition-colors">明日事項</span>
+                </div>
+                <div class="flex flex-col items-center gap-3 cursor-pointer group" onclick="openApp('exam')">
+                    <div class="w-32 h-32 squircle bg-pastel-rose flex items-center justify-center"><i class="fa-solid fa-bell text-6xl text-white/90 drop-shadow-md"></i></div>
+                    <span class="text-white font-bold text-2xl tracking-widest group-hover:text-[#8fd3f4] transition-colors">段考考程</span>
+                </div>
+            </div>
+            <div class="glass-panel rounded-[2.5rem] p-6 mt-4 h-44">
+                <h2 class="text-2xl text-white font-bold mb-3 flex items-center border-b border-white/20 pb-3"><i class="fa-solid fa-calendar-plus mr-3 text-[#f6d365]"></i>明日事項</h2>
+                <div id="widget-tomorrow" class="grid grid-cols-2 grid-rows-2 gap-3 overflow-hidden"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="app-modal" class="absolute inset-0 bg-black/60 backdrop-blur-md z-50 hidden opacity-0 transition-opacity duration-300 flex items-center justify-center p-12">
+        <div class="glass-panel w-full h-full rounded-[3rem] relative flex overflow-hidden scale-95 transition-transform duration-300" id="app-window">
+            
+            <button onclick="closeApp()" class="absolute top-6 right-6 w-16 h-16 bg-white/20 hover:bg-white/40 rounded-full flex items-center justify-center z-50 transition-colors text-white text-3xl">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+
+            <div id="app-content-courses" class="w-full h-full flex flex-col p-12 hidden">
+                <h2 class="text-5xl font-bold text-white mb-4 tracking-widest"><i class="fa-solid fa-folder-tree mr-6 text-[#8fd3f4]"></i>課程任務</h2>
+                <p class="text-white/70 text-2xl mb-8">選擇學科資料夾，查看該科任務與繳交紀錄。</p>
+                <div id="course-folders" class="grid grid-cols-5 gap-4 flex-1 overflow-y-auto no-scrollbar pr-4"></div>
+            </div>
+
+            <!-- A. 學科點名板介面 -->
+            <div id="app-content-subject" class="w-full h-full flex hidden">
+                <div class="w-1/4 border-r border-white/20 flex flex-col p-6 bg-black/20">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-3xl font-bold text-white tracking-widest" id="subject-title">科目</h2>
+                        <button onclick="createNewTask()" class="hidden w-12 h-12 rounded-full bg-blue-500/50 hover:bg-blue-500 text-white text-2xl flex items-center justify-center transition-colors">
+                            <i class="fa-solid fa-plus"></i>
+                        </button>
+                    </div>
+                    <div id="task-list" class="flex-1 overflow-y-auto no-scrollbar space-y-3"></div>
+                </div>
+                <div class="w-3/4 flex flex-col p-8 items-center relative overflow-hidden">
+                    <input type="text" id="task-name-input" readonly class="w-2/3 bg-transparent border-b-2 border-white/30 text-white text-4xl font-bold text-center pb-4 mb-4 focus:outline-none transition-colors" placeholder="點此輸入任務名稱...">
+                    <div class="flex w-full max-w-4xl gap-3 mb-4"><input id="new-course-task-name" class="flex-1 bg-black/25 border border-white/30 rounded-2xl px-5 py-3 text-white text-xl" placeholder="輸入新的任務名稱"><input id="course-submit-password" type="password" class="w-52 bg-black/25 border border-white/30 rounded-2xl px-5 py-3 text-white text-xl" placeholder="填寫密碼"><button onclick="submitCourseTask()" class="bg-[#f6d365] text-black rounded-2xl px-6 text-xl font-bold">新增任務</button></div>
+                    <div class="flex space-x-6 mb-4"><div class="text-white text-xl font-bold bg-white/10 px-5 py-2 rounded-full">點選學生小卡可標示完成</div><div class="text-white text-2xl font-bold bg-white/10 px-6 py-2 rounded-full">進度：<span id="task-progress" class="text-green-400 ml-2">0 / 0</span></div></div><p id="course-message" class="text-[#f6d365] text-lg min-h-6"></p>
+                    <div class="student-display-rows mt-2" id="students-grid"></div>
+                </div>
+            </div>
+
+            <!-- B. 今日任務介面 -->
+            <div id="app-content-tasks" class="w-full h-full flex flex-col p-12 hidden relative">
+                <h2 class="text-5xl font-bold text-white mb-8 tracking-widest flex items-center">
+                    <i class="fa-solid fa-clipboard-check mr-6 text-[#f6d365]"></i> 今日任務
+                </h2>
+                <div class="hidden flex mb-10">
+                    <input type="text" id="new-daily-task-input" class="flex-1 bg-black/30 border border-white/20 rounded-l-2xl px-8 py-5 text-3xl text-white focus:outline-none focus:border-[#f6d365]" placeholder="輸入新工作事項 (例：黑板值日生)...">
+                    <button onclick="addDailyTask()" class="bg-[#f6d365] text-black px-10 py-5 rounded-r-2xl font-bold text-3xl hover:bg-[#fda085] transition-colors">新增</button>
+                </div>
+                <div id="daily-tasks-container" class="flex-1 overflow-y-auto no-scrollbar space-y-4 pr-4"></div>
+            </div>
+
+            <div id="app-content-cleaning" class="w-full h-full flex flex-col p-12 hidden relative">
+                <h2 class="text-5xl font-bold text-white mb-8 tracking-widest flex items-center"><i class="fa-solid fa-broom mr-6 text-[#f6d365]"></i>打掃工作</h2>
+                <div id="cleaning-tasks-container" class="flex-1 overflow-y-auto no-scrollbar space-y-4 pr-4"></div>
+            </div>
+
+            <div id="app-content-tomorrow" class="w-full h-full flex p-10 gap-8 hidden">
+                <div class="w-1/2 flex flex-col min-w-0"><h2 class="text-4xl font-bold text-white tracking-widest mb-3"><i class="fa-solid fa-calendar-plus mr-4 text-[#f6d365]"></i>明日事項</h2><p class="text-white/60 text-xl mb-5">明日自動移入「今日任務」，並保留可依日期查詢的紀錄。</p><div id="tomorrow-list" class="flex-1 overflow-y-auto no-scrollbar space-y-3 pr-3"></div><div class="mt-5 pt-4 border-t border-white/20"><label class="text-white text-lg block mb-2" for="task-history-date">查詢過往任務</label><input id="task-history-date" onchange="renderTaskHistory()" type="date" class="bg-black/30 border border-white/30 rounded-xl px-4 py-3 text-white text-xl"><div id="task-history-list" class="mt-3 space-y-2"></div></div></div>
+                <div class="w-1/2 glass-panel rounded-3xl p-7 flex flex-col"><h3 class="text-3xl text-white font-bold mb-4">新增交辦事項</h3><div class="grid grid-cols-2 gap-4"><input id="tomorrow-author" class="bg-black/30 border border-white/30 rounded-xl px-4 py-3 text-white text-xl" placeholder="填寫人（老師／小老師）"><select id="tomorrow-subject" class="bg-black/30 border border-white/30 rounded-xl px-4 py-3 text-white text-xl"></select></div><textarea id="tomorrow-text" class="mt-4 flex-1 min-h-[130px] bg-black/30 border border-white/30 rounded-xl p-4 text-white text-xl resize-none" placeholder="例如：國文第 3 課習作第 20 頁"></textarea><div class="mt-4"><div class="flex justify-between text-white text-lg mb-2"><span>手寫輸入（可選）</span><button onclick="clearHandwriting()" class="text-[#f6d365]">清除筆跡</button></div><canvas id="handwriting-pad" class="handwriting-pad" width="620" height="250"></canvas></div><input id="tomorrow-password" type="password" class="mt-4 bg-black/30 border border-white/30 rounded-xl px-4 py-3 text-white text-xl" placeholder="填寫密碼"><button onclick="submitTomorrowTask()" class="mt-4 bg-[#f6d365] text-black py-4 rounded-xl text-2xl font-bold hover:bg-[#fda085]">送出明日事項</button><p id="tomorrow-message" class="text-[#f6d365] text-lg mt-3 min-h-6"></p></div>
+            </div>
+
+            <!-- C. 午餐小組介面 -->
+            <div id="app-content-lunch" class="w-full h-full flex hidden">
+                <div class="w-1/3 border-r border-white/20 flex flex-col p-8 bg-black/20">
+                    <h2 class="text-4xl font-bold text-white tracking-widest mb-8 border-b border-white/20 pb-4">
+                        <i class="fa-solid fa-utensils mr-4 text-[#84fab0]"></i> 今日菜單
+                    </h2>
+                    <div id="lunch-menu" class="flex-1 space-y-4"></div>
+                </div>
+                <div class="w-2/3 flex flex-col p-10 items-center relative overflow-hidden">
+                    <div class="text-3xl text-white font-bold mb-8">今日午餐分工</div>
+                    <div id="lunch-current-item" class="hidden"></div>
+                    <div class="student-display-rows" id="lunch-students-grid"></div>
+                </div>
+            </div>
+
+            <!-- D. 座位表介面 -->
+            <div id="app-content-seating" class="w-full h-full flex flex-col p-8 hidden items-center">
+                <div class="w-full max-w-6xl flex justify-between items-center mb-4">
+                    <h2 class="text-4xl font-bold text-white tracking-widest flex items-center">
+                        <i class="fa-solid fa-chair mr-4 text-[#a1c4fd]"></i> 教室座位表
+                    </h2>
+                    <div class="hidden flex items-center bg-black/30 px-4 py-2 rounded-xl border border-white/20 shadow-inner">
+                        <button onclick="openNameEditor()" class="mr-4 px-4 py-2 bg-emerald-500/50 hover:bg-emerald-500 text-white font-bold rounded-lg transition-colors shadow">編輯名單</button>
+                        <span class="text-white text-xl mr-3 font-bold">班級總人數：</span>
+                        <input type="number" id="global-student-count" class="w-20 bg-white/10 text-white text-2xl text-center rounded border border-white/30 focus:outline-none focus:border-[#a1c4fd] transition-colors" min="1" max="60">
+                        <button onclick="updateTotalStudents()" class="ml-4 px-5 py-2 bg-blue-500/50 hover:bg-blue-500 text-white font-bold rounded-lg transition-colors shadow">套用</button>
+                    </div>
+                </div>
+                <div class="flex space-x-8 mb-6">
+                    <div class="flex items-center text-white text-xl"><div class="w-4 h-4 rounded-full bg-gray-500 mr-2"></div> 正常</div>
+                    <div class="flex items-center text-white text-xl"><div class="w-4 h-4 rounded-full bg-red-500 mr-2"></div> 缺席</div>
+                    <button onclick="resetSeating()" class="hidden ml-8 px-4 py-1 rounded border border-white/30 text-white hover:bg-white/20">全部重置</button>
+                </div>
+                <div class="w-2/3 max-w-2xl bg-white/10 border-2 border-white/20 rounded-xl py-3 text-center text-white text-2xl font-bold tracking-[1em] mb-10 shadow-lg">黑板 / 講台</div>
+                <div class="seating-display-grid" id="seating-grid"></div>
+            </div>
+
+            <!-- E. 班級課表介面 -->
+            <div id="app-content-timetable" class="w-full h-full flex flex-col p-12 hidden items-center">
+                <div class="w-full max-w-7xl flex justify-between items-center mb-8">
+                    <h2 class="text-4xl font-bold text-white tracking-widest flex items-center">
+                        <i class="fa-solid fa-calendar-alt mr-4 text-[#fbc2eb]"></i> 班級每週課表
+                    </h2>
+                    <button onclick="toggleTimetableEdit()" id="btn-timetable-edit" class="hidden px-6 py-3 bg-purple-500/50 hover:bg-purple-500 text-white text-xl font-bold rounded-xl border border-white/30 transition-colors shadow-lg">
+                        <i class="fa-solid fa-pen mr-3"></i>編輯課表
+                    </button>
+                </div>
+                <div class="w-full max-w-7xl flex-1 glass-panel rounded-3xl overflow-hidden border border-white/20">
+                    <table class="w-full h-full text-center text-white text-2xl font-bold border-collapse">
+                        <thead>
+                            <tr class="bg-black/30 text-3xl">
+                                <th class="py-4 border-b border-r border-white/20 w-[12%]">節次 / 時間</th>
+                                <th class="py-4 border-b border-r border-white/20 w-[17.6%]">星期一</th>
+                                <th class="py-4 border-b border-r border-white/20 w-[17.6%]">星期二</th>
+                                <th class="py-4 border-b border-r border-white/20 w-[17.6%]">星期三</th>
+                                <th class="py-4 border-b border-r border-white/20 w-[17.6%]">星期四</th>
+                                <th class="py-4 border-b border-white/20 w-[17.6%]">星期五</th>
+                            </tr>
+                        </thead>
+                        <tbody id="timetable-body"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- F. 段考考程 -->
+            <div id="app-content-exam" class="w-full h-full flex p-6 gap-6 hidden">
+                <div class="corkboard w-1/3 h-full rounded-2xl p-6 flex flex-col relative">
+                    <div class="bg-white px-4 py-3 rounded shadow-md transform -rotate-2 w-[90%] mx-auto text-center relative mb-4">
+                        <h1 class="text-3xl font-black text-gray-800 tracking-widest flex items-center justify-center">
+                            <i class="fa-solid fa-clipboard-list text-red-700 mr-3"></i> 今日考程表
+                        </h1>
+                        <div class="absolute -top-3 left-1/2 transform -translate-x-1/2 w-20 h-6 bg-red-500/40 rotate-3"></div>
+                    </div>
+                    <div id="exam-schedule-container" class="flex-1 flex flex-col space-y-4 px-2"></div>
+                </div>
+                <div class="blackboard-exam w-2/3 h-full rounded-2xl p-10 flex flex-col justify-between relative overflow-hidden">
+                    <div class="flex flex-col items-center">
+                        <h2 id="exam-date" class="text-3xl text-[#F5F5F5] font-bold tracking-widest mb-2"></h2>
+                        <div id="exam-time" class="text-[8rem] font-black tabular-nums tracking-tighter text-[#FFE56C] leading-none drop-shadow-lg"></div>
+                    </div>
+                    <div class="flex-1 flex items-center justify-center my-6">
+                        <div class="border-4 border-dashed border-white/30 rounded-3xl p-8 w-[80%] text-center">
+                            <div class="text-2xl text-gray-300 font-bold tracking-widest mb-4">【 目前進度 】</div>
+                            <div id="exam-status-content"></div>
+                        </div>
+                    </div>
+                    <div class="flex items-stretch justify-between w-full z-10 space-x-6">
+                        <div class="flex-1 border-2 border-white/60 p-6 rounded relative flex flex-col justify-center">
+                            <div class="absolute -top-5 left-4 bg-[#2b4c3b] px-4 text-[#FF8A8A] text-2xl font-black tracking-widest">注意事項</div>
+                            <ul class="space-y-3 text-xl text-white tracking-wide mt-2">
+                                <li>1. 作答前，請確實核對答案卡之「個人資料」。</li>
+                                <li>2. 考試期間請嚴守「試場規則」。</li>
+                            </ul>
+                        </div>
+                        <div class="w-[20rem] border-2 border-white/60 p-6 rounded relative flex flex-col justify-center text-white">
+                            <div class="absolute -top-5 left-4 bg-[#2b4c3b] px-4 text-xl font-bold tracking-widest">出缺席</div>
+                            <div class="flex justify-between text-2xl font-bold border-b border-dashed border-white/50 pb-2 mb-2">
+                                <span>應到：</span><span>30</span>
+                            </div>
+                            <div class="flex justify-between text-2xl font-bold text-[#98FB98] mb-2">
+                                <span>實到：</span><span>29</span>
+                            </div>
+                            <div class="flex justify-between text-2xl font-bold text-[#FF8A8A]">
+                                <span>缺席：</span><span>1</span>
+                            </div>
+                            <div class="mt-2 text-lg text-[#FF8A8A] font-bold">缺席：14 林小華</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 聯絡簿：保留在班級系統內的浮動視窗 -->
+            <div id="app-content-notebook" class="w-full h-full hidden p-5">
+                <iframe class="notebook-frame rounded-[2.4rem]" title="聯絡簿繳交紀錄" src="book.html?embed=1"></iframe>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- 名單編輯視窗 (全域) -->
+    <div id="name-editor-modal" class="absolute inset-0 bg-black/80 backdrop-blur-sm z-[60] hidden opacity-0 transition-opacity duration-300 flex items-center justify-center p-12">
+        <div class="glass-panel w-full max-w-2xl rounded-[2rem] p-8 flex flex-col relative scale-95 transition-transform duration-300" id="name-editor-window">
+            <h2 class="text-3xl font-bold text-white mb-4"><i class="fa-solid fa-users mr-3 text-emerald-400"></i>編輯學生名單</h2>
+            <p class="text-white/70 mb-4 text-xl">請在下方貼上學生姓名（每行一位，由上到下自動對應 1 號、2 號...）。</p>
+            <textarea id="student-names-input" class="w-full h-80 bg-black/40 text-white text-2xl p-6 rounded-xl border border-white/30 focus:outline-none focus:border-emerald-400 mb-6 resize-none leading-relaxed no-scrollbar" placeholder="王小明&#10;陳大毛&#10;林小華..."></textarea>
+            <div class="flex justify-end space-x-6">
+                <button onclick="closeNameEditor()" class="px-8 py-3 bg-gray-500/50 hover:bg-gray-500 text-white font-bold text-xl rounded-xl transition-colors">取消</button>
+                <button onclick="saveNameEditor()" class="px-8 py-3 bg-emerald-500/80 hover:bg-emerald-500 text-white font-bold text-xl rounded-xl transition-colors">儲存名單</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const isTeacherMode = false;
+    const wrapper = document.getElementById('scale-wrapper');
+    function resizeApp() {
+        const targetWidth = 1920, targetHeight = 1080;
+        const scale = Math.min(window.innerWidth / targetWidth, window.innerHeight / targetHeight);
+        wrapper.style.transform = `scale(${scale})`;
+        wrapper.style.left = `${(window.innerWidth - (targetWidth * scale)) / 2}px`;
+        wrapper.style.top = `${(window.innerHeight - (targetHeight * scale)) / 2}px`;
+    }
+    window.addEventListener('resize', resizeApp); resizeApp();
+
+    const CLOUD_ENDPOINT = window.CLASSBOARD_API_URL || '/api/classroom';
+    const CLOUD_KEYS = ['classroomTotalStudents','classroomStudentNames','classroomStudentRoster','classSeating','classroomSeatingLayout','classTimetable','classTimeSlots','examSchedule','examScheduleDays','examDayCount','examActiveDay','subjectData','dailyTasks','todayTasks','tomorrowTasks','taskHistory','taskDate','cleaningTasks','cleaningTaskConfig','cleaningAssignments','dutyAssignments','lunchAssignments','lunchCategoryLimits','monthlyMenus','notebookCheckins'];
+    async function loadCloudData() {
+        try {
+            const response = await fetch(CLOUD_ENDPOINT, { cache: 'no-store' });
+            if (!response.ok) throw new Error('Cloud data unavailable');
+            const payload = await response.json();
+            if (!payload.hasData) { document.body.classList.remove('cloud-loading'); return; }
+            const data = payload.data || {};
+            let changed = false;
+            CLOUD_KEYS.forEach(key => {
+                const next = Object.prototype.hasOwnProperty.call(data, key) ? data[key] : null;
+                if (localStorage.getItem(key) !== next) {
+                    changed = true;
+                    if (next === null) localStorage.removeItem(key);
+                    else localStorage.setItem(key, next);
+                }
+            });
+            if (changed) { window.location.reload(); return; }
+        } catch (_) {
+            // 本機直接開啟或網路暫時中斷時，保留瀏覽器中的最近資料。
+        }
+        document.body.classList.remove('cloud-loading');
+    }
+    function getStudentRoster() {
+        try {
+            const saved = JSON.parse(localStorage.getItem('classroomStudentRoster'));
+            if (Array.isArray(saved)) return saved.filter(student => Number.isInteger(Number(student.seat)) && Number(student.seat) > 0 && Number(student.seat) <= 60 && String(student.name || '').trim()).map(student => ({ seat: Number(student.seat), name: String(student.name).trim() })).sort((a, b) => a.seat - b.seat);
+        } catch (_) {}
+        const legacyTotal = parseInt(localStorage.getItem('classroomTotalStudents')) || 30;
+        const legacyNames = JSON.parse(localStorage.getItem('classroomStudentNames')) || [];
+        return Array.from({ length: legacyTotal }, (_, index) => ({ seat: index + 1, name: legacyNames[index] || '' }));
+    }
+    let studentRoster = getStudentRoster();
+    let totalStudents = studentRoster.length;
+    const highestSeatNumber = () => Math.max(0, ...studentRoster.map(student => student.seat));
+
+    function updateClocks() {
+        const now = new Date();
+        document.getElementById('header-time').innerText = now.toLocaleTimeString('zh-TW', { hour12: true, hour: '2-digit', minute: '2-digit' });
+        document.getElementById('widget-time').innerText = now.toLocaleTimeString('zh-TW', { hour12: false, hour: '2-digit', minute: '2-digit' });
+        document.getElementById('widget-date').innerText = now.toLocaleDateString('zh-TW', { month: 'short', day: 'numeric', weekday: 'long' });
+        document.getElementById('exam-date').innerText = now.toLocaleDateString('zh-TW', { month: 'short', day: 'numeric', weekday: 'long' });
+        const examTimeEl = document.getElementById('exam-time');
+        if (examTimeEl) examTimeEl.innerText = now.toLocaleTimeString('zh-TW', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    }
+    setInterval(updateClocks, 1000); updateClocks();
+    setInterval(() => { if (currentActiveApp === 'timetable' && !isEditingTimetable) renderTimetable(); }, 30000);
+
+    let currentActiveApp = null;
+    let currentSubject = "";
+    const COURSE_SUBJECTS = ['國文','英文','數學','理化','地理','歷史','公民','資科','生科','健康','體育','音樂','表演','美術','童軍','家政','輔導'];
+    const COURSE_SUBJECT_ICONS = {
+        '國文':'fa-book-open', '英文':'fa-language', '數學':'fa-square-root-variable', '理化':'fa-flask',
+        '地理':'fa-earth-asia', '歷史':'fa-landmark', '公民':'fa-scale-balanced', '資科':'fa-laptop-code',
+        '生科':'fa-dna', '健康':'fa-heart-pulse', '體育':'fa-person-running', '音樂':'fa-music',
+        '表演':'fa-masks-theater', '美術':'fa-palette', '童軍':'fa-campground', '家政':'fa-house-chimney',
+        '輔導':'fa-comments'
+    };
+
+    const COURSE_SUBJECT_COLORS = {
+        '國文':'#e37758', '英文':'#3b82c4', '數學':'#ce8b2c', '理化':'#3a9d73', '地理':'#2aa7a2',
+        '歷史':'#9d5ec8', '公民':'#d45d67', '資科':'#2463a9', '生科':'#4c9b62', '健康':'#e64a72',
+        '體育':'#f58b45', '音樂':'#845ec2', '表演':'#d462a6', '美術':'#ed7d5b', '童軍':'#5ea557',
+        '家政':'#be7b5d', '輔導':'#4aa0bb'
+    };
+    const currentSubjectColor = () => COURSE_SUBJECT_COLORS[currentSubject] || '#8fd3f4';
+
+    function openApp(type, subject = "") {
+        document.getElementById('app-modal').classList.remove('hidden');
+        setTimeout(() => {
+            document.getElementById('app-modal').classList.remove('opacity-0');
+            document.getElementById('app-window').classList.remove('scale-95');
+        }, 10);
+        document.querySelectorAll('#app-window > div').forEach(div => div.classList.add('hidden'));
+
+        currentActiveApp = type;
+        if (type === 'courses') {
+            document.getElementById('app-content-courses').classList.remove('hidden');
+            renderCourseFolders();
+        } else if (type === 'subject') {
+            document.getElementById('app-content-subject').classList.remove('hidden');
+            document.getElementById('subject-title').innerText = subject;
+            currentSubject = subject;
+            loadSubjectTasks();
+        } else if (type === 'tasks') {
+            document.getElementById('app-content-tasks').classList.remove('hidden');
+            renderDailyTasksUI();
+        } else if (type === 'cleaning') {
+            document.getElementById('app-content-cleaning').classList.remove('hidden');
+            renderCleaningTasksUI();
+        } else if (type === 'tomorrow') {
+            document.getElementById('app-content-tomorrow').classList.remove('hidden');
+            renderTomorrowTasks();
+            setupHandwritingPad();
+        } else if (type === 'lunch') {
+            document.getElementById('app-content-lunch').classList.remove('hidden');
+            renderLunchMenu();
+        } else if (type === 'exam') {
+            document.getElementById('app-content-exam').classList.remove('hidden');
+            renderExamSchedule();
+            startExamTracker();
+        } else if (type === 'seating') {
+            document.getElementById('app-content-seating').classList.remove('hidden');
+            renderSeatingGrid();
+        } else if (type === 'timetable') {
+            document.getElementById('app-content-timetable').classList.remove('hidden');
+            renderTimetable();
+        } else if (type === 'notebook') {
+            document.getElementById('app-content-notebook').classList.remove('hidden');
+            prepareNotebookWindow();
+        }
+    }
+
+    function prepareNotebookWindow() {
+        const frame = document.querySelector('#app-content-notebook iframe');
+        const applyEmbeddedLayout = () => {
+            const doc = frame.contentDocument;
+            if (!doc || !doc.body) return;
+            const header = doc.querySelector('header');
+            const main = doc.querySelector('main');
+            if (header) header.style.display = 'none';
+            doc.body.style.padding = '0';
+            if (main) {
+                main.style.maxWidth = 'none';
+                main.style.minHeight = '100vh';
+                main.style.padding = '20px';
+                main.style.gridTemplateColumns = 'minmax(520px, .9fr) minmax(0, 1.1fr)';
+            }
+        };
+        if (frame.contentDocument?.readyState === 'complete') applyEmbeddedLayout();
+        frame.onload = applyEmbeddedLayout;
+    }
+
+    function closeApp() {
+        document.getElementById('app-modal').classList.add('opacity-0');
+        document.getElementById('app-window').classList.add('scale-95');
+        setTimeout(() => document.getElementById('app-modal').classList.add('hidden'), 300);
+        stopExamTracker();
+        updateWidgetTasks();
+    }
+
+    let seatingState = JSON.parse(localStorage.getItem('classSeating')) || Array(highestSeatNumber()).fill(0);
+    let studentNames = studentRoster.map(student => student.name);
+
+    function openNameEditor() {
+        if (!isTeacherMode) return;
+        document.getElementById('student-names-input').value = studentNames.join('\n');
+        const modal = document.getElementById('name-editor-modal');
+        const win = document.getElementById('name-editor-window');
+        modal.classList.remove('hidden');
+        setTimeout(() => {
+            modal.classList.remove('opacity-0');
+            win.classList.remove('scale-95');
+        }, 10);
+    }
+    
+    function closeNameEditor() {
+        const modal = document.getElementById('name-editor-modal');
+        const win = document.getElementById('name-editor-window');
+        modal.classList.add('opacity-0');
+        win.classList.add('scale-95');
+        setTimeout(() => modal.classList.add('hidden'), 300);
+    }
+
+    function saveNameEditor() {
+        if (!isTeacherMode) return;
+        const input = document.getElementById('student-names-input').value;
+        studentNames = input.split('\n').map(name => name.trim());
+        localStorage.setItem('classroomStudentNames', JSON.stringify(studentNames));
+        
+        closeNameEditor();
+        if(currentActiveApp === 'seating') renderSeatingGrid();
+        else if (currentActiveApp === 'subject') renderDetailBoard();
+        else if (currentActiveApp === 'lunch') renderLunchGrid();
+    }
+
+    function updateTotalStudents() {
+        if (!isTeacherMode) return;
+        const newVal = parseInt(document.getElementById('global-student-count').value);
+        if(newVal && newVal > 0 && newVal <= 60) {
+            totalStudents = newVal;
+            localStorage.setItem('classroomTotalStudents', totalStudents);
+            let oldSeating = JSON.parse(localStorage.getItem('classSeating')) || [];
+            seatingState = Array(totalStudents).fill(0).map((_, i) => oldSeating[i] || 0);
+            localStorage.setItem('classSeating', JSON.stringify(seatingState));
+            renderSeatingGrid();
+        }
+    }
+
+    function getSeatingLayout() {
+        let raw = [];
+        try { raw = JSON.parse(localStorage.getItem('classroomSeatingLayout')) || []; } catch (_) {}
+        const valid = new Set(studentRoster.map(student => student.seat)), layout = Array(30).fill(null), used = new Set();
+        if (Array.isArray(raw)) raw.slice(0, 30).forEach((seat, index) => { const value = Number(seat); if (valid.has(value) && !used.has(value)) { layout[index] = value; used.add(value); } });
+        studentRoster.forEach(student => { if (!used.has(student.seat)) { const index = layout.indexOf(null); if (index >= 0) { layout[index] = student.seat; used.add(student.seat); } } });
+        return layout;
+    }
+
+    function renderSeatingGrid() {
+        document.getElementById('global-student-count').value = totalStudents;
+        const grid = document.getElementById('seating-grid');
+        grid.innerHTML = '';
+        getSeatingLayout().forEach(seat => {
+            if (!seat) {
+                grid.innerHTML += '<div class="w-full h-full rounded-xl border-2 border-dashed border-white/20 bg-black/10 flex items-center justify-center text-white/20 text-xl">空位</div>';
+                return;
+            }
+            const student = studentRoster.find(item => item.seat === seat);
+            if (!student) return;
+            const num = student.seat.toString().padStart(2, '0');
+            const state = seatingState[student.seat - 1] || 0;
+            const name = student.name;
+            
+            let btnClass = 'w-full h-full min-h-0 rounded-xl flex flex-col items-center justify-center font-black transition-all duration-300 shadow-lg cursor-default overflow-hidden ';
+            if (state === 0) btnClass += 'glass-panel text-white/80 hover:bg-white/10';
+            else if (state > 0) btnClass += 'bg-red-900/60 border-2 border-red-500 text-red-400 shadow-[0_0_15px_rgba(239,68,68,0.5)]';
+            
+            const content = name 
+                ? `<span class="text-sm opacity-70 leading-none mb-1">${num}</span><span class="text-xl leading-tight truncate max-w-full px-1">${name}</span>`
+                : `<span class="text-2xl">${num}</span>`;
+
+            grid.innerHTML += `<div class="${btnClass}" onclick="toggleSeatingState(${student.seat})">${content}</div>`;
+        });
+    }
+
+    function toggleSeatingState(seat) {
+        if (!isTeacherMode) return;
+        const index = seat - 1;
+        seatingState[index] = seatingState[index] ? 0 : 1;
+        localStorage.setItem('classSeating', JSON.stringify(seatingState));
+        renderSeatingGrid();
+    }
+    function resetSeating() {
+        if (!isTeacherMode) return;
+        seatingState = Array(highestSeatNumber()).fill(0);
+        localStorage.setItem('classSeating', JSON.stringify(seatingState));
+        renderSeatingGrid();
+    }
+
+    let timetableData = JSON.parse(localStorage.getItem('classTimetable')) || [
+        ['國文', '英文', '數學', '理化', '體育'], ['國文', '數學', '英文', '理化', '音樂'],
+        ['歷史', '地理', '公民', '英文', '數學'], ['資訊', '童軍', '家政', '美術', '國文'],
+        ['數學', '理化', '國文', '歷史', '英文'], ['英文', '國文', '數學', '地理', '班會'],
+        ['理化', '輔導', '體育', '公民', '社團'], ['自習', '自習', '自習', '自習', '社團']
+    ];
+    let timeSlots = JSON.parse(localStorage.getItem('classTimeSlots')) || [
+        '08:10 - 09:00', '09:10 - 10:00', '10:10 - 11:00', '11:10 - 12:00',
+        '13:10 - 14:00', '14:10 - 15:00', '15:10 - 16:00', '16:10 - 17:00'
+    ];
+    let isEditingTimetable = false;
+
+
+    function toggleTimetableEdit() {
+        if (!isTeacherMode) return;
+        isEditingTimetable = !isEditingTimetable;
+        const btn = document.getElementById('btn-timetable-edit');
+        if (isEditingTimetable) {
+            btn.innerHTML = '<i class="fa-solid fa-check mr-3"></i>儲存課表';
+            btn.classList.replace('bg-purple-500/50', 'bg-green-500/50');
+            btn.classList.replace('hover:bg-purple-500', 'hover:bg-green-500');
+        } else {
+            for (let period = 0; period < 8; period++) {
+                const timeInput = document.getElementById(`time-input-${period}`);
+                if (timeInput) timeSlots[period] = timeInput.value;
+                for (let day = 0; day < 5; day++) {
+                    const subjectInput = document.getElementById(`subject-input-${period}-${day}`);
+                    if (subjectInput) timetableData[period][day] = subjectInput.value;
+                }
+            }
+            localStorage.setItem('classTimetable', JSON.stringify(timetableData));
+            localStorage.setItem('classTimeSlots', JSON.stringify(timeSlots));
+            btn.innerHTML = '<i class="fa-solid fa-pen mr-3"></i>編輯課表';
+            btn.classList.replace('bg-green-500/50', 'bg-purple-500/50');
+            btn.classList.replace('hover:bg-green-500', 'hover:bg-purple-500');
+        }
+        renderTimetable();
+    }
+
+    function renderTimetable() {
+        const tbody = document.getElementById('timetable-body');
+        tbody.innerHTML = '';
+        const now = new Date(), currentDay = now.getDay(), currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+        for (let period = 0; period < 8; period++) {
+            const timeStr = timeSlots[period];
+            const [startStr, endStr] = timeStr.split(' - ');
+            const startMins = parseInt(startStr.split(':')[0]) * 60 + parseInt(startStr.split(':')[1]);
+            const endMins = parseInt(endStr.split(':')[0]) * 60 + parseInt(endStr.split(':')[1]);
+            const isCurrentPeriod = (currentMinutes >= startMins && currentMinutes <= endMins);
+
+            let timeContent = isEditingTimetable ? `<input type="text" id="time-input-${period}" value="${timeStr}" class="w-full bg-black/40 text-center border-b border-white/50 focus:outline-none focus:border-[#fbc2eb] text-white p-1 rounded">` : timeStr;
+
+            let rowHtml = `<tr class="border-b border-white/10 transition-colors">
+                <td class="py-4 border-r border-white/10 bg-black/20 text-white/80">
+                    <div class="text-xl">第 ${period + 1} 節</div><div class="text-sm font-normal mt-1 px-2">${timeContent}</div>
+                </td>`;
+
+            for (let day = 0; day < 5; day++) {
+                const subject = timetableData[period][day];
+                const isActive = (currentDay === day + 1) && isCurrentPeriod && !isEditingTimetable;
+                const cellClass = isActive ? 'timetable-active-cell font-black' : 'border-r border-white/10 text-white/90 hover:bg-white/10';
+                let cellContent = isEditingTimetable ? `<input type="text" id="subject-input-${period}-${day}" value="${subject}" class="w-full h-full bg-transparent text-center focus:outline-none focus:bg-white/10 text-white text-2xl font-bold py-2">` : subject;
+                rowHtml += `<td class="py-4 transition-all duration-300 ${cellClass}">${cellContent}</td>`;
+            }
+            rowHtml += `</tr>`;
+            if (period === 3) rowHtml += `<tr><td colspan="6" class="py-2 bg-white/5 text-white/50 text-xl font-bold tracking-[2em] border-b border-white/10">午休時間</td></tr>`;
+            tbody.innerHTML += rowHtml;
+        }
+    }
+
+    let subjectData = JSON.parse(localStorage.getItem('subjectData')) || {};
+    let currentTaskId = null;
+
+    function renderCourseFolders() {
+        const colors=['bg-pastel-rose','bg-pastel-blue','bg-pastel-yellow','bg-pastel-green','bg-pastel-orange','bg-pastel-mint','bg-pastel-purple'];
+        const container = document.getElementById('course-folders');
+        container.innerHTML = COURSE_SUBJECTS.map((subject, index) => `<div class="flex flex-col items-center gap-3 cursor-pointer group" onclick="openApp('subject','${subject}')"><div class="w-32 h-32 squircle ${colors[index % colors.length]} flex items-center justify-center"><i class="fa-solid ${COURSE_SUBJECT_ICONS[subject] || 'fa-folder'} text-6xl text-white/90 drop-shadow-md"></i></div><span class="text-white font-bold text-2xl tracking-widest group-hover:text-[#8fd3f4] transition-colors">${subject}</span></div>`).join('');
+    }
+
+    function loadSubjectTasks() {
+        if (!Array.isArray(subjectData[currentSubject])) subjectData[currentSubject] = [];
+        else {
+            subjectData[currentSubject].forEach(t => {
+                if(t.records.length !== highestSeatNumber()) {
+                    const old = t.records;
+                    t.records = Array(highestSeatNumber()).fill(false).map((_, i) => old[i] || false);
+                }
+            });
+        }
+        currentTaskId = subjectData[currentSubject].find(task => !task.hidden)?.id || null;
+        renderTaskList(); renderDetailBoard();
+    }
+
+    function createNewTask() {
+        if (!isTeacherMode) return;
+        const newTask = { id: Date.now().toString(), name: '新任務 ' + (subjectData[currentSubject].length + 1), records: Array(highestSeatNumber()).fill(false) };
+        subjectData[currentSubject].push(newTask);
+        currentTaskId = newTask.id;
+        localStorage.setItem('subjectData', JSON.stringify(subjectData));
+        renderTaskList(); renderDetailBoard();
+    }
+
+    function renderTaskList() {
+        const listDiv = document.getElementById('task-list'); listDiv.innerHTML = '';
+        subjectData[currentSubject].forEach(task => {
+            const isActive = task.id === currentTaskId;
+            listDiv.innerHTML += `<div onclick="switchTask('${task.id}')" class="p-4 rounded-xl cursor-pointer font-bold text-xl transition-all ${isActive ? 'bg-white/20 text-white border-l-4 border-white' : 'bg-black/30 text-white/50 hover:bg-black/50'}">${task.name}</div>`;
+        });
+    }
+
+    function switchTask(id) { currentTaskId = id; renderTaskList(); renderDetailBoard(); }
+
+    function renderStudentDisplayRows(container, makeCard, students=studentRoster) {
+        const rows = [
+            students.filter(student => student.seat >= 1 && student.seat <= 8),
+            students.filter(student => student.seat >= 9 && student.seat <= 15),
+            students.filter(student => student.seat >= 16 && student.seat <= 22),
+            students.filter(student => student.seat >= 23 && student.seat <= 28),
+        ];
+        container.innerHTML = '';
+        rows.forEach(students => {
+            const row = document.createElement('div');
+            row.className = 'student-display-row';
+            row.style.setProperty('--columns', Math.max(students.length, 1));
+            students.forEach(student => row.insertAdjacentHTML('beforeend', makeCard(student)));
+            container.append(row);
+        });
+    }
+
+    function renderDetailBoard() {
+        const task = subjectData[currentSubject].find(t => t.id === currentTaskId);
+        document.getElementById('task-name-input').value = task?.name || '尚未建立任務';
+        if (!task) { document.getElementById('students-grid').innerHTML = '<div class="col-span-4 text-center text-white/50 text-2xl mt-16">請使用填寫密碼新增任務。</div>'; document.getElementById('task-progress').innerText = `0 / ${totalStudents}`; return; }
+
+        const grid = document.getElementById('students-grid');
+        let completed = 0;
+        renderStudentDisplayRows(grid, student => {
+            const isDone = task.records[student.seat - 1]; if (isDone) completed++;
+            const num = student.seat.toString().padStart(2, '0');
+            const stateClass = isDone ? 'active-green' : 'active-red';
+            const name = student.name;
+            
+            const content = name 
+                ? `<span class="text-lg opacity-70 mb-1">${num}</span><span class="text-2xl">${name}</span><span class="text-sm mt-2 opacity-80">${isDone ? '已完成' : '未完成'}</span>`
+                : `<span class="text-3xl">${num}</span>`;
+
+            return `<button class="neon-btn w-full h-full min-h-0 flex flex-col items-center justify-center font-black ${stateClass}" onclick="toggleStudentRecord(${student.seat})">${content}</button>`;
+        });
+        document.getElementById('task-progress').innerText = `${completed} / ${totalStudents}`;
+    }
+
+    function toggleStudentRecord(seat) {
+        submitCourseChange('toggle', { taskId: currentTaskId, seat });
+    }
+
+    async function submitCourseTask() { const name=document.getElementById('new-course-task-name').value.trim(); if(!name) return setCourseMessage('請輸入任務名稱。'); await submitCourseChange('create',{name}); }
+    function setCourseMessage(text) { document.getElementById('course-message').textContent=text; }
+    async function submitCourseChange(operation, extra) { const password=document.getElementById('course-submit-password').value; if(operation === 'create' && !password) return setCourseMessage('新增任務請輸入填寫密碼。'); try { const response=await fetch('/api/classroom?action=course',{method:'POST',headers:{'Content-Type':'application/json','X-Classroom-Submit-Password':password},body:JSON.stringify({operation,subject:currentSubject,...extra})}); if(!response.ok) throw new Error(); setCourseMessage('已儲存，正在同步…'); setTimeout(()=>window.location.reload(),450); } catch (_) { setCourseMessage(operation === 'create' ? '儲存失敗，請確認填寫密碼與網路。' : '狀態更新失敗，請再試一次。'); } }
+
+    /* 各科任務採用聯絡簿式學生小卡，並以該科資料夾色彩呈現。 */
+    function renderTaskList() {
+        const listDiv = document.getElementById('task-list');
+        const color = currentSubjectColor();
+        const icon = COURSE_SUBJECT_ICONS[currentSubject] || 'fa-folder';
+        if (!Array.isArray(subjectData[currentSubject])) subjectData[currentSubject] = [];
+        document.getElementById('subject-title').innerHTML = `<i class="fa-solid ${icon} mr-3" style="color:${color}"></i>${escapeHTML(currentSubject)}`;
+        const tasks = subjectData[currentSubject].filter(task => !task.hidden);
+        listDiv.innerHTML = tasks.length ? tasks.map(task => {
+            const active = task.id === currentTaskId;
+            return `<button type="button" onclick="switchTask('${task.id}')" class="w-full text-left p-4 rounded-2xl font-bold text-xl transition-all border" style="${active ? `background:${color}42;border-color:${color};color:#fff;box-shadow:0 0 16px ${color}55` : 'background:rgba(0,0,0,.18);border-color:rgba(255,255,255,.1);color:rgba(255,255,255,.62)'}"><i class="fa-solid fa-clipboard-check mr-3" style="color:${color}"></i>${escapeHTML(task.name)}</button>`;
+        }).join('') : `<div class="text-white/45 text-xl leading-relaxed py-8">尚未建立任務。建立後即可由學生點選自己的小卡，登記完成狀態。</div>`;
+    }
+
+    function renderDetailBoard() {
+        if (!Array.isArray(subjectData[currentSubject])) subjectData[currentSubject] = [];
+        const task = subjectData[currentSubject].find(t => t.id === currentTaskId);
+        const color = currentSubjectColor();
+        const grid = document.getElementById('students-grid');
+        const taskTitle = document.getElementById('task-name-input');
+        const createButton = document.querySelector('#app-content-subject button[onclick="submitCourseTask()"]');
+        taskTitle.style.borderColor = color;
+        if (createButton) { createButton.style.background = color; createButton.style.color = '#fff'; createButton.onclick = createCourseTaskInPlace; }
+        grid.className = 'grid grid-cols-7 gap-3 w-full max-w-5xl flex-1 overflow-y-auto no-scrollbar pb-5';
+        taskTitle.value = task?.name || '尚未選擇任務';
+        if (!task) {
+            grid.innerHTML = '<div class="col-span-7 flex items-center justify-center text-center text-white/50 text-2xl">請先在左側建立或選擇任務。</div>';
+            document.getElementById('task-progress').innerText = `0 / ${totalStudents}`;
+            return;
+        }
+        let completed = 0;
+        grid.innerHTML = studentRoster.filter(student => student.seat <= 28).map(student => {
+            const isDone = Boolean(task.records[student.seat - 1]);
+            if (isDone) completed++;
+            const seat = String(student.seat).padStart(2, '0');
+            const surface = isDone ? `${color}b8` : 'rgba(0,0,0,.20)';
+            const border = isDone ? color : 'rgba(255,255,255,.18)';
+            return `<button type="button" class="neon-btn flex flex-col items-start justify-between p-3 text-left font-bold" style="aspect-ratio:1;background:${surface};border-color:${border};color:#fff;${isDone ? `box-shadow:0 0 16px ${color}88` : ''}${courseCompletionSyncing ? ';opacity:.62;cursor:not-allowed' : ''}" onclick="toggleCourseCompletion(${student.seat})" ${courseCompletionSyncing ? 'disabled aria-disabled="true"' : ''}><span class="text-sm opacity-70">${seat} 號</span><span class="text-xl leading-tight w-full truncate">${escapeHTML(student.name)}</span><span class="text-sm" style="color:${isDone ? '#fff' : color}">${courseCompletionSyncing ? '同步中…' : (isDone ? '已完成' : '待完成')}</span></button>`;
+        }).join('');
+        document.getElementById('task-progress').innerText = `${completed} / ${totalStudents}`;
+    }
+
+    async function submitCourseChange(operation, extra) {
+        const password = document.getElementById('course-submit-password').value;
+        if (operation === 'create' && !password) return setCourseMessage('新增任務請輸入設定密碼。');
+        try {
+            const response = await fetch('/api/classroom?action=course', { method:'POST', headers:{'Content-Type':'application/json','X-Classroom-Submit-Password':password}, body:JSON.stringify({operation,subject:currentSubject,...extra}) });
+            const payload = await response.json();
+            if (!response.ok) throw new Error(payload.error || '更新失敗');
+            const latest = await fetch(CLOUD_ENDPOINT, { cache:'no-store' });
+            const cloud = await latest.json();
+            const saved = cloud.data?.subjectData;
+            if (!saved) throw new Error('找不到更新後的任務資料');
+            localStorage.setItem('subjectData', saved);
+            subjectData = JSON.parse(saved);
+            if (!Array.isArray(subjectData[currentSubject])) subjectData[currentSubject] = [];
+            if (operation === 'create') {
+                currentTaskId = subjectData[currentSubject]?.at(-1)?.id || null;
+                document.getElementById('new-course-task-name').value = '';
+                document.getElementById('course-submit-password').value = '';
+                setCourseMessage('任務已新增。');
+            } else setCourseMessage('完成狀態已更新。');
+            renderTaskList();
+            renderDetailBoard();
+        } catch (error) {
+            setCourseMessage(error.message || '更新失敗，請稍後再試。');
+        }
+    }
+
+    async function persistCourseChange(operation, extra = {}) {
+        const password = document.getElementById('course-submit-password').value;
+        const response = await fetch('/api/classroom?action=course', {
+            method: 'POST',
+            headers: { 'Content-Type':'application/json', 'X-Classroom-Submit-Password':password },
+            body: JSON.stringify({ operation, subject:currentSubject, ...extra })
+        });
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload.error || '任務更新失敗。');
+        if (typeof payload.subjectData !== 'string') throw new Error('任務資料尚未同步，請再試一次。');
+        subjectData = JSON.parse(payload.subjectData);
+        if (!subjectData || typeof subjectData !== 'object') subjectData = {};
+        if (!Array.isArray(subjectData[currentSubject])) subjectData[currentSubject] = [];
+        localStorage.setItem('subjectData', JSON.stringify(subjectData));
+        return subjectData[currentSubject];
+    }
+
+    async function createCourseTaskInPlace() {
+        const input = document.getElementById('new-course-task-name');
+        const name = input.value.trim();
+        if (!name) return setCourseMessage('請輸入任務名稱。');
+        if (!document.getElementById('course-submit-password').value) return setCourseMessage('新增任務請輸入設定密碼。');
+        try {
+            const tasks = await persistCourseChange('create', { name });
+            currentTaskId = tasks.at(-1)?.id || null;
+            input.value = '';
+            document.getElementById('course-submit-password').value = '';
+            renderTaskList();
+            renderDetailBoard();
+            setCourseMessage('任務已新增。');
+        } catch (error) { setCourseMessage(error.message || '新增任務失敗。'); }
+    }
+
+    const courseCompletionQueue = [];
+    let courseCompletionSyncing = false;
+
+    async function flushCourseCompletionQueue() {
+        if (courseCompletionSyncing) return;
+        courseCompletionSyncing = true;
+        let failed = false;
+        while (courseCompletionQueue.length) {
+            const change = courseCompletionQueue.shift();
+            try {
+                const response = await fetch('/api/classroom?action=course', {
+                    method: 'POST',
+                    headers: { 'Content-Type':'application/json' },
+                    body: JSON.stringify({ operation:'toggle', subject:change.subject, taskId:change.taskId, seat:change.seat })
+                });
+                const payload = await response.json();
+                if (!response.ok) throw new Error(payload.error || '狀態更新失敗。');
+            } catch (error) {
+                const rollback = [change, ...courseCompletionQueue.splice(0)];
+                rollback.forEach(item => {
+                    const task = subjectData[item.subject]?.find(candidate => candidate.id === item.taskId);
+                    if (task) task.records[item.seat - 1] = !Boolean(task.records[item.seat - 1]);
+                });
+                renderDetailBoard();
+                setCourseMessage(error.message || '同步失敗，已還原最後一次點選。');
+                failed = true;
+                break;
+            }
+        }
+        courseCompletionSyncing = false;
+        if (currentActiveApp === 'subject') renderDetailBoard();
+        if (!failed && !courseCompletionQueue.length) setCourseMessage('完成狀態已同步。');
+    }
+
+    function toggleCourseCompletion(seat) {
+        if (courseCompletionSyncing) return setCourseMessage('正在同步，請稍候。');
+        const task = subjectData[currentSubject]?.find(item => item.id === currentTaskId);
+        if (!task) return;
+        task.records[seat - 1] = !Boolean(task.records[seat - 1]);
+        localStorage.setItem('subjectData', JSON.stringify(subjectData));
+        courseCompletionQueue.push({ subject:currentSubject, taskId:currentTaskId, seat });
+        flushCourseCompletionQueue();
+        renderDetailBoard();
+        setCourseMessage('正在同步…');
+    }
+
+    /* 保留舊按鈕名稱的相容入口，全部導向不重新載入的流程。 */
+    async function submitCourseTask() { return createCourseTaskInPlace(); }
+    function toggleStudentRecord(seat) { toggleCourseCompletion(seat); }
+
+    function selectAllStudents(state) {
+        if (!isTeacherMode) return;
+        subjectData[currentSubject].find(t => t.id === currentTaskId).records.fill(state);
+        localStorage.setItem('subjectData', JSON.stringify(subjectData)); renderDetailBoard();
+    }
+
+    const readTaskList = (key, fallback=[]) => { try { const value=JSON.parse(localStorage.getItem(key)); return Array.isArray(value) ? value : fallback; } catch (_) { return fallback; } };
+    const readTaskObject = (key, fallback={}) => { try { const value=JSON.parse(localStorage.getItem(key)); return value && typeof value === 'object' && !Array.isArray(value) ? value : fallback; } catch (_) { return fallback; } };
+    let todayTasks = readTaskList('todayTasks', readTaskList('dailyTasks', [{ id:'1', text:'填寫教室日誌', done:false },{ id:'2', text:'擦黑板、倒垃圾', done:false }]));
+    let cleaningTasks = readTaskList('cleaningTasks', [{ id:'clean-1', text:'掃地、拖地', done:false },{ id:'clean-2', text:'整理資源回收', done:false }]);
+    const escapeHTML = value => String(value || '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+    function renderTaskCards(container, tasks, emptyText) { container.innerHTML = tasks.length ? tasks.map(task => `<div class="flex items-center bg-black/30 border border-white/10 rounded-2xl p-6 ${task.done ? 'opacity-50' : ''}"><div class="w-10 h-10 rounded-full border-4 ${task.done ? 'border-green-500 bg-green-500/30 text-green-400' : 'border-white/30'} flex items-center justify-center mr-6">${task.done ? '<i class="fa-solid fa-check text-2xl"></i>' : ''}</div><span class="text-3xl text-white ${task.done ? 'line-through text-white/50' : ''}">${escapeHTML(task.text)}</span></div>`).join('') : `<div class="text-2xl text-white/50 text-center mt-16">${emptyText}</div>`; }
+    function renderDailyTasksUI() { renderTaskCards(document.getElementById('daily-tasks-container'), todayTasks, '今天尚無任務'); }
+    function renderCleaningTasksUI() { const config=readTaskList('cleaningTaskConfig',[]), assignments=readTaskObject('cleaningAssignments',{}), container=document.getElementById('cleaning-tasks-container'); if(!config.length)return renderTaskCards(container,cleaningTasks,'尚未設定打掃工作'); container.innerHTML=config.map(task=>{const names=(assignments[task.id]||[]).map(seat=>studentRoster.find(student=>String(student.seat).padStart(2,'0')===seat)).filter(Boolean).map(student=>`${student.seat} ${student.name}`).join('、')||'尚未分配';return `<div class="flex items-center bg-black/30 border border-white/10 rounded-2xl p-6"><div class="w-10 h-10 rounded-full border-4 border-[#f6d365] flex items-center justify-center mr-6 text-[#f6d365]"><i class="fa-solid fa-broom"></i></div><div><div class="text-3xl text-white font-bold">${escapeHTML(task.name)}</div><div class="text-xl text-white/60 mt-2">${escapeHTML(names)}（${(assignments[task.id]||[]).length}/${task.limit} 人）</div></div></div>`;}).join(''); }
+    function toggleDailyTask() {} function addDailyTask() {} function deleteDailyTask() {}
+    function updateWidgetTasks() { const widget = document.getElementById('widget-tasks'), pending=todayTasks.filter(task=>!task.done); widget.innerHTML = pending.length ? pending.slice(0,3).map(task => `<div class="flex items-center bg-black/20 p-4 rounded-xl border border-white/10 cursor-pointer" onclick="openApp('tasks')"><div class="w-4 h-4 rounded-full bg-red-400 mr-4 shadow-[0_0_8px_rgba(248,113,113,0.8)]"></div><span class="text-2xl text-white truncate">${escapeHTML(task.text)}</span></div>`).join('') : `<div class="flex flex-col items-center justify-center h-full text-white/50"><i class="fa-solid fa-mug-hot text-6xl mb-4"></i><span class="text-2xl font-bold tracking-widest">今天沒有任務</span></div>`; }
+    function updateWidgetTomorrow() { const widget=document.getElementById('widget-tomorrow'), tasks=readTaskList('tomorrowTasks',[]); widget.innerHTML=tasks.length ? tasks.slice(0,4).map(task=>`<div class="flex min-w-0 items-center bg-black/20 px-3 py-2 rounded-xl border border-white/10 cursor-pointer" onclick="openApp('tomorrow')"><div class="w-3 h-3 shrink-0 rounded-full bg-[#f6d365] mr-3"></div><span class="text-xl text-white truncate">${escapeHTML(task.text)}</span></div>`).join('') : `<div class="col-span-2 row-span-2 flex items-center justify-center h-full text-white/45 text-xl">明日尚無事項</div>`; }
+    function renderDutyWidget() { const selected=readTaskList('dutyAssignments',[]), names=studentRoster.filter(student=>selected.includes(student.seat)).map(student=>`${String(student.seat).padStart(2,'0')} ${student.name}`), target=document.getElementById('widget-duty'); target.innerHTML=names.length ? names.map(name=>`<span class="bg-white/15 text-white px-4 py-2 rounded-xl text-xl font-bold">${escapeHTML(name)}</span>`).join('') : '<span class="text-white/45 text-xl">尚未設定</span>'; }
+    function dateKey() { return new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Taipei'}).format(new Date()); }
+    function taskItemHTML(item) { const handwriting=item.handwriting && String(item.handwriting).startsWith('data:image/') ? `<img src="${item.handwriting}" class="mt-3 max-h-32 rounded-lg bg-white" alt="手寫內容">` : ''; return `<div class="flex items-center bg-black/30 border border-white/10 rounded-2xl p-6 text-white"><div class="w-10 h-10 shrink-0 rounded-full border-4 border-[#f6d365] flex items-center justify-center mr-5 text-[#f6d365]"><i class="fa-solid fa-calendar-check"></i></div><div class="min-w-0 flex-1"><div class="flex items-center gap-3"><span class="bg-[#f6d365] text-black px-3 py-1 rounded-full text-lg font-bold">${escapeHTML(item.subject || '其他')}</span><span class="text-2xl font-bold">${escapeHTML(item.text)}</span></div><div class="text-white/55 text-lg mt-2">填寫人：${escapeHTML(item.author || '未填寫')}</div>${handwriting}</div></div>`; }
+    function renderTomorrowTasks() { const tasks=readTaskList('tomorrowTasks',[]); document.getElementById('tomorrow-list').innerHTML=tasks.length ? tasks.map(taskItemHTML).join('') : '<div class="text-white/50 text-2xl mt-16 text-center">目前沒有明日事項</div>'; const select=document.getElementById('tomorrow-subject'); select.innerHTML=['其他',...COURSE_SUBJECTS].map(subject=>`<option>${subject}</option>`).join(''); const date=document.getElementById('task-history-date'); if(!date.value) date.value=dateKey(); renderTaskHistory(); }
+    function renderTaskHistory() { const key=document.getElementById('task-history-date').value, history=readTaskObject('taskHistory',{}), tasks=key===dateKey()?todayTasks:(history[key] || []); document.getElementById('task-history-list').innerHTML=tasks.length ? tasks.map(taskItemHTML).join('') : '<div class="text-white/45 text-lg">此日期沒有任務紀錄。</div>'; }
+    let handwritingHasInk=false;
+    function setupHandwritingPad() { const canvas=document.getElementById('handwriting-pad'); if(canvas.dataset.ready) return; canvas.dataset.ready='1'; const ctx=canvas.getContext('2d'); ctx.lineWidth=5;ctx.lineCap='round';ctx.strokeStyle='#1f2937';let drawing=false;const point=event=>{const rect=canvas.getBoundingClientRect();return{x:(event.clientX-rect.left)*(canvas.width/rect.width),y:(event.clientY-rect.top)*(canvas.height/rect.height)}};canvas.addEventListener('pointerdown',event=>{drawing=true;canvas.setPointerCapture(event.pointerId);const p=point(event);ctx.beginPath();ctx.moveTo(p.x,p.y);});canvas.addEventListener('pointermove',event=>{if(!drawing)return;const p=point(event);ctx.lineTo(p.x,p.y);ctx.stroke();handwritingHasInk=true;});canvas.addEventListener('pointerup',()=>{drawing=false;}); }
+    function clearHandwriting() { const canvas=document.getElementById('handwriting-pad'),ctx=canvas.getContext('2d');ctx.clearRect(0,0,canvas.width,canvas.height);handwritingHasInk=false; }
+    async function submitTomorrowTask() { const author=document.getElementById('tomorrow-author').value.trim(), subject=document.getElementById('tomorrow-subject').value, text=document.getElementById('tomorrow-text').value.trim(), password=document.getElementById('tomorrow-password').value, note=document.getElementById('tomorrow-message'); if(!text || !password) { note.textContent='請填寫事項與填寫密碼。'; return; } const canvas=document.getElementById('handwriting-pad'); try { const response=await fetch('/api/classroom?action=tomorrow',{method:'POST',headers:{'Content-Type':'application/json','X-Classroom-Submit-Password':password},body:JSON.stringify({author,subject,text,handwriting:handwritingHasInk?canvas.toDataURL('image/png'):''})}); if(!response.ok) throw new Error(); note.textContent='已送出，正在同步…'; setTimeout(()=>window.location.reload(),500); } catch (_) { note.textContent='送出失敗，請確認填寫密碼與網路。'; } }
+    updateWidgetTasks(); updateWidgetTomorrow(); renderDutyWidget();
+
+    const getLunchLimit = (id) => { const limits = JSON.parse(localStorage.getItem('lunchCategoryLimits')) || {}, value = Number(limits[id]); return Number.isInteger(value) && value > 0 && value <= 60 ? value : 2; };
+    const lunchCategories = [
+        { id: 'rice', name: '打飯', max: getLunchLimit('rice'), icon: 'bowl-rice' }, { id: 'main', name: '主菜', max: getLunchLimit('main'), icon: 'drumstick-bite' },
+        { id: 'side', name: '配菜', max: getLunchLimit('side'), icon: 'carrot' }, { id: 'soup', name: '盛湯', max: getLunchLimit('soup'), icon: 'bowl-food' },
+        { id: 'fruit', name: '水果', max: getLunchLimit('fruit'), icon: 'apple-whole' }, { id: 'drink', name: '飲料/點心', max: getLunchLimit('drink'), icon: 'bottle-water' }
+    ];
+    let lunchAssignments = JSON.parse(localStorage.getItem('lunchAssignments')) || {};
+    lunchCategories.forEach(c => { if (!lunchAssignments[c.id]) lunchAssignments[c.id] = []; });
+    let currentLunchCategory = null;
+    const LUNCH_COLORS = { rice:'#e37758', main:'#d45d67', side:'#3a9d73', soup:'#3b82c4', fruit:'#ce8b2c', drink:'#7d64bd' };
+
+    function renderLunchMenu() {
+        const menu = document.getElementById('lunch-menu'); menu.innerHTML = '';
+        const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Taipei'}).format(new Date()),menus=JSON.parse(localStorage.getItem('monthlyMenus')||'{}'),dish=(menus[today.slice(0,7)]||{})[today]||'今日菜單尚未設定';
+        document.getElementById('lunch-current-item').innerText=dish;
+        lunchCategories.forEach(cat => {
+            const assignedCount = lunchAssignments[cat.id].length;
+            const assignedText = assignedCount > 0 ? lunchAssignments[cat.id].map(num => `<span class="bg-green-500/80 text-white text-sm px-2 py-1 rounded ml-1">${num}</span>`).join('') : '<span class="text-gray-400 text-sm ml-2">尚未指派</span>';
+            menu.innerHTML += `<div class="p-4 rounded-xl border bg-black/30 border-transparent flex flex-col">
+                <div class="flex items-center text-white text-2xl font-bold mb-2"><i class="fa-solid fa-${cat.icon} w-8"></i> ${cat.name}<span class="ml-auto text-sm bg-black/50 px-2 rounded-full">${assignedCount}/${cat.max}</span></div><div class="flex items-center pl-8 h-8">${assignedText}</div></div>`;
+        }); renderLunchGrid();
+    }
+    function selectLunchCategory(id) { currentLunchCategory = id; document.getElementById('lunch-current-item').innerText = lunchCategories.find(c => c.id === id).name; renderLunchMenu(); }
+    
+    function renderLunchGrid() {
+        const grid = document.getElementById('lunch-students-grid'); grid.className='grid grid-cols-3 gap-4 w-full max-w-5xl overflow-y-auto no-scrollbar pb-6';grid.innerHTML=lunchCategories.map(cat=>{const students=(lunchAssignments[cat.id]||[]).map(num=>studentRoster.find(student=>student.seat===Number(num))).filter(Boolean);return `<div class="bg-black/25 rounded-2xl p-4 border border-white/10"><h3 class="text-white text-2xl font-bold mb-3">${cat.name}</h3><div class="grid grid-cols-2 gap-2">${students.length?students.map(student=>`<div class="neon-btn rounded-xl aspect-square flex flex-col items-center justify-center font-bold active-green"><span class="text-sm opacity-70">${String(student.seat).padStart(2,'0')}</span><span class="text-xl">${student.name}</span></div>`).join(''):'<span class="text-white/40">尚未分配</span>'}</div></div>`}).join('');
+    }
+    function renderLunchMenu() {
+        const menu = document.getElementById('lunch-menu');
+        const today = new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Taipei'}).format(new Date());
+        const menus = JSON.parse(localStorage.getItem('monthlyMenus') || '{}');
+        const dish = (menus[today.slice(0,7)] || {})[today] || '今日菜單尚未設定';
+        document.getElementById('lunch-current-item').innerText = dish;
+        menu.innerHTML = `<div class="flex-1 flex flex-col justify-center text-center bg-black/20 rounded-3xl border border-white/10 p-6"><i class="fa-solid fa-bowl-food text-5xl text-[#f6d365] mb-5"></i><p class="text-white text-3xl font-black leading-relaxed break-words">${escapeHTML(dish)}</p></div>`;
+        renderLunchGrid();
+    }
+
+    function renderLunchGrid() {
+        const grid = document.getElementById('lunch-students-grid');
+        grid.className = 'grid grid-cols-3 gap-4 w-full max-w-5xl overflow-y-auto no-scrollbar pb-6';
+        grid.innerHTML = lunchCategories.map(cat => {
+            const students = (lunchAssignments[cat.id] || []).map(num => studentRoster.find(student => student.seat === Number(num))).filter(Boolean);
+            const color = LUNCH_COLORS[cat.id] || '#84fab0';
+            return `<div class="rounded-2xl p-4 border" style="border-color:${color}a8;background:${color}1f"><h3 class="text-2xl font-bold mb-3" style="color:${color}"><i class="fa-solid fa-${cat.icon} mr-2"></i>${cat.name}</h3><div class="grid grid-cols-2 gap-2">${students.length ? students.map(student => `<div class="neon-btn rounded-xl aspect-square flex flex-col items-center justify-center font-bold" style="border-color:${color};background:${color}55;color:#fff;box-shadow:0 0 14px ${color}66"><span class="text-sm opacity-70">${String(student.seat).padStart(2,'0')}</span><span class="text-xl">${student.name}</span></div>`).join('') : '<span class="text-white/40">尚未分配</span>'}</div></div>`;
+        }).join('');
+    }
+
+    function toggleLunchStudent(num) {
+        if (!isTeacherMode) return;
+        if (!currentLunchCategory) return;
+        const cat = lunchCategories.find(c => c.id === currentLunchCategory), assigned = lunchAssignments[currentLunchCategory], index = assigned.indexOf(num);
+        if (index > -1) assigned.splice(index, 1);
+        else if (assigned.length >= cat.max) { const btn = document.getElementById(`lunch-btn-${num}`); btn.classList.add('animate-bounce'); setTimeout(() => btn.classList.remove('animate-bounce'), 500); return; }
+        else assigned.push(num);
+        localStorage.setItem('lunchAssignments', JSON.stringify(lunchAssignments)); renderLunchMenu();
+    }
+
+    const defaultExamData = [
+        { subject: '自習', start: '08:20', end: '09:05', type: 'exam' }, { subject: '下課', start: '09:05', end: '09:15', type: 'break' },
+        { subject: '國文(01)', start: '09:15', end: '10:00', type: 'exam' }, { subject: '下課', start: '10:00', end: '10:15', type: 'break' },
+        { subject: '科技(16)', start: '10:15', end: '11:00', type: 'exam' }
+    ];
+    function getExamData() {
+        try {
+            const days = JSON.parse(localStorage.getItem('examScheduleDays')) || {}, activeDay=JSON.parse(localStorage.getItem('examActiveDay') || '"day1"');
+            const saved = days[activeDay] || days.day1 || JSON.parse(localStorage.getItem('examSchedule'));
+            if (Array.isArray(saved) && saved.length) {
+                const valid = saved.filter(item => item && /^\d{2}:\d{2}$/.test(item.start) && /^\d{2}:\d{2}$/.test(item.end) && String(item.subject || '').trim()).map(item => ({ subject: String(item.subject).trim(), start: item.start, end: item.end, type: item.type === 'break' ? 'break' : 'exam' }));
+                if (valid.length) return valid;
+            }
+        } catch (_) {}
+        return defaultExamData;
+    }
+    let examTrackerInterval;
+    function timeToMinutes(t) { const [h, m] = t.split(':').map(Number); return h * 60 + m; }
+    
+    function renderExamSchedule() {
+        const currentMins = new Date().getHours() * 60 + new Date().getMinutes();
+        const container = document.getElementById('exam-schedule-container'); let html = '', currentStatusHtml = '<div class="text-4xl text-white font-bold opacity-50">目前無考程</div>';
+        const fullSchedule=getExamData(), displaySchedule=new Date().getHours() < 12 ? fullSchedule.slice(0,4) : fullSchedule.slice(4);
+        displaySchedule.forEach(item => {
+            const startM = timeToMinutes(item.start), endM = timeToMinutes(item.end);
+            let status = (currentMins >= startM && currentMins < endM) ? 'active' : (currentMins >= endM ? 'past' : 'future');
+            let paperClass = "flex items-center justify-between p-3 rounded shadow-md border relative " + (status === 'active' ? "bg-[#FFF9C4] border-red-400 transform scale-105 z-10 shadow-xl border-2" : (status === 'past' ? "bg-gray-300 opacity-60 grayscale" : "bg-white"));
+            if (status === 'active') currentStatusHtml = `<div class="text-5xl font-black ${item.type === 'break' ? 'text-[#98FB98]' : 'text-[#FFE56C]'} tracking-widest mb-2">${item.subject}</div><div class="text-3xl text-white font-bold border-b-2 border-white/50 pb-2 inline-block">${item.start} ~ ${item.end}</div>`;
+            html += `<div class="${paperClass}"><div class="absolute -top-2 left-1/2 w-4 h-4 bg-red-600 rounded-full shadow border transform -translate-x-1/2"></div><span class="text-xl font-bold bg-black/10 px-3 py-1 rounded-full text-black">${item.start} - ${item.end}</span><span class="text-2xl font-black text-gray-800">${item.subject}</span></div>`;
+        });
+        container.innerHTML = html; document.getElementById('exam-status-content').innerHTML = currentStatusHtml;
+    }
+    function startExamTracker() { renderExamSchedule(); examTrackerInterval = setInterval(renderExamSchedule, 30000); }
+    function stopExamTracker() { clearInterval(examTrackerInterval); }
+    loadCloudData();
+    setInterval(loadCloudData, 20000);
+</script>
+</body>
+</html>
