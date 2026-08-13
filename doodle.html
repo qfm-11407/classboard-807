@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#123b2c">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/png" href="appslogo.png">
+  <link rel="apple-touch-icon" href="appslogo.png">
+  <title>807 留言板</title>
+  <style>
+    * { box-sizing:border-box; }
+    body { margin:0; min-height:100dvh; overflow:hidden; color:#fff; font-family:"Nunito","Microsoft JhengHei",sans-serif; background:#1a3626; }
+    .orb { position:fixed; border-radius:18px; filter:blur(120px); opacity:.5; pointer-events:none; }
+    .orb.one { width:600px;height:600px;background:#e3c158;top:-100px;left:-100px; }
+    .orb.two { width:500px;height:500px;background:#58a4e3;bottom:-100px;right:-50px; }
+    .orb.three { width:700px;height:700px;background:#e37758;top:40%;left:30%; }
+    main { position:relative; z-index:1; height:100dvh; padding:clamp(16px,3vw,42px); display:flex; flex-direction:column; gap:18px; }
+    header { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:20px; }
+    h1 { margin:0; font-size:clamp(1.7rem,3vw,3rem); letter-spacing:.12em; }
+    .hint { margin:6px 0 0; color:rgba(255,255,255,.7); font-size:clamp(.95rem,1.5vw,1.25rem); }
+    .number-panel { display:flex; overflow:hidden; border:1px solid rgba(255,255,255,.16); border-radius:24px; background:rgba(255,255,255,.09); box-shadow:0 12px 30px rgba(0,0,0,.22); backdrop-filter:blur(16px); }
+    .number-item { min-width:160px; padding:13px 20px; text-align:center; }
+    .number-item + .number-item { border-left:1px solid rgba(255,255,255,.15); }
+    .number-label { display:block; color:rgba(255,255,255,.68); font-size:.82rem; font-weight:900; letter-spacing:.17em; }
+    .number-value { display:block; margin-top:2px; color:#fff; font:900 clamp(2rem,3.2vw,3.3rem)/1 ui-monospace,SFMono-Regular,Menlo,monospace; letter-spacing:.07em; text-shadow:0 3px 15px rgba(0,0,0,.3); }
+    .number-subtitle { display:block; min-height:1.1em; margin-top:5px; color:#f6d365; font-size:.75rem; font-weight:800; }
+    button.number-subtitle { width:100%; min-height:0; padding:0; border:0; border-radius:0; background:transparent; color:#f6d365; font:800 .75rem "Nunito","Microsoft JhengHei",sans-serif; }
+    button.number-subtitle:hover { background:transparent; color:#fff4b8; }
+    button { border:0; border-radius:14px; min-height:42px; padding:8px 14px; cursor:pointer; font:800 1rem "Nunito","Microsoft JhengHei",sans-serif; color:#fff; background:rgba(255,255,255,.14); }
+    button:hover { background:rgba(255,255,255,.25); }
+    .board { flex:1; min-height:0; padding:18px; border:1px solid rgba(255,255,255,.16); border-radius:30px; background:rgba(255,255,255,.1); box-shadow:0 18px 45px rgba(0,0,0,.25); backdrop-filter:blur(16px); }
+    .sticky-board { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); grid-template-rows:repeat(4,minmax(0,1fr)); gap:14px; width:100%; height:100%; }
+    .sticky-note { position:relative; min-width:0; min-height:0; padding:16px 14px; overflow:auto; border:0; outline:0; color:#253624; text-align:left; font:900 clamp(1.05rem,1.45vw,1.38rem)/1.55 "Microsoft JhengHei",sans-serif; box-shadow:0 10px 16px rgba(0,0,0,.2); transition:transform .18s ease,box-shadow .18s ease; }
+    .sticky-note.open { cursor:pointer; }.sticky-note.open:hover { transform:scale(1.035) rotate(0deg)!important; box-shadow:0 16px 28px rgba(0,0,0,.32); z-index:2; }
+    .sticky-note.open::after { content:'點此留言'; position:absolute; inset:0; display:grid; place-items:center; color:rgba(37,54,36,.38); font-size:1rem; font-weight:800; }
+    .sticky-note.closed::after { content:'今日留言已結束'; position:absolute; inset:0; display:grid; place-items:center; color:rgba(37,54,36,.38); font-size:.95rem; font-weight:800; }
+    .sticky-note.locked { cursor:default; }
+    .sticky-note:nth-child(7n+1){background:#fff1a8;transform:rotate(-1deg)}.sticky-note:nth-child(7n+2){background:#bdeee3;transform:rotate(1deg)}.sticky-note:nth-child(7n+3){background:#ffc6d7;transform:rotate(-.6deg)}.sticky-note:nth-child(7n+4){background:#c8dcff;transform:rotate(.8deg)}.sticky-note:nth-child(7n+5){background:#e4cbff;transform:rotate(-1.1deg)}.sticky-note:nth-child(7n+6){background:#ffd4a8;transform:rotate(.7deg)}.sticky-note:nth-child(7n){background:#c9efb5;transform:rotate(-.4deg)}
+    .login-modal { position:fixed; inset:0; z-index:10; display:grid; place-items:center; padding:20px; background:rgba(4,18,12,.62); backdrop-filter:blur(10px); }
+    .login-modal.hidden { display:none; }
+    .login-card { width:min(410px,100%); padding:26px; border:1px solid rgba(255,255,255,.2); border-radius:28px; background:#244b38; box-shadow:0 28px 80px rgba(0,0,0,.45); }
+    .login-card h2 { margin:0 0 8px; font-size:1.7rem; }.login-card p{color:rgba(255,255,255,.68);margin:0 0 20px;}
+    .login-card label { display:block; margin:13px 0 6px; color:#fff; font-weight:800; }.login-card input { width:100%; border:1px solid rgba(255,255,255,.24); border-radius:14px; padding:12px 14px; color:#fff; background:rgba(0,0,0,.2); font-size:1rem; }.email-input{display:flex;align-items:center;border:1px solid rgba(255,255,255,.24);border-radius:14px;background:rgba(0,0,0,.2);overflow:hidden;}.email-input input{border:0;border-radius:0;background:transparent;min-width:0;}.email-input span{padding-right:13px;color:rgba(255,255,255,.7);font-weight:800;white-space:nowrap;}.login-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:22px;}.login-actions .primary{background:#f6d365;color:#253624;}.login-error{min-height:1.3em;margin-top:13px!important;color:#ffc7c7!important;font-size:.9rem;}
+    .message-input { width:100%; min-height:150px; resize:none; border:1px solid rgba(255,255,255,.24); border-radius:16px; padding:13px; color:#fff; background:rgba(0,0,0,.2); font:800 1.15rem/1.55 "Microsoft JhengHei",sans-serif; }.message-count{margin:7px 0 0!important;text-align:right;font-size:.82rem!important;}.message-count.over{color:#ffc7c7!important;}
+    @media (max-width:700px) { body{overflow:auto;}main{min-height:100dvh;height:auto;padding:16px;gap:12px;} header{align-items:flex-start;flex-direction:column;} .number-panel{width:100%;}.number-item{flex:1;min-width:0;padding:11px 8px;}.board{min-height:720px;padding:12px;}.sticky-board{grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:repeat(14,minmax(120px,1fr));gap:12px;} .hint{display:none;} }
+  </style>
+</head>
+<body>
+  <div class="orb one"></div><div class="orb two"></div><div class="orb three"></div>
+  <main>
+    <header>
+      <div><h1>807 留言板</h1><p class="hint">一排七張便利貼、共四排；點選便利貼即可留下訊息。</p></div>
+      <div class="number-panel" aria-label="今日資訊">
+        <div class="number-item"><span class="number-label">TODAY</span><strong id="today-number" class="number-value">--/--</strong><span id="today-weekday" class="number-subtitle"></span></div>
+        <div class="number-item"><span class="number-label">確認碼</span><strong id="confirmation-code" class="number-value">----</strong><button id="confirmation-status" type="button" class="number-subtitle" onclick="openTeacherLogin()">教師登入後顯示</button></div>
+      </div>
+    </header>
+    <div class="board"><div id="sticky-board" class="sticky-board" aria-label="留言便利貼"></div></div>
+  </main>
+  <div id="teacher-login-modal" class="login-modal hidden" role="dialog" aria-modal="true" aria-labelledby="teacher-login-title">
+    <form id="teacher-login-form" class="login-card">
+      <h2 id="teacher-login-title">教師身分確認</h2><p>登入後即可查看今日四位數確認碼。</p>
+      <label for="teacher-account">帳號</label><div class="email-input"><input id="teacher-account" type="text" autocomplete="username" placeholder="teacher807" required><span>@qfm.kh.edu.tw</span></div>
+      <label for="teacher-password">密碼</label><input id="teacher-password" type="password" autocomplete="current-password" required>
+      <p id="teacher-login-error" class="login-error"></p>
+      <div class="login-actions"><button type="button" onclick="closeTeacherLogin()">取消</button><button type="submit" class="primary">確認登入</button></div>
+    </form>
+  </div>
+  <div id="message-modal" class="login-modal hidden" role="dialog" aria-modal="true" aria-labelledby="message-title">
+    <form id="message-form" class="login-card">
+      <h2 id="message-title">新增留言</h2><p>每張便利貼僅能留言一次，送出後即無法修改。</p>
+      <textarea id="message-text" class="message-input" maxlength="20" placeholder="輸入留言（最多 20 字）" required></textarea><p id="message-count" class="message-count">0 / 20</p><p id="message-error" class="login-error"></p>
+      <div class="login-actions"><button type="button" onclick="closeMessageModal()">取消</button><button id="message-submit" type="submit" class="primary">送出留言</button></div>
+    </form>
+  </div>
+  <script src="https://www.gstatic.com/firebasejs/12.17.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/12.17.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/12.17.1/firebase-firestore-compat.js"></script>
+  <script src="firebase-classroom.js?v=sticky-notes-3"></script>
+  <script>
+    const stickyBoard=document.getElementById('sticky-board');
+    const taipeiDay=()=>{const parts=new Intl.DateTimeFormat('en-US',{timeZone:'Asia/Taipei',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date()),value=type=>parts.find(part=>part.type===type)?.value||'';return `${value('year')}-${value('month')}-${value('day')}`;};
+    const taipeiLateNight=()=>{const parts=new Intl.DateTimeFormat('en-US',{timeZone:'Asia/Taipei',hour:'2-digit',minute:'2-digit',hour12:false}).formatToParts(new Date()),hour=Number(parts.find(part=>part.type==='hour')?.value),minute=Number(parts.find(part=>part.type==='minute')?.value);return hour===23&&minute>=59;};
+    const escapeHTML=value=>String(value||'').replace(/[&<>]/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[char]));
+    let stickyMessages=new Map(),activeStickySlot='',watchedStickyDay='',stopStickyWatch=()=>{};
+    function renderStickyNotes(){const closed=taipeiLateNight();stickyBoard.innerHTML='';Array.from({length:28},(_,index)=>{const slot=`slot-${String(index+1).padStart(2,'0')}`,item=stickyMessages.get(slot),note=document.createElement('button');note.type='button';note.className=`sticky-note ${item?'locked':closed?'closed':'open'}`;note.setAttribute('aria-label',item?`已留言：${item.text}`:`第 ${index+1} 張便利貼`);if(item)note.innerHTML=escapeHTML(item.text);else if(!closed)note.onclick=()=>openMessageModal(slot);stickyBoard.append(note);});}
+    function watchStickyMessages(){try{const day=taipeiDay();if(day===watchedStickyDay)return;stopStickyWatch();watchedStickyDay=day;stickyMessages=new Map();renderStickyNotes();if(typeof window.FirebaseClassroom?.onStickyMessagesChanged!=='function')return;stopStickyWatch=FirebaseClassroom.onStickyMessagesChanged(day,items=>{stickyMessages=new Map(items.map(item=>[item.slot,item]));renderStickyNotes();});}catch(_){renderStickyNotes();}}
+    function openMessageModal(slot){if(taipeiLateNight()||stickyMessages.has(slot))return;activeStickySlot=slot;const form=document.getElementById('message-form');form.reset();document.getElementById('message-count').textContent='0 / 20';document.getElementById('message-error').textContent='';document.getElementById('message-modal').classList.remove('hidden');document.getElementById('message-text').focus();}
+    function closeMessageModal(){document.getElementById('message-modal').classList.add('hidden');activeStickySlot='';}
+    function updateMessageCount(){const text=document.getElementById('message-text'),count=[...text.value].length,target=document.getElementById('message-count');target.textContent=`${count} / 20`;target.classList.toggle('over',count>20);}
+    function showToday(){const now=new Date();document.getElementById('today-number').textContent=now.toLocaleDateString('en-CA',{timeZone:'Asia/Taipei',month:'2-digit',day:'2-digit'}).replace('-','/');document.getElementById('today-weekday').textContent=now.toLocaleDateString('zh-TW',{timeZone:'Asia/Taipei',weekday:'long'});}
+    function openTeacherLogin(){if(window.FirebaseClassroom?.isTeacher()){loadConfirmationCode();return;}document.getElementById('teacher-login-error').textContent='';document.getElementById('teacher-login-modal').classList.remove('hidden');document.getElementById('teacher-account').focus();}
+    function closeTeacherLogin(){document.getElementById('teacher-login-modal').classList.add('hidden');document.getElementById('teacher-password').value='';}
+    async function loadConfirmationCode(){const code=document.getElementById('confirmation-code'),status=document.getElementById('confirmation-status');try{if(!window.FirebaseClassroom?.isTeacher())throw new Error('未登入');code.textContent=await FirebaseClassroom.getDailyDeleteCode();status.textContent='已確認教師身分';status.onclick=loadConfirmationCode();}catch(_){code.textContent='----';status.textContent='教師登入後顯示';status.onclick=openTeacherLogin;}}
+    document.getElementById('teacher-login-form').addEventListener('submit',async event=>{event.preventDefault();const error=document.getElementById('teacher-login-error'),account=document.getElementById('teacher-account').value,password=document.getElementById('teacher-password').value;error.textContent='確認中…';try{await FirebaseClassroom.signIn(account,password);closeTeacherLogin();await loadConfirmationCode();}catch(reason){error.textContent=reason?.message||'登入失敗，請確認帳號與密碼。';}});
+    document.getElementById('message-text').addEventListener('input',updateMessageCount);
+    document.getElementById('message-form').addEventListener('submit',async event=>{event.preventDefault();const text=document.getElementById('message-text').value.trim(),error=document.getElementById('message-error'),submit=document.getElementById('message-submit');if(!activeStickySlot||!text)return;if([...text].length>20){error.textContent='留言不可超過 20 字。';return;}submit.disabled=true;error.textContent='正在送出…';try{await FirebaseClassroom.addStickyMessage({day:taipeiDay(),slot:activeStickySlot,text});closeMessageModal();}catch(reason){error.textContent=reason?.code==='already-exists'||reason?.message==='Missing or insufficient permissions.'?'這張便利貼已有人留言。':(reason?.message||'送出失敗，請再試一次。');}finally{submit.disabled=false;}});
+    showToday();watchStickyMessages();loadConfirmationCode();FirebaseClassroom.onTeacherChanged(()=>loadConfirmationCode());setInterval(()=>{showToday();watchStickyMessages();renderStickyNotes();},5000);window.addEventListener('focus',()=>{showToday();loadConfirmationCode();watchStickyMessages();});
+  </script>
+</body>
+</html>

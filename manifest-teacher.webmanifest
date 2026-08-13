@@ -1,0 +1,18 @@
+{
+  "id": "/teacher-admin",
+  "name": "807 教師管理",
+  "short_name": "807 教師端",
+  "start_url": "/teacher.html",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#123b2c",
+  "theme_color": "#123b2c",
+  "icons": [
+    {
+      "src": "/appslogo.png",
+      "sizes": "1254x1254",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

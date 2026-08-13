@@ -1,0 +1,115 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isTeacher() {
+      return request.auth != null
+        && request.auth.token.email != null
+        && request.auth.token.email.matches('.*@qfm\\.kh\\.edu\\.tw$');
+    }
+
+    match /classrooms/classboard-807 {
+      allow read: if true;
+      allow create, update, delete: if isTeacher();
+
+      match /courseCompletions/{completionId} {
+        allow read: if true;
+        allow create: if request.resource.data.keys().hasOnly(['subject', 'taskId', 'seat', 'createdAt'])
+          && request.resource.data.subject is string
+          && request.resource.data.taskId is string
+          && request.resource.data.seat is int
+          && request.resource.data.seat >= 1
+          && request.resource.data.seat <= 60
+          && request.resource.data.createdAt is string;
+        allow update: if false;
+        allow delete: if true;
+      }
+
+      match /notebookCheckins/{checkinId} {
+        allow read: if true;
+        allow create: if request.resource.data.keys().hasOnly(['seat', 'date', 'timestamp'])
+          && request.resource.data.seat is int
+          && request.resource.data.seat >= 1
+          && request.resource.data.seat <= 60
+          && request.resource.data.date is string
+          && request.resource.data.timestamp is string;
+        allow update, delete: if false;
+      }
+
+      match /tomorrowSubmissions/{submissionId} {
+        allow read: if true;
+        allow create: if request.resource.data.keys().hasOnly(['text', 'author', 'subject', 'handwriting', 'createdAt', 'targetDate'])
+          && request.resource.data.text is string
+          && request.resource.data.text.size() > 0
+          && request.resource.data.text.size() <= 500
+          && request.resource.data.author is string
+          && request.resource.data.author.size() <= 100
+          && request.resource.data.subject is string
+          && request.resource.data.subject.size() <= 40
+          && request.resource.data.handwriting is string
+          && request.resource.data.handwriting.size() <= 160000
+          && request.resource.data.createdAt is string
+          && request.resource.data.targetDate is string
+          && request.resource.data.targetDate.matches('^\\d{4}-\\d{2}-\\d{2}$');
+        allow update: if isTeacher() || (exists(/databases/$(database)/documents/classrooms/classboard-807/editRequests/$(submissionId))
+          && get(/databases/$(database)/documents/classrooms/classboard-807/editRequests/$(submissionId)).data.taskId == submissionId
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['text', 'author', 'subject', 'handwriting', 'updatedAt'])
+          && request.resource.data.text is string
+          && request.resource.data.text.size() > 0
+          && request.resource.data.text.size() <= 500
+          && request.resource.data.author is string
+          && request.resource.data.author.size() <= 100
+          && request.resource.data.subject is string
+          && request.resource.data.subject.size() <= 40
+          && request.resource.data.handwriting is string
+          && request.resource.data.handwriting.size() <= 160000
+          && request.resource.data.updatedAt is string);
+        allow delete: if isTeacher() || (exists(/databases/$(database)/documents/classrooms/classboard-807/deleteRequests/$(submissionId))
+          && get(/databases/$(database)/documents/classrooms/classboard-807/deleteRequests/$(submissionId)).data.taskId == submissionId);
+      }
+
+      match /stickyMessages/{dayKey}/notes/{slotId} {
+        allow read: if true;
+        allow create: if slotId.matches('^slot-(0[1-9]|1[0-9]|2[0-8])$')
+          && request.resource.data.keys().hasOnly(['day', 'slot', 'text', 'createdAt'])
+          && request.resource.data.day == dayKey
+          && request.resource.data.slot == slotId
+          && request.resource.data.text is string
+          && request.resource.data.text.size() > 0
+          && request.resource.data.text.size() <= 20
+          && request.resource.data.createdAt is string;
+        allow update, delete: if false;
+      }
+
+      match /teacherPrivate/dailyConfirmation {
+        allow read, create, update, delete: if isTeacher();
+      }
+
+      match /deleteRequests/{submissionId} {
+        allow create: if request.resource.data.keys().hasOnly(['taskId', 'code', 'date', 'requestedAt'])
+          && request.resource.data.taskId == submissionId
+          && request.resource.data.code is string
+          && request.resource.data.code.matches('^\\d{4}$')
+          && request.resource.data.date is string
+          && request.resource.data.requestedAt is string
+          && exists(/databases/$(database)/documents/classrooms/classboard-807/teacherPrivate/dailyConfirmation)
+          && get(/databases/$(database)/documents/classrooms/classboard-807/teacherPrivate/dailyConfirmation).data.date == request.resource.data.date
+          && get(/databases/$(database)/documents/classrooms/classboard-807/teacherPrivate/dailyConfirmation).data.code == request.resource.data.code;
+        allow read, update, delete: if false;
+      }
+
+      match /editRequests/{submissionId} {
+        allow create: if request.resource.data.keys().hasOnly(['taskId', 'code', 'date', 'requestedAt'])
+          && request.resource.data.taskId == submissionId
+          && request.resource.data.code is string
+          && request.resource.data.code.matches('^\\d{4}$')
+          && request.resource.data.date is string
+          && request.resource.data.requestedAt is string
+          && exists(/databases/$(database)/documents/classrooms/classboard-807/teacherPrivate/dailyConfirmation)
+          && get(/databases/$(database)/documents/classrooms/classboard-807/teacherPrivate/dailyConfirmation).data.date == request.resource.data.date
+          && get(/databases/$(database)/documents/classrooms/classboard-807/teacherPrivate/dailyConfirmation).data.code == request.resource.data.code;
+        allow read, update: if false;
+        allow delete: if true;
+      }
+    }
+  }
+}

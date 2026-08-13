@@ -1,0 +1,40 @@
+name: 更新公開午餐菜單
+
+on:
+  workflow_dispatch:
+    inputs:
+      month:
+        description: 要擷取的月份（YYYY-MM；留白即為本月）
+        required: false
+        type: string
+  schedule:
+    - cron: '17 21 * * *'
+
+permissions:
+  contents: write
+
+jobs:
+  import-menu:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 取得專案
+        uses: actions/checkout@v4
+      - name: 設定 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: 擷取公開午餐菜單
+        env:
+          INPUT_MONTH: ${{ inputs.month }}
+        run: node scripts/import-lunch-menu.mjs
+      - name: 儲存更新結果
+        run: |
+          if git diff --quiet -- data/monthly-menu.json; then
+            echo "菜單資料沒有變更"
+            exit 0
+          fi
+          git config user.name "classboard-menu-bot"
+          git config user.email "classboard-menu-bot@users.noreply.github.com"
+          git add data/monthly-menu.json
+          git commit -m "chore: 更新公開午餐菜單"
+          git push
