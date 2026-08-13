@@ -5,6 +5,15 @@ const SCHOOL_ID = '64736678';
 const SOURCE_URL = 'https://fatraceschool.k12ea.gov.tw/frontend/search.html?school=64736678';
 const API_BASE = 'https://fatraceschool.k12ea.gov.tw';
 const OUTPUT = resolve('data/monthly-menu.json');
+const BROWSER_HEADERS = {
+  Accept: 'application/json, text/plain, */*',
+  'Accept-Language': 'zh-TW,zh;q=0.9,en;q=0.8',
+  Referer: SOURCE_URL,
+  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36',
+  'Sec-Fetch-Dest': 'empty',
+  'Sec-Fetch-Mode': 'cors',
+  'Sec-Fetch-Site': 'same-origin',
+};
 
 function taipeiMonth() {
   const parts = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Taipei', year: 'numeric', month: '2-digit' }).formatToParts(new Date());
@@ -27,7 +36,7 @@ function datesInMonth(month) {
 async function api(path, params) {
   const url = new URL(path, API_BASE);
   Object.entries(params).forEach(([key, value]) => url.searchParams.set(key, value));
-  const response = await fetch(url, { headers: { Accept: 'application/json' } });
+  const response = await fetch(url, { headers: BROWSER_HEADERS });
   if (!response.ok) throw new Error(`${response.status} ${url.pathname}`);
   const payload = await response.json();
   if (!payload?.result) throw new Error(payload?.message || `公開菜單服務未回傳資料：${url.pathname}`);
