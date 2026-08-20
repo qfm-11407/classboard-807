@@ -250,6 +250,8 @@
         .cleaning-map-split,.cleaning-map-split.restroom-map-split,.cleaning-map-split.classroom-map-split,.cleaning-map-split.stair-map-split { grid-template-columns:minmax(0,2fr) minmax(0,1fr); }
         /* 地板兩人改為上下排列，避免與配置圖元件規格混用。 */
         .female-restroom-slot.floor .female-restroom-persons { grid-template-columns:var(--plan-name-width); justify-content:center; }
+        /* 學生端同步教師端：配置圖姓名標籤採示範長條最大寬度，窄格不溢出。 */
+        .female-restroom-map,.classroom-map,.stair-map { --plan-name-width:min(200px,100%); }.female-restroom-persons,.female-restroom-persons.multiple { grid-template-columns:var(--plan-name-width); justify-content:center; }.female-restroom-persons .female-restroom-stall-name { width:var(--plan-name-width); }
     </style>
     <script src="https://www.gstatic.com/firebasejs/12.17.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/12.17.1/firebase-auth-compat.js"></script>
