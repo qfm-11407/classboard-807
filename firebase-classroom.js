@@ -79,17 +79,18 @@
     const [data, completionSnapshot, checkinSnapshot, tomorrowSnapshot] = await Promise.all([coreState(), completionRef.get(), checkinRef.get(), tomorrowRef.get()]);
     const subjectData = parseJSON(data.subjectData, {});
     const roster = parseJSON(data.classroomStudentRoster, []);
-    const highestSeat = Array.isArray(roster) ? Math.max(0, ...roster.map(student => Number(student?.seat) || 0)) : 0;
+    const activeSeats = new Set(Array.isArray(roster) ? roster.map(student => Number(student?.seat)).filter(seat => Number.isInteger(seat) && seat > 0) : []);
+    const highestSeat = activeSeats.size ? Math.max(...activeSeats) : 0;
 
     if (subjectData && typeof subjectData === 'object' && !Array.isArray(subjectData)) {
       Object.values(subjectData).forEach(tasks => {
         if (!Array.isArray(tasks)) return;
-        tasks.forEach(task => { task.records = Array.from({ length: highestSeat }, (_, index) => Boolean(task.records?.[index])); });
+        tasks.forEach(task => { task.records = Array.from({ length: highestSeat }, (_, index) => activeSeats.has(index + 1) && Boolean(task.records?.[index])); });
       });
       completionSnapshot.forEach(document => {
         const item = document.data();
         const task = subjectData[item.subject]?.find(candidate => candidate?.id === item.taskId);
-        if (task && Number.isInteger(item.seat) && item.seat > 0) task.records[item.seat - 1] = true;
+        if (task && Number.isInteger(item.seat) && activeSeats.has(item.seat)) task.records[item.seat - 1] = true;
       });
       data.subjectData = JSON.stringify(subjectData);
     }
