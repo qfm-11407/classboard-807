@@ -248,6 +248,8 @@
         .restroom-map-split .male-restroom-plan { grid-template-rows:repeat(2,230px) 98px; }@media (max-width:900px) { .restroom-map-split .male-restroom-plan { grid-template-rows:repeat(2,180px) 76px; } }
         /* 配置圖固定左 2/3、右 1/3；不再以右欄最小寬度擠壓左側平面圖。 */
         .cleaning-map-split,.cleaning-map-split.restroom-map-split,.cleaning-map-split.classroom-map-split,.cleaning-map-split.stair-map-split { grid-template-columns:minmax(0,2fr) minmax(0,1fr); }
+        /* 地板兩人改為上下排列，避免與配置圖元件規格混用。 */
+        .female-restroom-slot.floor .female-restroom-persons { grid-template-columns:var(--plan-name-width); justify-content:center; }
     </style>
     <script src="https://www.gstatic.com/firebasejs/12.17.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/12.17.1/firebase-auth-compat.js"></script>
