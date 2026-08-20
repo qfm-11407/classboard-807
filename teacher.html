@@ -153,6 +153,8 @@
     @media (max-width:700px) { .teacher-classroom-map,.teacher-stair-map { --plan-name-width:min(200px,100%); } }
     /* 男女廁配置圖採同一姓名名牌寬度；窄工作格以自身寬度為上限。 */
     .teacher-restroom-map { --plan-name-width:min(200px,100%); }.teacher-restroom-persons,.teacher-restroom-persons.multiple { grid-template-columns:var(--plan-name-width); justify-content:center; }.teacher-restroom-persons .teacher-restroom-name { width:var(--plan-name-width); }
+    /* 窗戶玻璃也使用教師端統一的姓名名牌規格。 */
+    .teacher-classroom-map .class-task-window .teacher-area-person { width:var(--plan-name-width); height:var(--plan-name-height); min-height:var(--plan-name-height); max-height:var(--plan-name-height); font-size:var(--plan-name-size); }
   </style>
 </head>
 <body>
