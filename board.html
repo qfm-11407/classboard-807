@@ -262,6 +262,8 @@
         .female-restroom-plan.pair-layout { grid-template-rows:repeat(3,minmax(116px,1fr)) 116px; }.male-restroom-plan { grid-template-rows:repeat(2,minmax(166px,1fr)) 116px; }.female-restroom-slot.floor .female-restroom-persons { grid-template-columns:var(--plan-name-width); }
         .male-restroom-plan .female-restroom-slot.toilet .female-toilet-pair.fixture-3 { grid-template-rows:repeat(3,30px)!important; min-height:98px; }.male-restroom-plan .female-restroom-slot.urinal .female-toilet-pair.fixture-4 { grid-template-rows:repeat(4,22px)!important; min-height:100px; }
         @media (max-width:900px) { .female-restroom-map,.classroom-map,.stair-map { --plan-name-height:32px; --plan-name-size:.88rem; }.female-restroom-plan.pair-layout { grid-template-rows:repeat(3,116px) 116px; }.male-restroom-plan { grid-template-rows:repeat(2,166px) 116px; } }
+        /* 女廁底列需容納地板工作兩張上下姓名名牌，保留完整下方內距。 */
+        .female-restroom-plan.pair-layout { grid-template-rows:repeat(3,minmax(116px,1fr)) 140px; }@media (max-width:900px) { .female-restroom-plan.pair-layout { grid-template-rows:repeat(3,116px) 140px; } }
     </style>
     <script src="https://www.gstatic.com/firebasejs/12.17.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/12.17.1/firebase-auth-compat.js"></script>
