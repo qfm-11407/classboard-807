@@ -153,9 +153,6 @@
     @media (max-width:700px) { .teacher-classroom-map,.teacher-stair-map { --plan-name-width:min(200px,100%); } }
     /* 男女廁配置圖採同一姓名名牌寬度；窄工作格以自身寬度為上限。 */
     .teacher-restroom-map { --plan-name-width:min(200px,100%); }.teacher-restroom-persons,.teacher-restroom-persons.multiple { grid-template-columns:var(--plan-name-width); justify-content:center; }.teacher-restroom-persons .teacher-restroom-name { width:var(--plan-name-width); }
-    /* 打掃右側工作清單：兩欄緊湊排列，完整呈現在各分區版面內。 */
-    .cleaning-plan-task-list { grid-template-columns:repeat(2,minmax(0,1fr)); gap:7px; align-content:start; }.cleaning-plan-task-list .cleaning-assignment-zone { min-height:0; padding:7px; }.cleaning-plan-task-list .cleaning-assignment-zone-head { gap:4px; font-size:.78rem; }.cleaning-plan-task-list .cleaning-assignment-zone-count { padding:2px 5px; font-size:.68rem; }.cleaning-plan-task-list .cleaning-assignment-chips { grid-template-columns:repeat(2,minmax(0,1fr)); grid-auto-rows:26px; gap:4px; margin-top:6px; }.cleaning-plan-task-list .cleaning-assignment-chip { height:26px; min-height:26px; max-height:26px; padding:3px 1px; font-size:.68rem; letter-spacing:-.05em; }.cleaning-plan-task-list .cleaning-assignment-empty { margin-top:4px; font-size:.72rem; }
-    @media (max-width:700px) { .cleaning-plan-task-list { grid-template-columns:repeat(2,minmax(0,1fr)); gap:6px; }.cleaning-plan-task-list .cleaning-assignment-zone { padding:6px; }.cleaning-plan-task-list .cleaning-assignment-zone-head { font-size:.72rem; }.cleaning-plan-task-list .cleaning-assignment-chips { grid-auto-rows:24px; gap:3px; margin-top:5px; }.cleaning-plan-task-list .cleaning-assignment-chip { height:24px; min-height:24px; max-height:24px; font-size:.62rem; } }
   </style>
 </head>
 <body>
