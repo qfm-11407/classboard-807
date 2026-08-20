@@ -148,6 +148,9 @@
     .cleaning-plan-task-list { --assignment-tag-height:32px; }.cleaning-plan-task-list .cleaning-assignment-chips { grid-template-columns:repeat(3,minmax(0,1fr)); grid-auto-rows:var(--assignment-tag-height); align-items:stretch; }.cleaning-plan-task-list .cleaning-assignment-chip,.classroom-plan-split .cleaning-assignment-chip { width:100%; height:var(--assignment-tag-height); min-height:var(--assignment-tag-height); max-height:var(--assignment-tag-height); box-sizing:border-box; padding:4px 1px; }
     .teacher-restroom-slot.floor .teacher-restroom-persons { grid-template-columns:var(--plan-name-width); justify-content:center; }
     @media (max-width:700px) { .cleaning-plan-task-list { --assignment-tag-height:28px; } }
+    /* 教室、樓梯配置圖的人名使用示範長條寬度；右側工作名單不受影響。 */
+    .teacher-classroom-map,.teacher-stair-map { --plan-name-width:min(200px,100%); }.teacher-classroom-map .teacher-area-person,.teacher-stair-map .teacher-area-person { width:var(--plan-name-width); }
+    @media (max-width:700px) { .teacher-classroom-map,.teacher-stair-map { --plan-name-width:min(200px,100%); } }
   </style>
 </head>
 <body>
