@@ -151,6 +151,8 @@
     /* 教室、樓梯配置圖的人名使用示範長條寬度；右側工作名單不受影響。 */
     .teacher-classroom-map,.teacher-stair-map { --plan-name-width:min(200px,100%); }.teacher-classroom-map .teacher-area-person,.teacher-stair-map .teacher-area-person { width:var(--plan-name-width); }
     @media (max-width:700px) { .teacher-classroom-map,.teacher-stair-map { --plan-name-width:min(200px,100%); } }
+    /* 男女廁配置圖採同一姓名名牌寬度；窄工作格以自身寬度為上限。 */
+    .teacher-restroom-map { --plan-name-width:min(200px,100%); }.teacher-restroom-persons,.teacher-restroom-persons.multiple { grid-template-columns:var(--plan-name-width); justify-content:center; }.teacher-restroom-persons .teacher-restroom-name { width:var(--plan-name-width); }
   </style>
 </head>
 <body>
