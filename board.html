@@ -332,7 +332,7 @@
         </div>
 
         <!-- 右側：App 網格 -->
-        <div class="w-2/3 h-full content-start">
+        <div class="w-2/3 h-full flex flex-col">
             <div class="app-grid grid grid-cols-3 gap-x-10 gap-y-9 w-full p-4">
                 <div class="flex flex-col items-center gap-3 cursor-pointer group" onclick="openApp('courses')">
                     <div class="w-32 h-32 squircle bg-pastel-blue flex items-center justify-center"><i class="fa-solid fa-folder-tree text-6xl text-white/90 drop-shadow-md"></i></div>
@@ -371,9 +371,9 @@
                     <span class="text-white font-bold text-2xl tracking-widest group-hover:text-[#8fd3f4] transition-colors">段考考程</span>
                 </div>
             </div>
-            <div class="glass-panel rounded-[2.5rem] p-6 mt-4 h-44">
+            <div class="glass-panel rounded-[2.5rem] p-6 mt-4 flex-1 min-h-0 flex flex-col">
                 <h2 class="text-2xl text-white font-bold mb-3 flex items-center border-b border-white/20 pb-3"><i class="fa-solid fa-calendar-plus mr-3 text-[#f6d365]"></i>明日事項</h2>
-                <div id="widget-tomorrow" class="grid grid-cols-2 grid-rows-2 gap-3 overflow-hidden"></div>
+                <div id="widget-tomorrow" class="grid grid-cols-2 grid-rows-2 gap-3 overflow-hidden flex-1 min-h-0"></div>
             </div>
         </div>
     </div>
