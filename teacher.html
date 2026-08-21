@@ -157,6 +157,9 @@
     .teacher-classroom-map .class-task-window .teacher-area-person { width:var(--plan-name-width); height:var(--plan-name-height); min-height:var(--plan-name-height); max-height:var(--plan-name-height); font-size:var(--plan-name-size); }
     /* 教室平面圖固定區位，並以同色系深淺區分不同工作。 */
     .teacher-classroom-map .teacher-classroom-zones { grid-template-rows:repeat(2,minmax(0,1fr)); }.teacher-classroom-map .class-task-sweep { grid-column:1!important; grid-row:1!important; border-color:#83b39d; background:#f1f9f4; }.teacher-classroom-map .class-task-trash { grid-column:1!important; grid-row:2!important; border-color:#8dbba6; background:#f3faf6; }.teacher-classroom-map .class-task-blackboard { grid-column:2!important; grid-row:1 / span 2!important; border-color:#78a994; background:#eef8f2; }.teacher-classroom-map .class-task-window { grid-column:3!important; grid-row:1 / span 2!important; border-color:#98c3ae; background:#f5fbf7; }.teacher-classroom-map .class-task-blackboard .teacher-area-person { background:#d7eadf; }.teacher-classroom-map .class-task-sweep .teacher-area-person { background:#dff0e6; }.teacher-classroom-map .class-task-trash .teacher-area-person { background:#e5f3eb; }.teacher-classroom-map .class-task-window .teacher-area-person { background:#eaf6ee; }
+    /* 事項排程的學生端預覽。 */
+    .schedule-preview-modal { position:fixed; inset:0; z-index:80; display:grid; place-items:center; padding:24px; background:#071b13aa; backdrop-filter:blur(10px); }.schedule-preview-sheet { width:min(850px,100%); max-height:min(82dvh,820px); overflow:auto; padding:20px; border-radius:24px; background:linear-gradient(145deg,#163d2e,#0c2119); color:#fff; box-shadow:0 28px 80px #02110bc0; }.schedule-preview-head { display:flex; align-items:center; justify-content:space-between; gap:14px; margin-bottom:16px; }.schedule-preview-head h3 { margin:0; font-size:1.25rem; }.schedule-preview-date { color:#c5f0d8; font-size:.9rem; font-weight:800; }.schedule-preview-list { display:grid; gap:10px; }.schedule-preview-item { display:grid; grid-template-columns:auto minmax(0,1fr); gap:12px; align-items:start; padding:14px; border:1px solid #ffffff26; border-radius:16px; background:#00000036; }.schedule-preview-icon { display:grid; place-items:center; width:38px; height:38px; border:2px solid #f6d365; border-radius:50%; color:#f6d365; font-weight:900; }.schedule-preview-subject { display:inline-block; margin:0 0 7px; padding:3px 9px; border-radius:999px; background:#f6d365; color:#18231d; font-size:.82rem; font-weight:900; }.schedule-preview-text { white-space:pre-wrap; overflow-wrap:anywhere; font-size:1.12rem; font-weight:800; line-height:1.65; }.schedule-preview-author { margin-top:7px; color:#c5d8ce; font-size:.86rem; }.schedule-preview-empty { padding:32px 12px; color:#c5d8ce; text-align:center; }.schedule-preview-close { min-width:42px; min-height:42px; padding:6px 10px; border:1px solid #ffffff44; border-radius:12px; background:#ffffff15; color:#fff; font-size:1.2rem; font-weight:900; }
+    @media (max-width:700px) { .schedule-preview-modal { padding:0; place-items:end; }.schedule-preview-sheet { width:100%; max-height:84dvh; padding:18px 14px calc(env(safe-area-inset-bottom) + 18px); border-radius:24px 24px 0 0; }.schedule-preview-item { padding:12px; }.schedule-preview-text { font-size:1rem; } }
   </style>
 </head>
 <body>
@@ -315,10 +318,13 @@
       if (!listHead) {
         const listTitle = listCard.querySelector('h3');
         listHead = document.createElement('div'); listHead.id = 'scheduled-list-head'; listHead.className = 'scheduled-list-head';
+        const actionGroup = document.createElement('div'); actionGroup.className = 'actions';
+        const previewButton = document.createElement('button'); previewButton.id = 'preview-scheduled-student'; previewButton.type = 'button'; previewButton.className = 'btn light'; previewButton.textContent = '學生端預覽';
+        previewButton.addEventListener('click', openScheduledPreview);
         const exportButton = document.createElement('button'); exportButton.id = 'copy-scheduled-export'; exportButton.type = 'button'; exportButton.className = 'btn light'; exportButton.textContent = '整理並複製';
         exportButton.addEventListener('click', copyScheduledExport);
         if (listTitle) { listTitle.style.margin = '0'; listHead.append(listTitle); }
-        listHead.append(exportButton); listCard.prepend(listHead);
+        actionGroup.append(previewButton, exportButton); listHead.append(actionGroup); listCard.prepend(listHead);
       }
     }
     organizeScheduledPanel();
@@ -347,6 +353,31 @@
         catch (_) { window.prompt('請複製以下整理內容：', output); }
         field.remove();
       }
+    }
+    function openScheduledPreview() {
+      const targetDate = $('scheduled-date').value;
+      const items = scheduledExportItems.filter(item => item.targetDate === targetDate);
+      let modal = $('schedule-preview-modal');
+      if (!modal) {
+        modal = document.createElement('div'); modal.id = 'schedule-preview-modal'; modal.className = 'schedule-preview-modal hidden';
+        modal.innerHTML = '<section class="schedule-preview-sheet" role="dialog" aria-modal="true" aria-labelledby="schedule-preview-title"><div class="schedule-preview-head"><div><h3 id="schedule-preview-title">學生端事項預覽</h3><div id="schedule-preview-date" class="schedule-preview-date"></div></div><button id="schedule-preview-close" class="schedule-preview-close" type="button" aria-label="關閉預覽">×</button></div><div id="schedule-preview-list" class="schedule-preview-list"></div></section>';
+        document.body.append(modal);
+        $('schedule-preview-close').onclick = () => modal.classList.add('hidden');
+        modal.addEventListener('click', event => { if (event.target === modal) modal.classList.add('hidden'); });
+      }
+      $('schedule-preview-date').textContent = targetDate ? `${targetDate.replaceAll('-', '/')}｜${items.length} 項事項` : '請先選擇事項日期';
+      const list = $('schedule-preview-list'); list.innerHTML = '';
+      if (!items.length) { const empty = document.createElement('p'); empty.className = 'schedule-preview-empty'; empty.textContent = '這一天尚未排定事項。'; list.append(empty); }
+      items.forEach((item,index) => {
+        const card = document.createElement('article'); card.className = 'schedule-preview-item';
+        const icon = document.createElement('span'); icon.className = 'schedule-preview-icon'; icon.textContent = index + 1;
+        const content = document.createElement('div');
+        const subject = document.createElement('span'); subject.className = 'schedule-preview-subject'; subject.textContent = item.subject || '其他';
+        const text = document.createElement('div'); text.className = 'schedule-preview-text'; text.textContent = item.text || '';
+        const author = document.createElement('div'); author.className = 'schedule-preview-author'; author.textContent = `填寫人：${item.author || '未填寫'}`;
+        content.append(subject, text, author); card.append(icon, content); list.append(card);
+      });
+      modal.classList.remove('hidden');
     }
     function renderScheduledCalendar(items) { const year=scheduledCursor.getFullYear(),month=scheduledCursor.getMonth(),first=new Date(year,month,1),days=new Date(year,month+1,0).getDate(),box=$('scheduled-calendar'),selected=$('scheduled-date').value,monthPrefix=`${year}-${String(month+1).padStart(2,'0')}`; $('scheduled-month').textContent=new Intl.DateTimeFormat('zh-TW',{year:'numeric',month:'long'}).format(first); $('scheduled-total').textContent=`本月 ${items.filter(item=>item.targetDate.startsWith(monthPrefix)).length} 項`; box.innerHTML='';for(let index=0;index<first.getDay();index++){const blank=document.createElement('div');blank.className='schedule-day';blank.style.background='#f8fcf9';box.append(blank);}for(let day=1;day<=days;day++){const value=`${monthPrefix}-${String(day).padStart(2,'0')}`,button=document.createElement('button');button.type='button';button.className=`schedule-day ${value===taipeiDay()?'today ':''}${value===selected?'selected':''}`;const number=document.createElement('span');number.className='schedule-number';number.textContent=day;button.append(number);const count=items.filter(item=>item.targetDate===value).length;if(count){const badge=document.createElement('span');badge.className='schedule-count';badge.textContent=count;badge.title=`${count} 項事項`;button.append(badge);}button.onclick=()=>{$('scheduled-date').value=value;renderScheduledCalendar(items);};box.append(button);}}
     function removeScheduledTaskRemnants(item) { if (!item.id) return; const sameId=task=>String(task?.id || '')===String(item.id); ['todayTasks','tomorrowTasks','dailyTasks'].forEach(key=>{const list=readJSON(key,[]);if(Array.isArray(list))localStorage.setItem(key,JSON.stringify(list.filter(task=>!sameId(task))));}); const history=readJSON('taskHistory',{});if(history&&typeof history==='object'){Object.keys(history).forEach(day=>{if(Array.isArray(history[day]))history[day]=history[day].filter(task=>!sameId(task));});localStorage.setItem('taskHistory',JSON.stringify(history));} }
