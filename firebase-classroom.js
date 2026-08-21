@@ -105,10 +105,13 @@
 
     const today = taipeiDate();
     const tomorrow = nextDate(today);
-    const todayTasks = parseJSON(data.todayTasks, []);
-    const tomorrowTasks = parseJSON(data.tomorrowTasks, []);
-    const taskHistory = parseJSON(data.taskHistory, {});
     const scheduledTasks = parseJSON(data.scheduledTasks, []);
+    const scheduledIds = new Set((Array.isArray(scheduledTasks) ? scheduledTasks : []).map(item => String(item?.id || '')).filter(Boolean));
+    const withoutScheduledCopies = items => (Array.isArray(items) ? items : []).filter(item => !scheduledIds.has(String(item?.id || '')));
+    const todayTasks = withoutScheduledCopies(parseJSON(data.todayTasks, []));
+    const tomorrowTasks = withoutScheduledCopies(parseJSON(data.tomorrowTasks, []));
+    const taskHistory = parseJSON(data.taskHistory, {});
+    if (taskHistory && typeof taskHistory === 'object') Object.keys(taskHistory).forEach(day => { taskHistory[day] = withoutScheduledCopies(taskHistory[day]); });
     const mergeTask = (item, fallbackId, deletable = false) => {
       if (!item || !/^\d{4}-\d{2}-\d{2}$/.test(String(item.targetDate || '')) || !String(item.text || '').trim()) return;
       const task = { id: item.id || fallbackId, text: String(item.text).slice(0,500), author: String(item.author || '').slice(0,100), subject: String(item.subject || '其他').slice(0,40), handwriting: item.handwriting || '', createdAt: item.createdAt || '', deletable };
