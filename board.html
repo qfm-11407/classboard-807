@@ -1601,7 +1601,7 @@
     function renderExamSchedule() {
         const now = new Date(), currentMins = now.getHours() * 60 + now.getMinutes(), isMorning=now.getHours()<12;
         const container = document.getElementById('exam-schedule-container'); let html = '', currentStatusHtml = '<div class="text-4xl text-white font-bold opacity-50">目前無考程</div>';
-        const fullSchedule=getExamData(), displaySchedule=fullSchedule.filter(item=>item.type!=='break' && (isMorning ? timeToMinutes(item.start)<720 : timeToMinutes(item.start)>=720));
+        const fullSchedule=getExamData(), displaySchedule=fullSchedule.filter(item=>!/(午餐|午休)/.test(String(item.subject||'')) && (isMorning ? timeToMinutes(item.start)<720 : timeToMinutes(item.start)>=720));
         document.getElementById('exam-schedule-title').textContent=`今日${isMorning?'上午':'下午'}考程`;
         const activeItem=fullSchedule.find(item=>currentMins>=timeToMinutes(item.start)&&currentMins<timeToMinutes(item.end));
         if(activeItem) currentStatusHtml = `<div class="text-5xl font-black ${activeItem.type === 'break' ? 'text-[#98FB98]' : 'text-[#FFE56C]'} tracking-widest mb-2">${activeItem.subject}</div><div class="text-3xl text-white font-bold border-b-2 border-white/50 pb-2 inline-block">${activeItem.start} ~ ${activeItem.end}</div>`;
