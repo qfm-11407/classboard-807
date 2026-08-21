@@ -372,8 +372,11 @@
                 </div>
             </div>
             <div class="glass-panel rounded-[2.5rem] p-6 mt-4 flex-1 min-h-0 flex flex-col">
-                <h2 class="text-2xl text-white font-bold mb-3 flex items-center border-b border-white/20 pb-3"><i class="fa-solid fa-calendar-plus mr-3 text-[#f6d365]"></i>明日事項</h2>
-                <div id="widget-tomorrow" class="grid grid-cols-2 grid-rows-2 gap-3 overflow-hidden flex-1 min-h-0"></div>
+                <div class="flex items-center justify-between gap-4 mb-3 border-b border-white/20 pb-3">
+                    <h2 class="text-2xl text-white font-bold flex items-center"><i class="fa-solid fa-calendar-plus mr-3 text-[#f6d365]"></i>明日事項</h2>
+                    <button type="button" onclick="openTomorrowReadOnly()" class="shrink-0 rounded-lg border border-white/25 bg-white/10 px-3 py-1.5 text-base font-bold text-white/90 hover:bg-white/20"><i class="fa-solid fa-expand mr-1.5 text-[#f6d365]"></i>放大抄寫</button>
+                </div>
+                <div id="widget-tomorrow" class="grid grid-cols-2 grid-rows-4 gap-3 overflow-hidden flex-1 min-h-0"></div>
             </div>
         </div>
     </div>
@@ -606,6 +609,15 @@
                 <button onclick="saveNameEditor()" class="px-8 py-3 bg-emerald-500/80 hover:bg-emerald-500 text-white font-bold text-xl rounded-xl transition-colors">儲存名單</button>
             </div>
         </div>
+    </div>
+
+    <div id="tomorrow-readonly-modal" class="absolute inset-0 bg-black/80 backdrop-blur-md z-[70] hidden opacity-0 transition-opacity duration-300 flex items-center justify-center p-20">
+        <section id="tomorrow-readonly-window" class="glass-panel relative flex h-full w-full max-w-6xl scale-95 flex-col rounded-[3rem] p-12 transition-transform duration-300">
+            <button type="button" onclick="closeTomorrowReadOnly()" aria-label="關閉" class="absolute right-8 top-8 flex h-14 w-14 items-center justify-center rounded-full bg-white/15 text-3xl text-white hover:bg-white/30"><i class="fa-solid fa-xmark"></i></button>
+            <h2 class="pr-20 text-5xl font-black tracking-widest text-white"><i class="fa-solid fa-pen-to-square mr-5 text-[#f6d365]"></i>明日事項</h2>
+            <p class="mt-3 text-2xl text-white/65">唯讀抄寫模式</p>
+            <textarea id="tomorrow-readonly-text" readonly aria-label="明日事項內容" class="mt-8 min-h-0 flex-1 resize-none rounded-[2rem] border border-white/25 bg-black/30 p-9 text-4xl font-bold leading-relaxed text-white outline-none"></textarea>
+        </section>
     </div>
 </div>
 
@@ -1472,7 +1484,10 @@
     }
     function toggleDailyTask() {} function addDailyTask() {} function deleteDailyTask() {}
     function updateWidgetTasks() { const widget = document.getElementById('widget-tasks'), pending=todayTasks.filter(task=>!task.done); widget.innerHTML = pending.length ? pending.slice(0,3).map(task => `<div class="flex items-center bg-black/20 p-4 rounded-xl border border-white/10 cursor-pointer" onclick="openApp('tasks-full')"><div class="w-4 h-4 rounded-full bg-red-400 mr-4 shadow-[0_0_8px_rgba(248,113,113,0.8)]"></div><span class="text-2xl text-white truncate">${escapeHTML(task.text)}</span></div>`).join('') : `<div class="flex flex-col items-center justify-center h-full text-white/50"><i class="fa-solid fa-mug-hot text-6xl mb-4"></i><span class="text-2xl font-bold tracking-widest">今天沒有任務</span></div>`; }
-    function updateWidgetTomorrow() { const widget=document.getElementById('widget-tomorrow'), tasks=readTaskList('tomorrowTasks',[]), lines=tasks.flatMap(task=>String(task.text||'').split(/\r?\n/).map(line=>line.trim()).filter(Boolean)).slice(0,4); widget.innerHTML=lines.length ? lines.map(line=>`<div class="flex min-w-0 items-center bg-black/20 px-3 py-2 rounded-xl border border-white/10 cursor-pointer" onclick="openApp('tomorrow')"><div class="w-3 h-3 shrink-0 rounded-full bg-[#f6d365] mr-3"></div><span class="text-xl text-white truncate">${escapeHTML(line)}</span></div>`).join('') : `<div class="col-span-2 row-span-2 flex items-center justify-center h-full text-white/45 text-xl">明日尚無事項</div>`; }
+    function tomorrowDisplayLines() { return readTaskList('tomorrowTasks',[]).flatMap(task=>String(task.text||'').split(/\r?\n/).map(line=>line.trim()).filter(Boolean)); }
+    function updateWidgetTomorrow() { const widget=document.getElementById('widget-tomorrow'), lines=tomorrowDisplayLines().slice(0,8); widget.innerHTML=lines.length ? lines.map(line=>`<div class="flex min-w-0 items-center bg-black/20 px-3 py-2 rounded-xl border border-white/10 cursor-pointer" onclick="openApp('tomorrow')"><div class="w-3 h-3 shrink-0 rounded-full bg-[#f6d365] mr-3"></div><span class="text-xl text-white truncate">${escapeHTML(line)}</span></div>`).join('') : `<div class="col-span-2 row-span-4 flex items-center justify-center h-full text-white/45 text-xl">明日尚無事項</div>`; }
+    function openTomorrowReadOnly() { const modal=document.getElementById('tomorrow-readonly-modal'),windowEl=document.getElementById('tomorrow-readonly-window'),text=document.getElementById('tomorrow-readonly-text'); text.value=tomorrowDisplayLines().join('\n') || '明日尚無事項';modal.classList.remove('hidden');requestAnimationFrame(()=>{modal.classList.remove('opacity-0');windowEl.classList.remove('scale-95');}); }
+    function closeTomorrowReadOnly() { const modal=document.getElementById('tomorrow-readonly-modal'),windowEl=document.getElementById('tomorrow-readonly-window');modal.classList.add('opacity-0');windowEl.classList.add('scale-95');setTimeout(()=>modal.classList.add('hidden'),300); }
     function dutyWeekdaySteps(startDay,endDay) { const start=new Date(`${startDay}T00:00:00Z`),end=new Date(`${endDay}T00:00:00Z`); if (Number.isNaN(start.getTime())||Number.isNaN(end.getTime())) return 0; const direction=start<=end?1:-1,cursor=new Date(start); let steps=0; while ((direction>0&&cursor<end)||(direction<0&&cursor>end)) { cursor.setUTCDate(cursor.getUTCDate()+direction); const weekday=cursor.getUTCDay(); if (weekday>0&&weekday<6) steps+=direction; } return steps; }
     function dutySeatsForDate(day=dateKey()) { const students=studentRoster.slice().sort((a,b)=>a.seat-b.seat), base=readTaskList('dutyAssignments',[]).map(Number).filter(seat=>students.some(student=>student.seat===seat)); if (!students.length || !base.length) return []; const startIndex=Math.max(0,students.findIndex(student=>student.seat===base[0])); let startDay=day; try { const value=JSON.parse(localStorage.getItem('dutyRotationStartDate') || '""'); if (/^\d{4}-\d{2}-\d{2}$/.test(value)) startDay=value; } catch (_) {} const elapsed=dutyWeekdaySteps(startDay,day); const offset=((elapsed*2)%students.length+students.length)%students.length; return [students[(startIndex+offset)%students.length].seat,students[(startIndex+offset+1)%students.length].seat].filter((seat,index,list)=>list.indexOf(seat)===index); }
     function renderDutyWidget() { const selected=dutySeatsForDate(), names=studentRoster.filter(student=>selected.includes(student.seat)).map(student=>`${String(student.seat).padStart(2,'0')} ${student.name}`), target=document.getElementById('widget-duty'); target.innerHTML=names.length ? names.map(name=>`<span class="bg-white/15 text-white px-4 py-2 rounded-xl text-xl font-bold">${escapeHTML(name)}</span>`).join('') : '<span class="text-white/45 text-xl">尚未設定</span>'; }
