@@ -429,6 +429,7 @@
                     <div>
                         <h2 class="text-5xl font-bold text-white tracking-widest"><i class="fa-solid fa-dice mr-5 text-[#f6d365]"></i>幸運轉盤</h2>
                         <p class="text-white/60 text-xl mt-2">依照教室座位表抽籤；缺席學生不納入抽選。</p>
+                        <button id="lucky-target-button" type="button" onclick="openLuckyTargetPicker()" class="mt-4 rounded-xl border border-[#c4b5fd]/70 bg-[#8b5cf6]/25 px-5 py-2.5 text-xl font-black text-[#ede9fe] hover:bg-[#8b5cf6]/45"><i class="fa-solid fa-user-check mr-2"></i>指定人員抽一人</button>
                     </div>
                     <div class="flex items-center gap-4 glass-panel rounded-2xl px-5 py-4">
                         <label for="lucky-round-count" class="text-white text-xl font-bold">抽幾輪</label>
@@ -617,6 +618,16 @@
             <h2 class="pr-20 text-5xl font-black tracking-widest text-white"><i class="fa-solid fa-pen-to-square mr-5 text-[#f6d365]"></i>明日事項</h2>
             <p class="mt-3 text-2xl text-white/65">唯讀抄寫模式</p>
             <textarea id="tomorrow-readonly-text" readonly aria-label="明日事項內容" class="mt-8 min-h-0 flex-1 resize-none rounded-[2rem] border border-white/25 bg-black/30 p-9 text-4xl font-bold leading-relaxed text-white outline-none"></textarea>
+        </section>
+    </div>
+
+    <div id="lucky-target-modal" class="absolute inset-0 z-[70] hidden items-center justify-center bg-black/80 p-14 opacity-0 backdrop-blur-md transition-opacity duration-300">
+        <section id="lucky-target-window" class="glass-panel relative flex h-full w-full max-w-6xl scale-95 flex-col rounded-[3rem] p-10 transition-transform duration-300">
+            <button type="button" onclick="closeLuckyTargetPicker()" aria-label="關閉" class="absolute right-8 top-8 flex h-14 w-14 items-center justify-center rounded-full bg-white/15 text-3xl text-white hover:bg-white/30"><i class="fa-solid fa-xmark"></i></button>
+            <h2 class="pr-20 text-4xl font-black tracking-widest text-white"><i class="fa-solid fa-user-check mr-4 text-[#c4b5fd]"></i>指定人員抽一人</h2>
+            <p id="lucky-target-summary" class="mt-3 text-xl text-white/65">請先選擇候選同學，再隨機選出一人。</p>
+            <div id="lucky-target-grid" class="mt-7 grid flex-1 grid-cols-7 content-center gap-4 overflow-y-auto pr-2 no-scrollbar"></div>
+            <div class="mt-7 flex items-center justify-end gap-4 border-t border-white/15 pt-6"><button type="button" onclick="closeLuckyTargetPicker()" class="rounded-xl bg-white/15 px-6 py-3 text-xl font-bold text-white hover:bg-white/25">取消</button><button id="lucky-target-draw-button" type="button" onclick="startLuckyTargetDraw()" class="rounded-xl bg-[#c4b5fd] px-7 py-3 text-xl font-black text-[#251341] hover:bg-[#ddd6fe]">從指定名單抽出 1 人</button></div>
         </section>
     </div>
 </div>
@@ -911,6 +922,7 @@
     let luckyDrawing = false;
     let luckyActiveSeat = null;
     let luckyContinueMode = false;
+    let luckyTargetSeats = [];
 
     function luckyCandidates() {
         return studentRoster.filter(student => !(seatingState[student.seat - 1] || 0));
@@ -918,6 +930,27 @@
 
     function remainingLuckyCandidates() {
         return luckyCandidates().filter(student => !luckySelectedSeats.includes(student.seat));
+    }
+
+    function openLuckyTargetPicker() {
+        if (luckyDrawing) return;
+        const modal=document.getElementById('lucky-target-modal'), windowEl=document.getElementById('lucky-target-window');
+        modal.classList.remove('hidden'); requestAnimationFrame(()=>{modal.classList.remove('opacity-0');windowEl.classList.remove('scale-95');}); renderLuckyTargetPicker();
+    }
+    function closeLuckyTargetPicker() { const modal=document.getElementById('lucky-target-modal'),windowEl=document.getElementById('lucky-target-window');modal.classList.add('opacity-0');windowEl.classList.add('scale-95');setTimeout(()=>modal.classList.add('hidden'),300); }
+    function targetLuckyCandidates() { return luckyCandidates().filter(student=>!luckySelectedSeats.includes(student.seat)); }
+    function renderLuckyTargetPicker() {
+        const pool=targetLuckyCandidates(), available=new Set(pool.map(student=>student.seat)), grid=document.getElementById('lucky-target-grid'), summary=document.getElementById('lucky-target-summary');
+        luckyTargetSeats=luckyTargetSeats.filter(seat=>available.has(seat));
+        summary.textContent=luckyTargetSeats.length ? `已指定 ${luckyTargetSeats.length} 位候選同學，將從中抽出 1 人。` : '請先選擇候選同學，再隨機選出一人。';
+        grid.innerHTML=''; studentRoster.forEach(student=>{const availableStudent=available.has(student.seat), chosen=luckyTargetSeats.includes(student.seat),button=document.createElement('button');button.type='button';button.disabled=!availableStudent;button.className=`aspect-square rounded-2xl border p-3 text-center transition-colors ${chosen?'border-[#f6d365] bg-[#f6d365] text-[#2b2415] shadow-lg':'border-white/20 bg-white/10 text-white hover:bg-white/20'} ${availableStudent?'':'cursor-not-allowed opacity-30 grayscale'}`;button.innerHTML=`<span class="block text-lg font-bold opacity-75">${String(student.seat).padStart(2,'0')} 號</span><span class="mt-1 block text-2xl font-black">${escapeHTML(student.name)}</span>${availableStudent?'':'<span class="mt-1 block text-sm">缺席／已抽出</span>'}`;button.onclick=()=>{luckyTargetSeats=chosen?luckyTargetSeats.filter(seat=>seat!==student.seat):[...luckyTargetSeats,student.seat];renderLuckyTargetPicker();};grid.append(button);});
+    }
+    async function startLuckyTargetDraw() {
+        if(luckyDrawing) return; const pool=targetLuckyCandidates().filter(student=>luckyTargetSeats.includes(student.seat));
+        if(!pool.length){document.getElementById('lucky-target-summary').textContent='請至少選擇一位可抽選的同學。';return;}
+        closeLuckyTargetPicker(); luckyDrawing=true;
+        const controls=['lucky-round-count','lucky-draw-count','lucky-draw-button','lucky-continue-button','lucky-target-button'].map(id=>document.getElementById(id)); controls.forEach(control=>{control.disabled=true;control.classList.add('opacity-60');});
+        await drawLuckyRound(pool,1); luckyDrawing=false; luckyTargetSeats=[]; controls.forEach(control=>{control.disabled=false;control.classList.remove('opacity-60');}); enterLuckyContinueMode(); renderLuckyWheel();
     }
 
     function refreshLuckyContinueButton() {
@@ -1062,7 +1095,7 @@
         luckyDrawing = true;
         luckyDrawResults = [];
         luckySelectedSeats = [];
-        const controls = ['lucky-round-count', 'lucky-draw-count', 'lucky-draw-button', 'lucky-continue-button'].map(id => document.getElementById(id));
+        const controls = ['lucky-round-count', 'lucky-draw-count', 'lucky-draw-button', 'lucky-continue-button', 'lucky-target-button'].map(id => document.getElementById(id));
         controls.forEach(control => { control.disabled = true; control.classList.add('opacity-60'); });
         let pool = [...candidates];
         for (let round = 0; round < rounds; round += 1) {
@@ -1093,7 +1126,7 @@
             return;
         }
         luckyDrawing = true;
-        const controls = ['lucky-round-count', 'lucky-draw-count', 'lucky-draw-button', 'lucky-continue-button'].map(id => document.getElementById(id));
+        const controls = ['lucky-round-count', 'lucky-draw-count', 'lucky-draw-button', 'lucky-continue-button', 'lucky-target-button'].map(id => document.getElementById(id));
         controls.forEach(control => { control.disabled = true; control.classList.add('opacity-60'); });
         let remaining = [...pool];
         for (let round = 0; round < rounds; round += 1) {
@@ -1111,6 +1144,7 @@
         luckyDrawResults = [];
         luckySelectedSeats = [];
         luckyActiveSeat = null;
+        luckyTargetSeats = [];
         leaveLuckyContinueMode();
         renderLuckyWheel();
     }
