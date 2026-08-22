@@ -33,14 +33,15 @@
   const parseJSON = (value, fallback) => {
     try { const parsed = JSON.parse(value); return parsed ?? fallback; } catch (_) { return fallback; }
   };
-  const taipeiDate = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Taipei' }).format(new Date());
+  const taipeiDate = () => { const parts = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Taipei', year:'numeric', month:'2-digit', day:'2-digit' }).formatToParts(new Date()), pick = type => parts.find(part => part.type === type)?.value || ''; return `${pick('year')}-${pick('month')}-${pick('day')}`; };
   const nextDate = date => {
-    const value = new Date(`${date}T00:00:00+08:00`);
+    const [year, month, day] = String(date).split('-').map(Number);
+    const value = new Date(Date.UTC(year, month - 1, day));
     value.setUTCDate(value.getUTCDate() + 1);
     return value.toISOString().slice(0, 10);
   };
   const nonSchoolDays = data => Array.isArray(parseJSON(data?.nonSchoolDays, [])) ? parseJSON(data.nonSchoolDays, []).filter(day => /^\d{4}-\d{2}-\d{2}$/.test(day)) : [];
-  const isSchoolDay = (date, data = {}) => { const value = new Date(`${date}T00:00:00+08:00`); const weekday = value.getUTCDay(); return weekday > 0 && weekday < 6 && !nonSchoolDays(data).includes(date); };
+  const isSchoolDay = (date, data = {}) => { const [year, month, day] = String(date).split('-').map(Number); const weekday = new Date(Date.UTC(year, month - 1, day)).getUTCDay(); return weekday > 0 && weekday < 6 && !nonSchoolDays(data).includes(date); };
   const nextSchoolDate = (date, data = {}) => { let value = nextDate(date); while (!isSchoolDay(value, data)) value = nextDate(value); return value; };
   const normalizedEmail = account => {
     const text = String(account || '').trim().toLowerCase();
