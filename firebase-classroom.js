@@ -39,6 +39,8 @@
     value.setUTCDate(value.getUTCDate() + 1);
     return value.toISOString().slice(0, 10);
   };
+  const isSchoolDay = date => { const value = new Date(`${date}T00:00:00+08:00`); const weekday = value.getUTCDay(); return weekday > 0 && weekday < 6; };
+  const nextSchoolDate = date => { let value = nextDate(date); while (!isSchoolDay(value)) value = nextDate(value); return value; };
   const normalizedEmail = account => {
     const text = String(account || '').trim().toLowerCase();
     return text.includes('@') ? text : `${text}${TEACHER_DOMAIN}`;
@@ -57,7 +59,7 @@
       next.taskDate = JSON.stringify(today);
       return next;
     }
-    if (savedDate === today) return next;
+    if (savedDate === today || !isSchoolDay(today)) return next;
 
     const history = parseJSON(next.taskHistory, {});
     if (current.length) history[savedDate] = current;
@@ -104,7 +106,7 @@
     data.notebookCheckins = JSON.stringify(checkins);
 
     const today = taipeiDate();
-    const tomorrow = nextDate(today);
+    const tomorrow = nextSchoolDate(today);
     const scheduledTasks = parseJSON(data.scheduledTasks, []);
     const scheduledIds = new Set((Array.isArray(scheduledTasks) ? scheduledTasks : []).map(item => String(item?.id || '')).filter(Boolean));
     const withoutScheduledCopies = items => (Array.isArray(items) ? items : []).filter(item => !scheduledIds.has(String(item?.id || '')));
@@ -195,7 +197,7 @@
     if (!text) throw new Error('請填寫事項內容。');
     const handwriting = typeof body?.handwriting === 'string' && body.handwriting.startsWith('data:image/png;base64,') && body.handwriting.length <= 160000 ? body.handwriting : '';
     const createdAt = new Date().toISOString();
-    await tomorrowRef.doc(crypto.randomUUID()).set({ text, author: String(body?.author || '').trim().slice(0, 100), subject: String(body?.subject || '其他').trim().slice(0, 40), handwriting, createdAt, targetDate: nextDate(taipeiDate()) });
+    await tomorrowRef.doc(crypto.randomUUID()).set({ text, author: String(body?.author || '').trim().slice(0, 100), subject: String(body?.subject || '其他').trim().slice(0, 40), handwriting, createdAt, targetDate: nextSchoolDate(taipeiDate()) });
   }
 
   async function getStickyMessages(day) {

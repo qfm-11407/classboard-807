@@ -297,7 +297,7 @@
     $('sticky-history-next').addEventListener('click', () => shiftStickyHistoryDate(1));
     $('sticky-history-date-display').addEventListener('click', () => { const input=$('sticky-history-date'); try { if (typeof input.showPicker === 'function') input.showPicker(); else input.click(); } catch (_) { input.click(); } });
     $('sticky-history-date').addEventListener('change', renderStickyMessageHistory);
-    const nextDay = date => { const value=new Date(`${date}T00:00:00+08:00`); value.setUTCDate(value.getUTCDate()+1); return value.toISOString().slice(0,10); };
+    const nextDay = date => { let value=new Date(`${date}T00:00:00+08:00`); do { value.setUTCDate(value.getUTCDate()+1); } while (value.getUTCDay()===0||value.getUTCDay()===6); return value.toISOString().slice(0,10); };
     let scheduledCursor = new Date();
     async function refreshDailyDeleteCode() { try { $('daily-delete-code').textContent=await FirebaseClassroom.getDailyDeleteCode(); } catch (_) { $('daily-delete-code').textContent='登入後可查看'; } }
     function organizeScheduledPanel() {
