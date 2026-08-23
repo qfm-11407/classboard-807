@@ -19,6 +19,8 @@
     header { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:20px; }
     h1 { margin:0; font-size:clamp(1.7rem,3vw,3rem); letter-spacing:.12em; }
     .hint { margin:6px 0 0; color:rgba(255,255,255,.7); font-size:clamp(.95rem,1.5vw,1.25rem); }
+    .home-link { min-height:42px; padding:10px 16px; border:1px solid rgba(255,255,255,.22); border-radius:14px; color:#fff; background:rgba(255,255,255,.12); text-decoration:none; font-weight:900; white-space:nowrap; transition:.18s; }
+    .home-link:hover { background:rgba(255,255,255,.24); transform:translateY(-1px); }
     .number-panel { display:flex; overflow:hidden; border:1px solid rgba(255,255,255,.16); border-radius:24px; background:rgba(255,255,255,.09); box-shadow:0 12px 30px rgba(0,0,0,.22); backdrop-filter:blur(16px); }
     .number-item { min-width:160px; padding:13px 20px; text-align:center; }
     .number-item + .number-item { border-left:1px solid rgba(255,255,255,.15); }
@@ -43,7 +45,7 @@
     .login-card h2 { margin:0 0 8px; font-size:1.7rem; }.login-card p{color:rgba(255,255,255,.68);margin:0 0 20px;}
     .login-card label { display:block; margin:13px 0 6px; color:#fff; font-weight:800; }.login-card input { width:100%; border:1px solid rgba(255,255,255,.24); border-radius:14px; padding:12px 14px; color:#fff; background:rgba(0,0,0,.2); font-size:1rem; }.email-input{display:flex;align-items:center;border:1px solid rgba(255,255,255,.24);border-radius:14px;background:rgba(0,0,0,.2);overflow:hidden;}.email-input input{border:0;border-radius:0;background:transparent;min-width:0;}.email-input span{padding-right:13px;color:rgba(255,255,255,.7);font-weight:800;white-space:nowrap;}.login-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:22px;}.login-actions .primary{background:#f6d365;color:#253624;}.login-error{min-height:1.3em;margin-top:13px!important;color:#ffc7c7!important;font-size:.9rem;}
     .message-input { width:100%; min-height:150px; resize:none; border:1px solid rgba(255,255,255,.24); border-radius:16px; padding:13px; color:#fff; background:rgba(0,0,0,.2); font:800 1.15rem/1.55 "Microsoft JhengHei",sans-serif; }.message-count{margin:7px 0 0!important;text-align:right;font-size:.82rem!important;}.message-count.over{color:#ffc7c7!important;}
-    @media (max-width:700px) { body{overflow:auto;}main{min-height:100dvh;height:auto;padding:16px;gap:12px;} header{align-items:flex-start;flex-direction:column;} .number-panel{width:100%;}.number-item{flex:1;min-width:0;padding:11px 8px;}.board{min-height:720px;padding:12px;}.sticky-board{grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:repeat(14,minmax(120px,1fr));gap:12px;} .hint{display:none;} }
+    @media (max-width:700px) { body{overflow:auto;}main{min-height:100dvh;height:auto;padding:16px;gap:12px;} header{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:start;gap:12px;} .home-link{align-self:center;padding:9px 12px;font-size:.9rem;}.number-panel{grid-column:1/-1;width:100%;}.number-item{flex:1;min-width:0;padding:11px 8px;}.board{min-height:720px;padding:12px;}.sticky-board{grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:repeat(14,minmax(120px,1fr));gap:12px;} .hint{display:none;} }
   </style>
 </head>
 <body>
@@ -51,6 +53,7 @@
   <main>
     <header>
       <div><h1>807 留言板</h1><p class="hint">一排七張便利貼、共四排；點選便利貼即可留下訊息。</p></div>
+      <a href="board.html" class="home-link" aria-label="返回班級看板">← 返回首頁</a>
       <div class="number-panel" aria-label="今日資訊">
         <div class="number-item"><span class="number-label">TODAY</span><strong id="today-number" class="number-value">--/--</strong><span id="today-weekday" class="number-subtitle"></span></div>
         <div class="number-item"><span class="number-label">確認碼</span><strong id="confirmation-code" class="number-value">----</strong><button id="confirmation-status" type="button" class="number-subtitle" onclick="openTeacherLogin()">教師登入後顯示</button></div>
