@@ -278,14 +278,6 @@
     function normalizeTasks() { const data = readJSON('subjectData', {}), before=JSON.stringify(data); subjects.forEach(subject => { if (data[subject]) data[subject].forEach(task => task.records = normalizeRecords(task.records)); }); if(JSON.stringify(data)!==before) writeJSON('subjectData', data); return data; }
     function showPanel(name) { const activeTab = name === 'subject-area' ? 'tasks' : name; if(['cadres','daily','duty','seating','leave','lunch','tasks','subject-area'].includes(name)) cleanupDeletedStudentLinks(); document.querySelectorAll('.panel').forEach(p => p.classList.toggle('active', p.id === `panel-${name}`)); document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.panel === activeTab)); document.querySelectorAll('.mobile-tab[data-panel]').forEach(t => t.classList.toggle('active', t.dataset.panel === activeTab)); if (name === 'timetable') renderTimetable(); if (name === 'exam') renderExamEditor(); if (name === 'tasks') renderTasks(); if (name === 'subject-area') renderSubjectAreaPicker(); if (name === 'cadres') renderCadres(); if (name === 'daily') renderDaily(); if (name === 'scheduled') renderScheduledTasks(); if (name === 'duty') renderDuty(); if (name === 'seating') renderSeating(); if (name === 'leave') renderLeaveRecords(); if (name === 'lunch') renderLunchPanel(); if (name === 'messages') renderStickyMessageHistory(); }
 
-    const seatingTab = document.querySelector('.tab[data-panel="seating"]');
-    if (seatingTab) {
-      const taskTab = document.createElement('button');
-      taskTab.className = 'tab';
-      taskTab.dataset.panel = 'tasks';
-      taskTab.textContent = '科目任務';
-      seatingTab.insertAdjacentElement('afterend', taskTab);
-    }
     document.querySelectorAll('.tab').forEach(tab => tab.addEventListener('click', () => showPanel(tab.dataset.panel)));
     document.querySelectorAll('.mobile-tab[data-panel],.teacher-dashboard [data-panel]').forEach(tab => tab.addEventListener('click', () => showPanel(tab.dataset.panel)));
     const taipeiDay = () => { const parts=new Intl.DateTimeFormat('en-US',{timeZone:'Asia/Taipei',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date()),pick=type=>parts.find(part=>part.type===type)?.value||''; return `${pick('year')}-${pick('month')}-${pick('day')}`; };
