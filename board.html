@@ -355,7 +355,7 @@
                     <div class="w-32 h-32 squircle bg-pastel-purple flex items-center justify-center"><i class="fa-solid fa-calendar-alt text-6xl text-white/90 drop-shadow-md"></i></div>
                     <span class="text-white font-bold text-2xl tracking-widest group-hover:text-[#8fd3f4] transition-colors">課表</span>
                 </div>
-                <div class="flex flex-col items-center gap-3 cursor-pointer group" onclick="openMessageBoard()">
+                <div class="flex flex-col items-center gap-3 cursor-pointer group" onclick="openApp('messages')">
                     <div class="w-32 h-32 squircle bg-pastel-yellow flex items-center justify-center"><i class="fa-solid fa-note-sticky text-6xl text-white/90 drop-shadow-md"></i></div>
                     <span class="text-white font-bold text-2xl tracking-widest group-hover:text-[#8fd3f4] transition-colors">留言板</span>
                 </div>
@@ -483,6 +483,10 @@
                     <button type="button" onclick="openApp('lunch')" class="group rounded-[2.5rem] border border-white/20 bg-white/10 p-12 text-center transition hover:-translate-y-1 hover:bg-white/20"><i class="fa-solid fa-utensils text-7xl text-[#84fab0] drop-shadow-md"></i><span class="mt-7 block text-4xl font-black tracking-widest text-white">午餐小組</span><small class="mt-3 block text-xl font-bold text-white/60">今日菜單與負責同學</small></button>
                     <button type="button" onclick="openApp('cleaning')" class="group rounded-[2.5rem] border border-white/20 bg-white/10 p-12 text-center transition hover:-translate-y-1 hover:bg-white/20"><i class="fa-solid fa-broom text-7xl text-[#f6d365] drop-shadow-md"></i><span class="mt-7 block text-4xl font-black tracking-widest text-white">打掃任務</span><small class="mt-3 block text-xl font-bold text-white/60">各分區工作與負責同學</small></button>
                 </div>
+            </div>
+
+            <div id="app-content-messages" class="w-full h-full hidden">
+                <iframe title="807 留言板" src="doodle.html?embedded=1" class="h-full w-full border-0"></iframe>
             </div>
 
             <div id="app-content-tomorrow" class="w-full h-full flex p-10 gap-8 hidden">
@@ -786,6 +790,8 @@
             renderCleaningTasksUI();
         } else if (type === 'division') {
             document.getElementById('app-content-division').classList.remove('hidden');
+        } else if (type === 'messages') {
+            document.getElementById('app-content-messages').classList.remove('hidden');
         } else if (type === 'tomorrow') {
             document.getElementById('app-content-tomorrow').classList.remove('hidden');
             renderTomorrowTasks();
@@ -809,10 +815,6 @@
         } else if (type === 'reading') {
             document.getElementById('app-content-reading').classList.remove('hidden');
         }
-    }
-
-    function openMessageBoard() {
-        window.location.href = 'doodle.html';
     }
 
     function prepareNotebookWindow() {

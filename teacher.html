@@ -31,6 +31,7 @@
     .btn { border:0; border-radius:10px; padding:10px 15px; font-weight:700; background:var(--green); color:#fff; box-shadow:0 3px 8px #1f553727; }
     .btn:hover { filter:brightness(1.06); } .btn.light { background:#fff; color:var(--green); border:1px solid var(--line); box-shadow:none; } .btn.danger { background:var(--danger); }
     .tabs { display:flex; gap:8px; overflow:auto; margin-bottom:20px; padding-bottom:3px; }
+    @media (min-width:701px) { .tabs { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); overflow:visible; } .tab { min-width:0; text-align:center; } }
     .tab { white-space:nowrap; border:1px solid var(--line); color:#456355; background:#ffffffbd; border-radius:999px; padding:9px 14px; font-weight:700; }
     .tab.active { background:var(--ink); color:#fff; border-color:var(--ink); }
     .mobile-tabbar,.teacher-dashboard { display:none; }
@@ -172,7 +173,7 @@
       <div class="actions"><a class="btn light" href="board.html">開啟班級看板</a></div>
     </header>
     <nav class="tabs" aria-label="教師管理功能">
-      <button class="tab" data-panel="class">班級名單</button><button class="tab" data-panel="cadres">班級幹部</button><button class="tab" data-panel="timetable">每週課表</button><button class="tab" data-panel="seating">學生座位</button><button class="tab" data-panel="leave">請假記錄</button><button class="tab" data-panel="lunch">午餐小組</button><button class="tab" data-panel="daily">打掃任務</button><button class="tab active" data-panel="scheduled">事項排程</button><button class="tab" data-panel="duty">值日生</button><button class="tab" data-panel="exam">段考考程</button><button class="tab" data-panel="messages">留言回顧</button>
+      <button class="tab" data-panel="class">班級名單</button><button class="tab" data-panel="cadres">班級幹部</button><button class="tab" data-panel="seating">學生座位</button><button class="tab" data-panel="lunch">午餐小組</button><button class="tab" data-panel="daily">打掃任務</button><button class="tab" data-panel="duty">值日生</button><button class="tab active" data-panel="scheduled">事項排程</button><button class="tab" data-panel="timetable">每週課表</button><button class="tab" data-panel="tasks">科目任務</button><button class="tab" data-panel="exam">段考考程</button><button class="tab" data-panel="leave">請假記錄</button><button class="tab" data-panel="messages">留言回顧</button>
     </nav>
     <nav class="mobile-tabbar" aria-label="教師 App 導覽">
       <button class="mobile-tab" type="button" data-panel="home"><span class="mobile-icon">⌂</span><span>總覽</span></button><button class="mobile-tab" type="button" data-panel="scheduled"><span class="mobile-icon">📅</span><span>排程</span></button><button class="mobile-tab" type="button" data-panel="tasks"><span class="mobile-icon">✓</span><span>科目</span></button><button class="mobile-tab" type="button" data-panel="daily"><span class="mobile-icon">🧹</span><span>打掃</span></button><button class="mobile-tab" type="button" data-panel="lunch"><span class="mobile-icon">🍽️</span><span>午餐</span></button>
