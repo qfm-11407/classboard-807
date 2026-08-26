@@ -43,6 +43,12 @@
   const nonSchoolDays = data => Array.isArray(parseJSON(data?.nonSchoolDays, [])) ? parseJSON(data.nonSchoolDays, []).filter(day => /^\d{4}-\d{2}-\d{2}$/.test(day)) : [];
   const isSchoolDay = (date, data = {}) => { const [year, month, day] = String(date).split('-').map(Number); const weekday = new Date(Date.UTC(year, month - 1, day)).getUTCDay(); return weekday > 0 && weekday < 6 && !nonSchoolDays(data).includes(date); };
   const nextSchoolDate = (date, data = {}) => { let value = nextDate(date); while (!isSchoolDay(value, data)) value = nextDate(value); return value; };
+  const previousSchoolDate = (date, data = {}) => {
+    let [year, month, day] = String(date).split('-').map(Number);
+    const value = new Date(Date.UTC(year, month - 1, day));
+    do { value.setUTCDate(value.getUTCDate() - 1); } while (!isSchoolDay(value.toISOString().slice(0, 10), data));
+    return value.toISOString().slice(0, 10);
+  };
   const normalizedEmail = account => {
     const text = String(account || '').trim().toLowerCase();
     return text.includes('@') ? text : `${text}${TEACHER_DOMAIN}`;
@@ -116,17 +122,20 @@
     const tomorrowTasks = withoutScheduledCopies(parseJSON(data.tomorrowTasks, []));
     const taskHistory = parseJSON(data.taskHistory, {});
     if (taskHistory && typeof taskHistory === 'object') Object.keys(taskHistory).forEach(day => { taskHistory[day] = withoutScheduledCopies(taskHistory[day]); });
-    const mergeTask = (item, fallbackId, deletable = false) => {
+    const mergeTask = (item, fallbackId, deletable = false, scheduled = false) => {
       if (!item || !/^\d{4}-\d{2}-\d{2}$/.test(String(item.targetDate || '')) || !String(item.text || '').trim()) return;
       const task = { id: item.id || fallbackId, text: String(item.text).slice(0,500), author: String(item.author || '').slice(0,100), subject: String(item.subject || '其他').slice(0,40), handwriting: item.handwriting || '', createdAt: item.createdAt || '', deletable };
-      if (item.targetDate === tomorrow) tomorrowTasks.push(task);
-      else if (item.targetDate === today) todayTasks.push(task);
-      else if (item.targetDate < today) {
+      if (scheduled && !isSchoolDay(today, data)) return;
+      const tomorrowDisplayDate = scheduled ? today : tomorrow;
+      const todayDisplayDate = scheduled ? previousSchoolDate(today, data) : today;
+      if (item.targetDate === tomorrowDisplayDate) tomorrowTasks.push(task);
+      else if (item.targetDate === todayDisplayDate) todayTasks.push(task);
+      else if (item.targetDate < todayDisplayDate) {
         if (!Array.isArray(taskHistory[item.targetDate])) taskHistory[item.targetDate] = [];
         taskHistory[item.targetDate].push(task);
       }
     };
-    if (Array.isArray(scheduledTasks)) scheduledTasks.forEach((item,index) => mergeTask(item, `scheduled-${index}`));
+    if (Array.isArray(scheduledTasks)) scheduledTasks.forEach((item,index) => mergeTask(item, `scheduled-${index}`, false, true));
     tomorrowSnapshot.forEach(document => {
       const item = document.data();
       mergeTask({ ...item, id: document.id }, document.id, true);

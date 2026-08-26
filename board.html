@@ -690,9 +690,7 @@
     }
     async function loadCloudData() {
         try {
-            const response = await fetch(CLOUD_ENDPOINT, { cache: 'no-store' });
-            if (!response.ok) throw new Error('Cloud data unavailable');
-            const payload = await response.json();
+            const payload = await FirebaseClassroom.getState();
             if (!payload.hasData) { document.body.classList.remove('cloud-loading'); return; }
             const data = payload.data || {};
             let changed = false;
