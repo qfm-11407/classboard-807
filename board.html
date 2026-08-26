@@ -1189,10 +1189,11 @@
         ['數學', '理化', '國文', '歷史', '英文'], ['英文', '國文', '數學', '地理', '班會'],
         ['理化', '輔導', '體育', '公民', '社團'], ['自習', '自習', '自習', '自習', '社團']
     ];
-    let timeSlots = JSON.parse(localStorage.getItem('classTimeSlots')) || [
-        '08:10 - 09:00', '09:10 - 10:00', '10:10 - 11:00', '11:10 - 12:00',
+    const normalizeTimeSlots = slots => { const next=Array.isArray(slots)?[...slots]:[]; if (next[2] === '10:10 - 11:00') next[2]='10:15 - 11:00'; return next; };
+    let timeSlots = normalizeTimeSlots(JSON.parse(localStorage.getItem('classTimeSlots')) || [
+        '08:10 - 09:00', '09:10 - 10:00', '10:15 - 11:00', '11:10 - 12:00',
         '13:10 - 14:00', '14:10 - 15:00', '15:10 - 16:00', '16:10 - 17:00'
-    ];
+    ]);
     let isEditingTimetable = false;
 
 
