@@ -672,7 +672,7 @@
     window.addEventListener('resize', resizeApp); resizeApp();
 
     const CLOUD_ENDPOINT = '/api/classroom';
-    const CLOUD_KEYS = ['classroomTotalStudents','classroomStudentNames','classroomStudentRoster','classSeating','classroomSeatingLayout','classTimetable','classTimeSlots','examSchedule','examScheduleDays','examDayCount','examActiveDay','subjectData','dailyTasks','todayTasks','tomorrowTasks','taskHistory','taskDate','scheduledTasks','nonSchoolDays','cleaningTasks','cleaningTaskConfig','cleaningAssignments','femaleRestroomLayout','dutyAssignments','dutyRotationStartDate','classCadres','classCadreConfig','lunchAssignments','lunchCategoryLimits','monthlyMenus','notebookCheckins'];
+    const CLOUD_KEYS = ['classroomTotalStudents','classroomStudentNames','classroomStudentRoster','classSeating','classroomSeatingLayout','classTimetable','classTimeSlots','subjectTeachers','examSchedule','examScheduleDays','examDayCount','examActiveDay','subjectData','dailyTasks','todayTasks','tomorrowTasks','taskHistory','taskDate','scheduledTasks','nonSchoolDays','cleaningTasks','cleaningTaskConfig','cleaningAssignments','femaleRestroomLayout','dutyAssignments','dutyRotationStartDate','classCadres','classCadreConfig','lunchAssignments','lunchCategoryLimits','monthlyMenus','notebookCheckins'];
     const PUBLIC_MENU_URL = 'https://raw.githubusercontent.com/qfm-11407/classboard-807/main/data/monthly-menu.json';
     let publicMonthlyMenus = {};
     async function loadPublicMenus() {
@@ -1192,6 +1192,7 @@
         '08:10 - 09:00', '09:10 - 10:00', '10:15 - 11:00', '11:10 - 12:00',
         '13:10 - 14:00', '14:10 - 15:00', '15:10 - 16:00', '16:10 - 17:00'
     ]);
+    const subjectTeachers = () => { try { const value=JSON.parse(localStorage.getItem('subjectTeachers')); return value && typeof value==='object' && !Array.isArray(value) ? value : {}; } catch (_) { return {}; } };
     let isEditingTimetable = false;
 
 
@@ -1249,7 +1250,8 @@
                 const isActive = (currentDay === day + 1) && isCurrentPeriod && !isEditingTimetable;
                 const isNext = (currentDay === day + 1) && isSchoolBreak && period===nextPeriod && !isEditingTimetable;
                 const cellClass = isActive ? 'timetable-active-cell font-black' : isNext ? 'timetable-next-cell font-bold' : 'border-r border-white/10 text-white/90 hover:bg-white/10';
-                let cellContent = isEditingTimetable ? `<input type="text" id="subject-input-${period}-${day}" value="${subject}" class="w-full h-full bg-transparent text-center focus:outline-none focus:bg-white/10 text-white text-2xl font-bold py-2">` : subject;
+                const teacher = String(subjectTeachers()[subject] || '').trim();
+                let cellContent = isEditingTimetable ? `<input type="text" id="subject-input-${period}-${day}" value="${subject}" class="w-full h-full bg-transparent text-center focus:outline-none focus:bg-white/10 text-white text-2xl font-bold py-2">` : `<div>${escapeHTML(subject)}</div>${teacher ? `<div class="mt-1 text-sm font-medium text-white/60">${escapeHTML(teacher)}</div>` : ''}`;
                 rowHtml += `<td class="py-4 transition-all duration-300 ${cellClass}">${cellContent}</td>`;
             }
             rowHtml += `</tr>`;
