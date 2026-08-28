@@ -228,7 +228,7 @@
     <section class="panel" id="panel-leave"><h2>請假記錄</h2><p class="hint">每日 17:00 會將座位表上的缺席學生結算為當日請假紀錄，並重設為全班出席。日曆有標記的日期代表當天有請假記錄。</p><div class="grid2" style="grid-template-columns:minmax(280px,.9fr) minmax(0,1.1fr)"><div class="schedule-calendar"><div class="schedule-calendar-head"><button class="btn light" id="leave-prev" type="button">‹</button><div class="schedule-title"><h3 id="leave-month"></h3><span id="leave-total" class="schedule-total"></span></div><button class="btn light" id="leave-next" type="button">›</button></div><div class="schedule-weekdays"><span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span></div><div id="leave-calendar" class="schedule-days"></div></div><div class="card"><h3 id="leave-date-title" style="margin-top:0">依日期查看</h3><div id="leave-date-list" class="list"></div></div></div><div class="card" style="margin-top:18px"><h3 style="margin-top:0">依姓名查詢</h3><p class="hint">點選座位表中的學生，即可列出該學生所有請假日期。</p><div class="front-board">黑板／講台</div><div id="leave-seating-layout" class="seating-layout"></div><div id="leave-student-summary" class="hint" style="margin:14px 0 8px;font-weight:800">請選擇學生</div><div id="leave-student-list" class="list"></div></div><p class="notice" id="leave-message"></p></section>
 
 
-    <section class="panel" id="panel-lunch"><h2>午餐小組</h2><p class="hint">每週由一組輪值，不區分工作項目。14 號固定加入三組，教師只需設定本週負責的小組。</p><div class="card"><h3 style="margin-top:0">本週午餐輪值組別</h3><div id="lunch-weekly-groups" class="lunch-weekly-groups"></div><p class="notice" id="lunch-message"></p></div><div class="card" style="margin-top:18px"><h3 style="margin-top:0">每月菜單</h3><div class="row"><input id="menu-month" type="month" style="width:auto"><button class="btn light" id="load-menu" type="button">載入月份</button><button class="btn" id="save-menu" type="button">儲存菜單</button></div><p class="hint" style="margin-top:12px">可貼上「日期,菜單名稱」或「日,菜單名稱」，每行一筆。</p><textarea id="menu-paste" placeholder="1,咖哩雞肉&#10;2,滷肉飯" style="min-height:90px"></textarea><div class="table-wrap" style="margin-top:12px"><table><thead><tr><th>日期</th><th>菜單名稱</th></tr></thead><tbody id="monthly-menu-body"></tbody></table></div><p class="notice" id="menu-message"></p></div></section>
+    <section class="panel" id="panel-lunch"><h2>午餐小組</h2><p class="hint">每週由一組輪值，不區分工作項目。14 號固定加入三組；點選目前負責小組後，每週一會自動輪替下一組。</p><div class="card"><h3 style="margin-top:0">本週午餐輪值組別</h3><div id="lunch-weekly-groups" class="lunch-weekly-groups"></div><p class="notice" id="lunch-message"></p></div><div class="card" style="margin-top:18px"><h3 style="margin-top:0">每月菜單</h3><div class="row"><input id="menu-month" type="month" style="width:auto"><button class="btn light" id="load-menu" type="button">載入月份</button><button class="btn" id="save-menu" type="button">儲存菜單</button></div><p class="hint" style="margin-top:12px">可貼上「日期,菜單名稱」或「日,菜單名稱」，每行一筆。</p><textarea id="menu-paste" placeholder="1,咖哩雞肉&#10;2,滷肉飯" style="min-height:90px"></textarea><div class="table-wrap" style="margin-top:12px"><table><thead><tr><th>日期</th><th>菜單名稱</th></tr></thead><tbody id="monthly-menu-body"></tbody></table></div><p class="notice" id="menu-message"></p></div></section>
 
   </main>
 
@@ -250,7 +250,7 @@
     const $ = id => document.getElementById(id);
     const escapeHTML = value => String(value ?? '').replace(/[&<>'"]/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]));
     const CLOUD_ENDPOINT = '/api/classroom';
-    const CLOUD_KEYS = ['classroomTotalStudents','classroomStudentNames','classroomStudentRoster','classSeating','classroomSeatingLayout','classTimetable','classTimeSlots','subjectTeachers','subjectTeacherOrder','examSchedule','examScheduleDays','examDayCount','examActiveDay','subjectData','dailyTasks','todayTasks','tomorrowTasks','taskHistory','taskDate','scheduledTasks','nonSchoolDays','cleaningTasks','cleaningTaskConfig','cleaningAssignments','femaleRestroomLayout','dutyAssignments','dutyRotationStartDate','classCadres','classCadreConfig','leaveRecords','leaveSettlements','lunchAssignments','lunchCategoryLimits','lunchWeeklyGroup','monthlyMenus','notebookCheckins'];
+    const CLOUD_KEYS = ['classroomTotalStudents','classroomStudentNames','classroomStudentRoster','classSeating','classroomSeatingLayout','classTimetable','classTimeSlots','subjectTeachers','subjectTeacherOrder','examSchedule','examScheduleDays','examDayCount','examActiveDay','subjectData','dailyTasks','todayTasks','tomorrowTasks','taskHistory','taskDate','scheduledTasks','nonSchoolDays','cleaningTasks','cleaningTaskConfig','cleaningAssignments','femaleRestroomLayout','dutyAssignments','dutyRotationStartDate','classCadres','classCadreConfig','leaveRecords','leaveSettlements','lunchAssignments','lunchCategoryLimits','lunchWeeklyGroup','lunchRotationStartDate','monthlyMenus','notebookCheckins'];
     const PUBLIC_MENU_URL = 'https://raw.githubusercontent.com/qfm-11407/classboard-807/main/data/monthly-menu.json';
     let publicMonthlyMenus = {};
     let publicMenuLoadStarted = false;
@@ -817,7 +817,10 @@
       { id:'group-2', label:'第 2 組', seats:[11,12,13,14,15,16,17,18,19] },
       { id:'group-3', label:'第 3 組', seats:[20,21,22,23,14,25,26,27,28] }
     ];
-    function activeLunchWeeklyGroupId() { const id=readJSON('lunchWeeklyGroup','group-1'); return LUNCH_WEEKLY_GROUPS.some(group=>group.id===id) ? id : 'group-1'; }
+    function lunchWeekStart(day=taipeiDay()) { const [year,month,date]=String(day).split('-').map(Number),value=new Date(Date.UTC(year,month-1,date)),weekday=value.getUTCDay();value.setUTCDate(value.getUTCDate()-(weekday===0?6:weekday-1));return value.toISOString().slice(0,10); }
+    function storedLunchRotationStartDate(fallback=lunchWeekStart()) { const value=readJSON('lunchRotationStartDate',fallback);return /^\d{4}-\d{2}-\d{2}$/.test(String(value)) ? String(value) : fallback; }
+    function lunchWeekSteps(startDay,endDay=taipeiDay()) { const start=new Date(`${lunchWeekStart(startDay)}T00:00:00Z`),end=new Date(`${lunchWeekStart(endDay)}T00:00:00Z`);return Math.round((end-start)/(7*24*60*60*1000)); }
+    function activeLunchWeeklyGroupId() { const baseId=readJSON('lunchWeeklyGroup','group-1'),baseIndex=Math.max(0,LUNCH_WEEKLY_GROUPS.findIndex(group=>group.id===baseId)),steps=lunchWeekSteps(storedLunchRotationStartDate());return LUNCH_WEEKLY_GROUPS[((baseIndex+steps)%LUNCH_WEEKLY_GROUPS.length+LUNCH_WEEKLY_GROUPS.length)%LUNCH_WEEKLY_GROUPS.length].id; }
     function lunchWeeklyMembers(group) { const bySeat=new Map(roster().map(student=>[student.seat,student])); return group.seats.map(seat=>bySeat.get(seat)).filter(Boolean); }
     function defaultSeatingLayout() { return Array.from({length:30},(_,index)=>roster()[index]?.seat || null); }
     function normalizedSeatingLayout() { const valid=new Set(roster().map(student=>student.seat)), raw=readJSON('classroomSeatingLayout',[]), layout=Array(30).fill(null), used=new Set(); if(Array.isArray(raw)) raw.slice(0,30).forEach((seat,index)=>{const value=Number(seat);if(valid.has(value)&&!used.has(value)){layout[index]=value;used.add(value);}}); roster().forEach(student=>{if(!used.has(student.seat)){const index=layout.indexOf(null);if(index>=0){layout[index]=student.seat;used.add(student.seat);}}}); return layout; }
@@ -864,7 +867,7 @@
         } catch (error) { message('lunch-api-message', error.message || '申請失敗，請稍後再試。'); }
       });
     }
-    function renderLunchPanel() { renderLunchWeeklyGroups(); renderMonthlyMenu(); }
+    function renderLunchPanel() { if(localStorage.getItem('lunchRotationStartDate')===null)writeJSON('lunchRotationStartDate',lunchWeekStart());renderLunchWeeklyGroups(); renderMonthlyMenu(); }
     function renderLunchWeeklyGroups() {
       const current=activeLunchWeeklyGroupId(), container=$('lunch-weekly-groups');
       container.innerHTML='';
@@ -874,7 +877,7 @@
         button.className=`lunch-weekly-group ${group.id===current?'active':''}`;
         button.setAttribute('aria-pressed', String(group.id===current));
         button.innerHTML=`<strong>${group.label}${group.id===current?'｜本週負責':''}</strong><span class="lunch-weekly-caption">${members.length} 人｜14 號固定協助</span><span class="lunch-weekly-members">${members.map(student=>`<span class="lunch-weekly-seat ${student.seat===14?'fixed':''}">${String(student.seat).padStart(2,'0')} ${escapeHTML(student.name)}</span>`).join('')}</span>`;
-        button.onclick=()=>{ if(group.id===current) return; writeJSON('lunchWeeklyGroup',group.id); renderLunchWeeklyGroups(); message('lunch-message',`已設定本週由${group.label}負責午餐。`); };
+        button.onclick=()=>{ if(group.id===current) return; writeJSON('lunchWeeklyGroup',group.id);writeJSON('lunchRotationStartDate',lunchWeekStart());renderLunchWeeklyGroups(); message('lunch-message',`已設定本週由${group.label}負責；下週一會自動輪替下一組。`); };
         container.append(button);
       });
     }
