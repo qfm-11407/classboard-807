@@ -546,7 +546,7 @@
                     <h2 class="text-4xl font-bold text-white tracking-widest flex items-center">
                         <i class="fa-solid fa-chair mr-4 text-[#a1c4fd]"></i> 教室座位表
                     </h2>
-                    <button onclick="toggleSeatingZoom()" id="seating-zoom-button" class="px-5 py-2 rounded-xl border border-white/30 bg-white/10 text-white text-xl font-bold hover:bg-white/20">放大座位表</button>
+                    <button onclick="openDisplayZoom('seating')" id="seating-zoom-button" class="px-5 py-2 rounded-xl border border-white/30 bg-white/10 text-white text-xl font-bold hover:bg-white/20"><i class="fa-solid fa-magnifying-glass-plus mr-2"></i>放大檢視</button>
                     <div class="hidden flex items-center bg-black/30 px-4 py-2 rounded-xl border border-white/20 shadow-inner">
                         <button onclick="openNameEditor()" class="mr-4 px-4 py-2 bg-emerald-500/50 hover:bg-emerald-500 text-white font-bold rounded-lg transition-colors shadow">編輯名單</button>
                         <span class="text-white text-xl mr-3 font-bold">班級總人數：</span>
@@ -569,9 +569,12 @@
                     <h2 class="text-4xl font-bold text-white tracking-widest flex items-center">
                         <i class="fa-solid fa-calendar-alt mr-4 text-[#fbc2eb]"></i> 班級每週課表
                     </h2>
-                    <button onclick="toggleTimetableEdit()" id="btn-timetable-edit" class="hidden px-6 py-3 bg-purple-500/50 hover:bg-purple-500 text-white text-xl font-bold rounded-xl border border-white/30 transition-colors shadow-lg">
-                        <i class="fa-solid fa-pen mr-3"></i>編輯課表
-                    </button>
+                    <div class="flex items-center gap-3">
+                        <button onclick="openDisplayZoom('timetable')" class="px-5 py-2 rounded-xl border border-white/30 bg-white/10 text-white text-xl font-bold hover:bg-white/20"><i class="fa-solid fa-magnifying-glass-plus mr-2"></i>放大檢視</button>
+                        <button onclick="toggleTimetableEdit()" id="btn-timetable-edit" class="hidden px-6 py-3 bg-purple-500/50 hover:bg-purple-500 text-white text-xl font-bold rounded-xl border border-white/30 transition-colors shadow-lg">
+                            <i class="fa-solid fa-pen mr-3"></i>編輯課表
+                        </button>
+                    </div>
                 </div>
                 <div class="w-full max-w-7xl flex-1 glass-panel rounded-3xl overflow-hidden border border-white/20">
                     <table class="w-full h-full text-center text-white text-2xl font-bold border-collapse">
@@ -683,6 +686,28 @@
             <p id="lucky-target-summary" class="mt-3 text-xl text-white/65">請先選擇候選同學，再隨機選出一人。</p>
             <div id="lucky-target-grid" class="mt-7 grid flex-1 grid-cols-7 content-center gap-4 overflow-y-auto pr-2 no-scrollbar"></div>
             <div class="mt-7 flex items-center justify-end gap-4 border-t border-white/15 pt-6"><button type="button" onclick="closeLuckyTargetPicker()" class="rounded-xl bg-white/15 px-6 py-3 text-xl font-bold text-white hover:bg-white/25">取消</button><button id="lucky-target-draw-button" type="button" onclick="startLuckyTargetDraw()" class="rounded-xl bg-[#c4b5fd] px-7 py-3 text-xl font-black text-[#251341] hover:bg-[#ddd6fe]">從指定名單抽出 1 人</button></div>
+        </section>
+    </div>
+
+    <!-- 學生端放大檢視：課表與座位表共用 -->
+    <div id="display-zoom-modal" class="absolute inset-0 z-[80] hidden bg-[#071525]/95 p-7 opacity-0 backdrop-blur-xl transition-opacity duration-300">
+        <section id="display-zoom-window" class="relative flex h-full w-full scale-95 flex-col transition-transform duration-300">
+            <header class="flex shrink-0 items-center justify-between gap-6 px-3 pb-5">
+                <div>
+                    <h2 id="display-zoom-title" class="text-4xl font-black tracking-widest text-white"></h2>
+                    <p class="mt-2 text-lg text-white/60">可用下方按鈕調整字級，並拖曳或捲動查看內容。</p>
+                </div>
+                <div class="flex items-center gap-3">
+                    <button type="button" onclick="changeDisplayZoom(-0.25)" aria-label="縮小" class="flex h-14 w-14 items-center justify-center rounded-2xl border border-white/25 bg-white/10 text-3xl font-black text-white hover:bg-white/20">−</button>
+                    <span id="display-zoom-value" class="min-w-20 text-center text-2xl font-black text-[#f6d365]">150%</span>
+                    <button type="button" onclick="changeDisplayZoom(0.25)" aria-label="放大" class="flex h-14 w-14 items-center justify-center rounded-2xl border border-white/25 bg-white/10 text-3xl font-black text-white hover:bg-white/20">＋</button>
+                    <button type="button" onclick="resetDisplayZoom()" class="rounded-2xl border border-white/25 bg-white/10 px-5 py-3 text-xl font-bold text-white hover:bg-white/20">重設</button>
+                    <button type="button" onclick="closeDisplayZoom()" aria-label="關閉" class="ml-2 flex h-14 w-14 items-center justify-center rounded-full bg-white/15 text-3xl text-white hover:bg-white/30"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+            </header>
+            <div id="display-zoom-scroll" class="min-h-0 flex-1 overflow-auto rounded-[2rem] border border-white/20 bg-black/20 p-8 shadow-inner">
+                <div id="display-zoom-content" class="flex min-h-full min-w-full items-start justify-center"></div>
+            </div>
         </section>
     </div>
 </div>
@@ -958,12 +983,56 @@
         });
     }
 
-    let seatingZoomed = false;
-    function toggleSeatingZoom() {
-        seatingZoomed = !seatingZoomed;
-        document.getElementById('app-content-seating').classList.toggle('seating-zoomed', seatingZoomed);
-        document.getElementById('seating-zoom-button').textContent = seatingZoomed ? '縮小座位表' : '放大座位表';
+    let displayZoomKind = '';
+    let displayZoomScale = 1.5;
+    function cloneForDisplayZoom(kind) {
+        const preview = document.createElement('div');
+        preview.className = 'flex flex-col items-center gap-8';
+        if (kind === 'seating') {
+            const board = document.getElementById('seating-board').cloneNode(true);
+            const grid = document.getElementById('seating-grid').cloneNode(true);
+            board.removeAttribute('id'); grid.removeAttribute('id');
+            grid.querySelectorAll('[onclick]').forEach(node => node.removeAttribute('onclick'));
+            board.style.width = '1380px'; board.style.maxWidth = 'none'; board.style.marginBottom = '0';
+            grid.style.width = '1380px'; grid.style.height = '910px'; grid.style.flex = 'none';
+            preview.append(board, grid);
+        } else {
+            const table = document.querySelector('#app-content-timetable table').cloneNode(true);
+            table.querySelectorAll('[id]').forEach(node => node.removeAttribute('id'));
+            table.style.width = '1720px'; table.style.minWidth = '1720px'; table.style.height = 'auto';
+            table.classList.remove('h-full');
+            preview.append(table);
+        }
+        preview.style.zoom = String(displayZoomScale);
+        return preview;
     }
+    function renderDisplayZoom() {
+        const content = document.getElementById('display-zoom-content');
+        content.innerHTML = '';
+        content.appendChild(cloneForDisplayZoom(displayZoomKind));
+        document.getElementById('display-zoom-value').textContent = `${Math.round(displayZoomScale * 100)}%`;
+    }
+    function openDisplayZoom(kind) {
+        displayZoomKind = kind;
+        displayZoomScale = 1.5;
+        document.getElementById('display-zoom-title').innerHTML = kind === 'seating'
+            ? '<i class="fa-solid fa-chair mr-3 text-[#a1c4fd]"></i>教室座位表｜放大檢視'
+            : '<i class="fa-solid fa-calendar-alt mr-3 text-[#fbc2eb]"></i>班級每週課表｜放大檢視';
+        renderDisplayZoom();
+        const modal = document.getElementById('display-zoom-modal'), windowEl = document.getElementById('display-zoom-window');
+        modal.classList.remove('hidden');
+        requestAnimationFrame(() => { modal.classList.remove('opacity-0'); windowEl.classList.remove('scale-95'); });
+    }
+    function closeDisplayZoom() {
+        const modal = document.getElementById('display-zoom-modal'), windowEl = document.getElementById('display-zoom-window');
+        modal.classList.add('opacity-0'); windowEl.classList.add('scale-95');
+        setTimeout(() => modal.classList.add('hidden'), 300);
+    }
+    function changeDisplayZoom(step) {
+        displayZoomScale = Math.max(1, Math.min(2.25, Math.round((displayZoomScale + step) * 100) / 100));
+        renderDisplayZoom();
+    }
+    function resetDisplayZoom() { displayZoomScale = 1.5; renderDisplayZoom(); }
 
     function toggleSeatingState(seat) {
         if (!isTeacherMode) return;
