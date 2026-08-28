@@ -117,23 +117,27 @@
     const tomorrow = nextSchoolDate(today, data);
     const scheduledTasks = parseJSON(data.scheduledTasks, []);
     const scheduledIds = new Set((Array.isArray(scheduledTasks) ? scheduledTasks : []).map(item => String(item?.id || '')).filter(Boolean));
-    const withoutScheduledCopies = items => (Array.isArray(items) ? items : []).filter(item => !scheduledIds.has(String(item?.id || '')));
+    const isScheduledCopy = id => { const value=String(id || ''); return [...scheduledIds].some(scheduledId => value === scheduledId || value.startsWith(`${scheduledId}::`)); };
+    const withoutScheduledCopies = items => (Array.isArray(items) ? items : []).filter(item => !isScheduledCopy(item?.id));
     const todayTasks = withoutScheduledCopies(parseJSON(data.todayTasks, []));
     const tomorrowTasks = withoutScheduledCopies(parseJSON(data.tomorrowTasks, []));
     const taskHistory = parseJSON(data.taskHistory, {});
     if (taskHistory && typeof taskHistory === 'object') Object.keys(taskHistory).forEach(day => { taskHistory[day] = withoutScheduledCopies(taskHistory[day]); });
     const mergeTask = (item, fallbackId, deletable = false, scheduled = false) => {
       if (!item || !/^\d{4}-\d{2}-\d{2}$/.test(String(item.targetDate || '')) || !String(item.text || '').trim()) return;
-      const task = { id: item.id || fallbackId, text: String(item.text).slice(0,500), author: String(item.author || '').slice(0,100), subject: String(item.subject || '其他').slice(0,40), handwriting: item.handwriting || '', createdAt: item.createdAt || '', deletable };
       if (scheduled && !isSchoolDay(today, data)) return;
       const tomorrowDisplayDate = scheduled ? today : tomorrow;
       const todayDisplayDate = scheduled ? previousSchoolDate(today, data) : today;
-      if (item.targetDate === tomorrowDisplayDate) tomorrowTasks.push(task);
-      else if (item.targetDate === todayDisplayDate) todayTasks.push(task);
-      else if (item.targetDate < todayDisplayDate) {
-        if (!Array.isArray(taskHistory[item.targetDate])) taskHistory[item.targetDate] = [];
-        taskHistory[item.targetDate].push(task);
-      }
+      const baseId=String(item.id || fallbackId), lines=scheduled ? String(item.text).split(/\r?\n/).map(line=>line.trim()).filter(Boolean) : [String(item.text).trim()];
+      lines.forEach((text,index) => {
+        const task = { id: scheduled ? `${baseId}::${index}` : baseId, text: text.slice(0,500), author: String(item.author || '').slice(0,100), subject: String(item.subject || '其他').slice(0,40), handwriting: index===0 ? (item.handwriting || '') : '', createdAt: item.createdAt || '', deletable };
+        if (item.targetDate === tomorrowDisplayDate) tomorrowTasks.push(task);
+        else if (item.targetDate === todayDisplayDate) todayTasks.push(task);
+        else if (item.targetDate < todayDisplayDate) {
+          if (!Array.isArray(taskHistory[item.targetDate])) taskHistory[item.targetDate] = [];
+          taskHistory[item.targetDate].push(task);
+        }
+      });
     };
     if (Array.isArray(scheduledTasks)) scheduledTasks.forEach((item,index) => mergeTask(item, `scheduled-${index}`, false, true));
     tomorrowSnapshot.forEach(document => {
