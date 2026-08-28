@@ -792,8 +792,8 @@
     }
     function wrapCleaningSummaryText(context,text,maxWidth) { const lines=[],characters=Array.from(String(text||''));let line='';characters.forEach(character=>{const next=line+character;if(line&&context.measureText(next).width>maxWidth){lines.push(line);line=character;}else line=next;});if(line)lines.push(line);return lines.length?lines:['尚未分配']; }
     function cleaningSummaryRoundRect(context,x,y,width,height,radius) { context.beginPath();if(typeof context.roundRect==='function'){context.roundRect(x,y,width,height,radius);}else{context.moveTo(x+radius,y);context.arcTo(x+width,y,x+width,y+height,radius);context.arcTo(x+width,y+height,x,y+height,radius);context.arcTo(x,y+height,x,y,radius);context.arcTo(x,y,x+width,y,radius);}context.closePath(); }
-    function exportTaskByLabel(tasks,patterns) { return tasks.find(task=>patterns.some(pattern=>pattern.test(cleaningTaskMeta(task.name).label)))||null; }
-    function exportTaskNames(task,assignments,students) { return (assignments[task?.id]||[]).map(seat=>students.get(String(seat).padStart(2,'0'))).filter(Boolean).map(student=>`${String(student.seat).padStart(2,'0')} ${student.name}`); }
+    function exportTaskByLabel(tasks,patterns) { return tasks.find(task=>{const label=cleaningTaskMeta(task.name).label,normalized=cleanFemaleTaskLabel(label);return patterns.some(pattern=>{pattern.lastIndex=0;const rawMatch=pattern.test(label);pattern.lastIndex=0;return rawMatch||pattern.test(normalized);});})||null; }
+    function exportTaskNames(task,assignments,students) { const values=Array.isArray(assignments?.[task?.id])?assignments[task.id]:[];return values.map(seat=>{const raw=String(seat??'').trim(),number=Number(raw);return students.get(raw)||students.get(raw.padStart(2,'0'))||(Number.isInteger(number)?students.get(String(number).padStart(2,'0')):null);}).filter(Boolean).map(student=>`${String(student.seat).padStart(2,'0')} ${student.name}`); }
     function drawCleaningExportSlot(context,{x,y,width,height,title,names=[],accent='#397c96',fill='#f5fbfd',fixtures=0,fixtureFill='#dceff5'}) {
       cleaningSummaryRoundRect(context,x,y,width,height,18);context.fillStyle=fill;context.fill();context.strokeStyle=accent;context.lineWidth=3;context.stroke();
       context.fillStyle=accent;context.font='900 25px "Noto Sans TC", sans-serif';context.textAlign='center';context.fillText(title,x+width/2,y+34);
@@ -804,7 +804,7 @@
     function downloadCleaningSummaryImage() {
       const tasks=cleaningConfig(),assignments=readJSON('cleaningAssignments',{}),groups=cleaningTaskGroups(tasks),button=$('download-cleaning-summary');
       if(!groups.length)return message('daily-message','請先建立打掃工作後再下載總表。');
-      const students=new Map(roster().map(student=>[String(student.seat).padStart(2,'0'),student])),groupTasks=name=>groups.find(group=>group.category===name)?.tasks||[],canvas=document.createElement('canvas'),context=canvas.getContext('2d');
+      const students=new Map();roster().forEach(student=>{const padded=String(student.seat).padStart(2,'0');students.set(padded,student);students.set(String(student.seat),student);});const groupTasks=name=>groups.find(group=>group.category===name)?.tasks||[],canvas=document.createElement('canvas'),context=canvas.getContext('2d');
       // 2480 × 3508 為 A4 直式比例，可直接以「適合頁面」列印。
       canvas.width=2480;canvas.height=3508;const margin=120,sectionWidth=canvas.width-margin*2;
       context.fillStyle='#f4faf6';context.fillRect(0,0,canvas.width,canvas.height);context.fillStyle='#18352a';context.font='900 76px "Noto Sans TC", sans-serif';context.fillText('807 班級打掃任務總表',margin,118);context.fillStyle='#527064';context.font='700 31px "Noto Sans TC", sans-serif';context.fillText(`A4 直式列印｜共 ${roster().length} 位學生｜${taipeiDay()} 匯出`,margin,166);context.strokeStyle='#b8d8c2';context.lineWidth=3;context.beginPath();context.moveTo(margin,195);context.lineTo(canvas.width-margin,195);context.stroke();
