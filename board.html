@@ -220,6 +220,8 @@
             min-width: 0;
             min-height: 0;
         }
+        .lunch-weekly-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); grid-template-rows:repeat(3,minmax(0,1fr)); gap:16px; width:100%; max-width:1180px; flex:1; min-height:0; padding-bottom:12px; }
+        .lunch-weekly-card { min-width:0; min-height:0; }
         .cadre-display { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:22px; width:100%; flex:1; min-height:0; }
         .cadre-group { min-width:0; padding:20px; border:1px solid rgba(255,255,255,.16); border-radius:26px; background:rgba(0,0,0,.16); }
         .cadre-group h3 { margin:0 0 15px; color:#f6d365; font-size:1.7rem; font-weight:900; letter-spacing:.12em; }
@@ -1632,8 +1634,8 @@
         document.getElementById('lunch-weekly-title').textContent=`本週午餐小組｜${group.label}`;
         document.getElementById('lunch-weekly-subtitle').textContent=`${members.length} 人輪值｜14 號固定協助`;
         const grid = document.getElementById('lunch-students-grid');
-        grid.className = 'grid grid-cols-3 gap-4 w-full max-w-5xl overflow-y-auto no-scrollbar pb-6';
-        grid.innerHTML = members.map(student => `<div class="neon-btn rounded-2xl aspect-square flex flex-col items-center justify-center font-bold" style="border-color:${student.seat===14?'#f6d365':'#84fab0'};background:${student.seat===14?'#f6d36555':'#84fab055'};color:#fff;box-shadow:0 0 14px ${student.seat===14?'#f6d36566':'#84fab066'}"><span class="text-lg opacity-75">${String(student.seat).padStart(2,'0')} 號</span><span class="text-3xl">${escapeHTML(student.name)}</span>${student.seat===14?'<span class="text-sm mt-1 opacity-80">固定協助</span>':''}</div>`).join('') || '<span class="text-white/40 text-xl">尚未設定學生名單</span>';
+        grid.className = 'lunch-weekly-grid';
+        grid.innerHTML = members.map(student => `<div class="neon-btn lunch-weekly-card rounded-2xl flex flex-col items-center justify-center font-bold" style="border-color:${student.seat===14?'#f6d365':'#84fab0'};background:${student.seat===14?'#f6d36555':'#84fab055'};color:#fff;box-shadow:0 0 14px ${student.seat===14?'#f6d36566':'#84fab066'}"><span class="text-lg opacity-75">${String(student.seat).padStart(2,'0')} 號</span><span class="text-3xl">${escapeHTML(student.name)}</span>${student.seat===14?'<span class="text-sm mt-1 opacity-80">固定協助</span>':''}</div>`).join('') || '<span class="text-white/40 text-xl">尚未設定學生名單</span>';
     }
 
     const defaultExamData = [
