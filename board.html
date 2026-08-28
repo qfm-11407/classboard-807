@@ -517,7 +517,8 @@
                     <div id="lunch-menu" class="flex-1 space-y-4"></div>
                 </div>
                 <div class="w-2/3 flex flex-col p-10 items-center relative overflow-hidden">
-                    <div class="text-3xl text-white font-bold mb-8">今日午餐分工</div>
+                    <div id="lunch-weekly-title" class="text-3xl text-white font-bold mb-2">本週午餐小組</div>
+                    <div id="lunch-weekly-subtitle" class="text-white/60 text-lg mb-6">14 號固定協助</div>
                     <div id="lunch-current-item" class="hidden"></div>
                     <div class="student-display-rows" id="lunch-students-grid"></div>
                 </div>
@@ -683,7 +684,7 @@
     window.addEventListener('resize', resizeApp); resizeApp();
 
     const CLOUD_ENDPOINT = '/api/classroom';
-    const CLOUD_KEYS = ['classroomTotalStudents','classroomStudentNames','classroomStudentRoster','classSeating','classroomSeatingLayout','classTimetable','classTimeSlots','subjectTeachers','subjectTeacherOrder','examSchedule','examScheduleDays','examDayCount','examActiveDay','subjectData','dailyTasks','todayTasks','tomorrowTasks','taskHistory','taskDate','scheduledTasks','nonSchoolDays','cleaningTasks','cleaningTaskConfig','cleaningAssignments','femaleRestroomLayout','dutyAssignments','dutyRotationStartDate','classCadres','classCadreConfig','lunchAssignments','lunchCategoryLimits','monthlyMenus','notebookCheckins'];
+    const CLOUD_KEYS = ['classroomTotalStudents','classroomStudentNames','classroomStudentRoster','classSeating','classroomSeatingLayout','classTimetable','classTimeSlots','subjectTeachers','subjectTeacherOrder','examSchedule','examScheduleDays','examDayCount','examActiveDay','subjectData','dailyTasks','todayTasks','tomorrowTasks','taskHistory','taskDate','scheduledTasks','nonSchoolDays','cleaningTasks','cleaningTaskConfig','cleaningAssignments','femaleRestroomLayout','dutyAssignments','dutyRotationStartDate','classCadres','classCadreConfig','lunchAssignments','lunchCategoryLimits','lunchWeeklyGroup','monthlyMenus','notebookCheckins'];
     const PUBLIC_MENU_URL = 'https://raw.githubusercontent.com/qfm-11407/classboard-807/main/data/monthly-menu.json';
     let publicMonthlyMenus = {};
     async function loadPublicMenus() {
@@ -1603,32 +1604,14 @@
     document.getElementById('tomorrow-password').required=false;
     updateWidgetTasks(); updateWidgetTomorrow(); renderDutyWidget(); setInterval(renderDutyWidget, 60000);
 
-    const getLunchLimit = (id) => { const limits = JSON.parse(localStorage.getItem('lunchCategoryLimits')) || {}, value = Number(limits[id]); return Number.isInteger(value) && value > 0 && value <= 60 ? value : 2; };
-    const lunchCategories = [
-        { id: 'rice', name: '打飯', max: getLunchLimit('rice'), icon: 'bowl-rice' }, { id: 'main', name: '主菜', max: getLunchLimit('main'), icon: 'drumstick-bite' },
-        { id: 'side', name: '配菜', max: getLunchLimit('side'), icon: 'carrot' }, { id: 'soup', name: '盛湯', max: getLunchLimit('soup'), icon: 'bowl-food' },
-        { id: 'fruit', name: '水果', max: getLunchLimit('fruit'), icon: 'apple-whole' }, { id: 'drink', name: '飲料/點心', max: getLunchLimit('drink'), icon: 'bottle-water' }
+    const LUNCH_WEEKLY_GROUPS = [
+        { id:'group-1', label:'第 1 組', seats:[1,2,3,4,5,6,7,8,9,10,14] },
+        { id:'group-2', label:'第 2 組', seats:[11,12,13,14,15,16,17,18,19] },
+        { id:'group-3', label:'第 3 組', seats:[20,21,22,23,14,25,26,27,28] }
     ];
-    let lunchAssignments = JSON.parse(localStorage.getItem('lunchAssignments')) || {};
-    lunchCategories.forEach(c => { if (!lunchAssignments[c.id]) lunchAssignments[c.id] = []; });
-    let currentLunchCategory = null;
-    const LUNCH_COLORS = { rice:'#e37758', main:'#d45d67', side:'#3a9d73', soup:'#3b82c4', fruit:'#ce8b2c', drink:'#7d64bd' };
-
-    function renderLunchMenu() {
-        const menu = document.getElementById('lunch-menu'); menu.innerHTML = '';
-        const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Taipei'}).format(new Date()),menus=JSON.parse(localStorage.getItem('monthlyMenus')||'{}'),dish=(menus[today.slice(0,7)]||{})[today]||'今日菜單尚未設定';
-        document.getElementById('lunch-current-item').innerText=dish;
-        lunchCategories.forEach(cat => {
-            const assignedCount = lunchAssignments[cat.id].length;
-            const assignedText = assignedCount > 0 ? lunchAssignments[cat.id].map(num => `<span class="bg-green-500/80 text-white text-sm px-2 py-1 rounded ml-1">${num}</span>`).join('') : '<span class="text-gray-400 text-sm ml-2">尚未指派</span>';
-            menu.innerHTML += `<div class="p-4 rounded-xl border bg-black/30 border-transparent flex flex-col">
-                <div class="flex items-center text-white text-2xl font-bold mb-2"><i class="fa-solid fa-${cat.icon} w-8"></i> ${cat.name}<span class="ml-auto text-sm bg-black/50 px-2 rounded-full">${assignedCount}/${cat.max}</span></div><div class="flex items-center pl-8 h-8">${assignedText}</div></div>`;
-        }); renderLunchGrid();
-    }
-    function selectLunchCategory(id) { currentLunchCategory = id; document.getElementById('lunch-current-item').innerText = lunchCategories.find(c => c.id === id).name; renderLunchMenu(); }
-    
-    function renderLunchGrid() {
-        const grid = document.getElementById('lunch-students-grid'); grid.className='grid grid-cols-3 gap-4 w-full max-w-5xl overflow-y-auto no-scrollbar pb-6';grid.innerHTML=lunchCategories.map(cat=>{const students=(lunchAssignments[cat.id]||[]).map(num=>studentRoster.find(student=>student.seat===Number(num))).filter(Boolean);return `<div class="bg-black/25 rounded-2xl p-4 border border-white/10"><h3 class="text-white text-2xl font-bold mb-3">${cat.name}</h3><div class="grid grid-cols-2 gap-2">${students.length?students.map(student=>`<div class="neon-btn rounded-xl aspect-square flex flex-col items-center justify-center font-bold active-green"><span class="text-sm opacity-70">${String(student.seat).padStart(2,'0')}</span><span class="text-xl">${student.name}</span></div>`).join(''):'<span class="text-white/40">尚未分配</span>'}</div></div>`}).join('');
+    function currentLunchWeeklyGroup() {
+        let id='group-1'; try { id=JSON.parse(localStorage.getItem('lunchWeeklyGroup')) || id; } catch (_) {}
+        return LUNCH_WEEKLY_GROUPS.find(group=>group.id===id) || LUNCH_WEEKLY_GROUPS[0];
     }
     function renderLunchMenu() {
         const menu = document.getElementById('lunch-menu');
@@ -1636,30 +1619,17 @@
         const menus = JSON.parse(localStorage.getItem('monthlyMenus') || '{}');
         const importedDish = publicMenuDish(today);
         const localDish = String((menus[today.slice(0,7)] || {})[today] || '').trim();
-        const dish = (menus[today.slice(0,7)] || {})[today] || '今日菜單尚未設定';
-        document.getElementById('lunch-current-item').innerText = localDish || importedDish || dish;
-        menu.innerHTML = `<div class="flex-1 flex flex-col justify-center text-center bg-black/20 rounded-3xl border border-white/10 p-6"><i class="fa-solid fa-bowl-food text-5xl text-[#f6d365] mb-5"></i><p class="text-white text-3xl font-black leading-relaxed break-words">${escapeHTML(localDish || importedDish || dish)}</p></div>`;
+        const dish = localDish || importedDish || '今日菜單尚未設定';
+        menu.innerHTML = `<div class="flex-1 flex flex-col justify-center text-center bg-black/20 rounded-3xl border border-white/10 p-6"><i class="fa-solid fa-bowl-food text-5xl text-[#f6d365] mb-5"></i><p class="text-white text-3xl font-black leading-relaxed break-words">${escapeHTML(dish)}</p></div>`;
         renderLunchGrid();
     }
-
     function renderLunchGrid() {
+        const group=currentLunchWeeklyGroup(), members=group.seats.map(seat=>studentRoster.find(student=>student.seat===seat)).filter(Boolean);
+        document.getElementById('lunch-weekly-title').textContent=`本週午餐小組｜${group.label}`;
+        document.getElementById('lunch-weekly-subtitle').textContent=`${members.length} 人輪值｜14 號固定協助`;
         const grid = document.getElementById('lunch-students-grid');
         grid.className = 'grid grid-cols-3 gap-4 w-full max-w-5xl overflow-y-auto no-scrollbar pb-6';
-        grid.innerHTML = lunchCategories.map(cat => {
-            const students = (lunchAssignments[cat.id] || []).map(num => studentRoster.find(student => student.seat === Number(num))).filter(Boolean);
-            const color = LUNCH_COLORS[cat.id] || '#84fab0';
-            return `<div class="rounded-2xl p-4 border" style="border-color:${color}a8;background:${color}1f"><h3 class="text-2xl font-bold mb-3" style="color:${color}"><i class="fa-solid fa-${cat.icon} mr-2"></i>${cat.name}</h3><div class="grid grid-cols-2 gap-2">${students.length ? students.map(student => `<div class="neon-btn rounded-xl aspect-square flex flex-col items-center justify-center font-bold" style="border-color:${color};background:${color}55;color:#fff;box-shadow:0 0 14px ${color}66"><span class="text-sm opacity-70">${String(student.seat).padStart(2,'0')}</span><span class="text-xl">${student.name}</span></div>`).join('') : '<span class="text-white/40">尚未分配</span>'}</div></div>`;
-        }).join('');
-    }
-
-    function toggleLunchStudent(num) {
-        if (!isTeacherMode) return;
-        if (!currentLunchCategory) return;
-        const cat = lunchCategories.find(c => c.id === currentLunchCategory), assigned = lunchAssignments[currentLunchCategory], index = assigned.indexOf(num);
-        if (index > -1) assigned.splice(index, 1);
-        else if (assigned.length >= cat.max) { const btn = document.getElementById(`lunch-btn-${num}`); btn.classList.add('animate-bounce'); setTimeout(() => btn.classList.remove('animate-bounce'), 500); return; }
-        else assigned.push(num);
-        localStorage.setItem('lunchAssignments', JSON.stringify(lunchAssignments)); renderLunchMenu();
+        grid.innerHTML = members.map(student => `<div class="neon-btn rounded-2xl aspect-square flex flex-col items-center justify-center font-bold" style="border-color:${student.seat===14?'#f6d365':'#84fab0'};background:${student.seat===14?'#f6d36555':'#84fab055'};color:#fff;box-shadow:0 0 14px ${student.seat===14?'#f6d36566':'#84fab066'}"><span class="text-lg opacity-75">${String(student.seat).padStart(2,'0')} 號</span><span class="text-3xl">${escapeHTML(student.name)}</span>${student.seat===14?'<span class="text-sm mt-1 opacity-80">固定協助</span>':''}</div>`).join('') || '<span class="text-white/40 text-xl">尚未設定學生名單</span>';
     }
 
     const defaultExamData = [
