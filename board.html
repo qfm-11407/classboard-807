@@ -1630,7 +1630,7 @@
         renderLunchGrid();
     }
     function renderLunchGrid() {
-        const group=currentLunchWeeklyGroup(), members=group.seats.map(seat=>studentRoster.find(student=>student.seat===seat)).filter(Boolean);
+        const group=currentLunchWeeklyGroup(), orderedSeats=[...group.seats.filter(seat=>seat!==14),14], members=orderedSeats.map(seat=>studentRoster.find(student=>student.seat===seat)).filter(Boolean);
         document.getElementById('lunch-weekly-title').textContent=`本週午餐小組｜${group.label}`;
         document.getElementById('lunch-weekly-subtitle').textContent=`${members.length} 人輪值｜14 號固定協助`;
         const grid = document.getElementById('lunch-students-grid');
