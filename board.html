@@ -648,12 +648,12 @@
         </div>
     </div>
 
-    <div id="tomorrow-readonly-modal" class="absolute inset-0 bg-black/80 backdrop-blur-md z-[70] hidden opacity-0 transition-opacity duration-300 flex items-center justify-center p-20">
-        <section id="tomorrow-readonly-window" class="glass-panel relative flex h-full w-full max-w-6xl scale-95 flex-col rounded-[3rem] p-12 transition-transform duration-300">
-            <button type="button" onclick="closeTomorrowReadOnly()" aria-label="關閉" class="absolute right-8 top-8 flex h-14 w-14 items-center justify-center rounded-full bg-white/15 text-3xl text-white hover:bg-white/30"><i class="fa-solid fa-xmark"></i></button>
-            <h2 class="pr-20 text-5xl font-black tracking-widest text-white"><i class="fa-solid fa-pen-to-square mr-5 text-[#f6d365]"></i>明日事項</h2>
-            <p class="mt-3 text-2xl text-white/65">唯讀抄寫模式</p>
-            <div id="tomorrow-readonly-text" aria-label="明日事項內容" class="task-reader-list mt-8"></div>
+    <div id="tomorrow-readonly-modal" class="absolute inset-0 bg-black/80 backdrop-blur-md z-[70] hidden opacity-0 transition-opacity duration-300 flex items-center justify-center">
+        <section id="tomorrow-readonly-window" class="relative flex h-full w-full max-w-none scale-95 flex-col p-16 transition-transform duration-300">
+            <button type="button" onclick="closeTomorrowReadOnly()" aria-label="關閉" class="absolute right-10 top-10 flex h-16 w-16 items-center justify-center rounded-full bg-white/15 text-4xl text-white hover:bg-white/30"><i class="fa-solid fa-xmark"></i></button>
+            <h2 class="pr-24 text-7xl font-black tracking-widest text-white"><i class="fa-solid fa-pen-to-square mr-8 text-[#f6d365]"></i>明日事項</h2>
+            <p class="mt-4 text-2xl text-white/65">唯讀抄寫模式</p>
+            <div id="tomorrow-readonly-text" aria-label="明日事項內容" class="task-reader-list mt-10"></div>
             <button id="tomorrow-reader-previous" type="button" onclick="changeTaskReaderPage('tomorrow',-1)" class="task-reader-page-control previous hidden"><i class="fa-solid fa-chevron-left"></i><span>上一頁</span></button>
             <span id="tomorrow-reader-page-count" class="task-reader-page-count"></span>
             <button id="tomorrow-reader-next" type="button" onclick="changeTaskReaderPage('tomorrow',1)" class="task-reader-page-control next hidden"><span>下一頁</span><i class="fa-solid fa-chevron-right"></i></button>
