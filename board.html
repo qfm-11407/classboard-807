@@ -450,7 +450,7 @@
                 </div>
                 <div class="w-3/4 flex flex-col p-8 items-center relative overflow-hidden">
                     <input type="text" id="task-name-input" readonly class="w-2/3 bg-transparent border-b-2 border-white/30 text-white text-4xl font-bold text-center pb-4 mb-4 focus:outline-none transition-colors" placeholder="點此輸入任務名稱...">
-                    <div class="flex w-full max-w-4xl gap-3 mb-4"><input id="new-course-task-name" class="flex-1 bg-black/25 border border-white/30 rounded-2xl px-5 py-3 text-white text-xl" placeholder="輸入新的任務名稱"><input id="course-submit-password" type="password" class="w-52 bg-black/25 border border-white/30 rounded-2xl px-5 py-3 text-white text-xl" placeholder="填寫密碼"><button onclick="submitCourseTask()" class="bg-[#f6d365] text-black rounded-2xl px-6 text-xl font-bold">新增任務</button></div>
+                    <div class="flex w-full max-w-4xl gap-3 mb-4"><input id="new-course-task-name" class="flex-1 bg-black/25 border border-white/30 rounded-2xl px-5 py-3 text-white text-xl" placeholder="輸入新的任務名稱"><input id="course-submit-password" type="password" class="w-52 bg-black/25 border border-white/30 rounded-2xl px-5 py-3 text-white text-xl" placeholder="填寫密碼"><button type="button" onclick="submitCourseTask()" class="bg-[#f6d365] text-black rounded-2xl px-6 text-xl font-bold">新增任務</button></div>
                     <div class="flex space-x-6 mb-4"><div class="text-white text-xl font-bold bg-white/10 px-5 py-2 rounded-full">點選學生小卡可標示完成</div><div class="text-white text-2xl font-bold bg-white/10 px-6 py-2 rounded-full">進度：<span id="task-progress" class="text-green-400 ml-2">0 / 0</span></div></div><p id="course-message" class="text-[#f6d365] text-lg min-h-6"></p>
                     <div class="student-display-rows mt-2" id="students-grid"></div>
                 </div>
@@ -755,7 +755,7 @@
                     else localStorage.setItem(key, next);
                 }
             });
-            if (changed) { window.location.reload(); return; }
+            if (changed) refreshBoardStateFromCloud();
         } catch (_) {
             // 本機直接開啟或網路暫時中斷時，保留瀏覽器中的最近資料。
         }
@@ -790,6 +790,21 @@
 
     let currentActiveApp = null;
     let currentSubject = "";
+    /* Firebase 資料更新時只更新記憶體與首頁資訊，絕不重新載入頁面或關閉目前畫面。 */
+    function refreshBoardStateFromCloud() {
+        studentRoster = getStudentRoster();
+        totalStudents = studentRoster.length;
+        studentNames = studentRoster.map(student => student.name);
+        seatingState = JSON.parse(localStorage.getItem('classSeating')) || Array(highestSeatNumber()).fill(0);
+        try { subjectData = JSON.parse(localStorage.getItem('subjectData')) || {}; } catch (_) { subjectData = {}; }
+        todayTasks = readTaskList('todayTasks', readTaskList('dailyTasks', []));
+        cleaningTasks = readTaskList('cleaningTasks', []);
+        if (!currentActiveApp) {
+            updateWidgetTasks();
+            updateWidgetTomorrow();
+            renderDutyWidget();
+        }
+    }
     const COURSE_SUBJECTS = ['國文','英文','數學','理化','地理','歷史','公民','資科','生科','健康','體育','音樂','表演','美術','童軍','家政','輔導'];
     const COURSE_SUBJECT_ICONS = {
         '國文':'fa-book-open', '英文':'fa-language', '數學':'fa-square-root-variable', '理化':'fa-flask',
