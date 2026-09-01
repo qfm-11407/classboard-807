@@ -637,7 +637,7 @@
       });
     }
 
-    /* 教師端只管理前端建立的科目任務，不提供新增或修改完成狀態。 */
+    /* 教師端管理前端建立的科目任務：可更名、隱藏、恢復顯示或刪除；完成狀態由學生端登記。 */
     function renderTasks() {
       const data = normalizeTasks(), subject = currentSubject(), tasks = Array.isArray(data[subject]) ? data[subject] : [];
       renderSubjectTaskTabs();
@@ -648,7 +648,7 @@
       $('task-name').value = selected?.name || '';
       $('task-name').disabled = true;
       $('task-students').style.display = 'none';
-      $('task-students').previousElementSibling.textContent = '教師端可隱藏、恢復顯示或刪除任務；新增任務與完成紀錄由學生端操作。';
+      $('task-students').previousElementSibling.textContent = '教師端可更名、隱藏、恢復顯示或刪除任務；新增任務與完成紀錄由學生端操作。';
       const list = $('task-list');
       list.innerHTML = '';
       if (!tasks.length) list.innerHTML = '<p class="hint">此科目前尚無前端建立的任務。</p>';
@@ -660,6 +660,29 @@
         list.append(button);
       });
       const deleteButton = $('delete-task');
+      let renameButton = $('rename-task');
+      if (!renameButton) {
+        renameButton = document.createElement('button');
+        renameButton.id = 'rename-task';
+        renameButton.type = 'button';
+        deleteButton.parentElement.insertBefore(renameButton, deleteButton);
+      }
+      renameButton.className = 'btn light';
+      renameButton.disabled = !selected;
+      renameButton.textContent = '更名任務';
+      renameButton.onclick = () => {
+        const current = tasks.find(task => task.id === activeTaskId);
+        if (!current) return;
+        const next = window.prompt('請輸入新的任務名稱', current.name || '');
+        if (next === null) return;
+        const name = String(next).trim().slice(0, 200);
+        if (!name) return message('task-message', '任務名稱不可空白。');
+        current.name = name;
+        data[subject] = tasks;
+        writeJSON('subjectData', data);
+        renderTasks();
+        message('task-message', '任務名稱已更新並同步到學生端。');
+      };
       let hideButton = $('toggle-task-hidden');
       if (!hideButton) {
         hideButton = document.createElement('button');
