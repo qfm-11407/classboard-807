@@ -389,8 +389,8 @@
                     <span class="text-white font-bold text-2xl tracking-widest group-hover:text-[#8fd3f4] transition-colors">愛閱網</span>
                 </div>
                 <div class="flex flex-col items-center gap-3 cursor-pointer group" onclick="openApp('wheel')">
-                    <div class="w-32 h-32 squircle bg-pastel-green flex items-center justify-center"><i class="fa-solid fa-dice text-6xl text-white/90 drop-shadow-md"></i></div>
-                    <span class="text-white font-bold text-2xl tracking-widest group-hover:text-[#8fd3f4] transition-colors">幸運轉盤</span>
+                    <div class="w-32 h-32 squircle bg-pastel-green flex items-center justify-center relative"><i class="fa-solid fa-dice text-6xl text-white/90 drop-shadow-md"></i><i class="fa-solid fa-stopwatch absolute right-5 bottom-5 text-2xl text-white/80"></i></div>
+                    <span class="text-white font-bold text-2xl tracking-widest group-hover:text-[#8fd3f4] transition-colors">課堂工具</span>
                 </div>
                 <div class="flex flex-col items-center gap-3 cursor-pointer group" onclick="openApp('cadres')">
                     <div class="w-32 h-32 squircle bg-pastel-orange flex items-center justify-center"><i class="fa-solid fa-user-tie text-6xl text-white/90 drop-shadow-md"></i></div>
@@ -456,11 +456,22 @@
                 </div>
             </div>
 
-            <!-- B. 今日任務介面 -->
+            <!-- B. 課堂工具介面 -->
             <div id="app-content-wheel" class="w-full h-full flex flex-col p-8 hidden items-center">
-                <div class="w-full max-w-6xl flex items-center justify-between mb-4">
+                <div class="w-full max-w-6xl flex items-center justify-between mb-5">
                     <div>
-                        <h2 class="text-5xl font-bold text-white tracking-widest"><i class="fa-solid fa-dice mr-5 text-[#f6d365]"></i>幸運轉盤</h2>
+                        <h2 class="text-5xl font-bold text-white tracking-widest"><i class="fa-solid fa-toolbox mr-5 text-[#f6d365]"></i>課堂工具</h2>
+                        <p class="text-white/60 text-xl mt-2">抽籤與計時，都在這裡使用。</p>
+                    </div>
+                    <div class="flex rounded-2xl border border-white/20 bg-black/20 p-1.5">
+                        <button id="class-tool-wheel-tab" type="button" onclick="switchClassTool('wheel')" class="rounded-xl px-6 py-3 text-xl font-black transition-colors">幸運轉盤</button>
+                        <button id="class-tool-stopwatch-tab" type="button" onclick="switchClassTool('stopwatch')" class="rounded-xl px-6 py-3 text-xl font-black transition-colors">計時碼表</button>
+                    </div>
+                </div>
+                <div id="class-tool-wheel-panel" class="w-full max-w-6xl flex flex-1 flex-col min-h-0">
+                <div class="w-full flex items-center justify-between mb-4">
+                    <div>
+                        <h3 class="text-4xl font-bold text-white tracking-widest"><i class="fa-solid fa-dice mr-4 text-[#f6d365]"></i>幸運轉盤</h3>
                         <p class="text-white/60 text-xl mt-2">依照教室座位表抽籤；缺席學生不納入抽選。</p>
                         <button id="lucky-target-button" type="button" onclick="openLuckyTargetPicker()" class="mt-4 rounded-xl border border-[#c4b5fd]/70 bg-[#8b5cf6]/25 px-5 py-2.5 text-xl font-black text-[#ede9fe] hover:bg-[#8b5cf6]/45"><i class="fa-solid fa-user-check mr-2"></i>指定人員抽一人</button>
                     </div>
@@ -482,6 +493,20 @@
                         <div id="lucky-seat-grid" class="lucky-seat-grid"></div>
                     </div>
                     <div id="lucky-results-right" class="lucky-results-side no-scrollbar"></div>
+                </div>
+                </div>
+                <div id="class-tool-stopwatch-panel" class="hidden w-full max-w-5xl flex-1 items-center justify-center">
+                    <section class="glass-panel w-full max-w-4xl rounded-[2.5rem] border border-white/20 p-12 text-center shadow-2xl">
+                        <i class="fa-solid fa-stopwatch text-6xl text-[#8fd3f4]"></i>
+                        <h3 class="mt-5 text-5xl font-black tracking-widest text-white">計時碼表</h3>
+                        <p class="mt-3 text-xl text-white/60">適合課堂活動、討論與小組挑戰。</p>
+                        <div id="stopwatch-display" class="mt-10 font-mono text-[9rem] font-black leading-none tracking-tight text-white tabular-nums">00:00.0</div>
+                        <p id="stopwatch-status" class="mt-4 text-xl font-bold text-white/55">準備開始</p>
+                        <div class="mt-10 flex justify-center gap-5">
+                            <button id="stopwatch-start-button" type="button" onclick="toggleStopwatch()" class="rounded-2xl bg-[#84fab0] px-10 py-5 text-3xl font-black text-[#17372a] shadow-lg hover:bg-[#b3ffcc]"><i class="fa-solid fa-play mr-3"></i>開始</button>
+                            <button type="button" onclick="resetStopwatch()" class="rounded-2xl border border-white/25 bg-white/10 px-9 py-5 text-3xl font-black text-white hover:bg-white/20"><i class="fa-solid fa-arrow-rotate-left mr-3"></i>歸零</button>
+                        </div>
+                    </section>
                 </div>
             </div>
 
@@ -850,7 +875,7 @@
             renderDailyTasksUI();
         } else if (type === 'wheel') {
             document.getElementById('app-content-wheel').classList.remove('hidden');
-            renderLuckyWheel();
+            switchClassTool(classToolMode);
         } else if (type === 'cleaning') {
             document.getElementById('app-content-cleaning').classList.remove('hidden');
             renderCleaningTasksUI();
@@ -1061,6 +1086,76 @@
         seatingState = Array(highestSeatNumber()).fill(0);
         localStorage.setItem('classSeating', JSON.stringify(seatingState));
         renderSeatingGrid();
+    }
+
+    let classToolMode = 'wheel';
+    let stopwatchElapsedMs = 0;
+    let stopwatchStartedAt = null;
+    let stopwatchTimer = null;
+
+    function formatStopwatch(milliseconds) {
+        const tenths = Math.floor(milliseconds / 100) % 10;
+        const totalSeconds = Math.floor(milliseconds / 1000);
+        const minutes = Math.floor(totalSeconds / 60);
+        const seconds = totalSeconds % 60;
+        return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}.${tenths}`;
+    }
+
+    function currentStopwatchMs() {
+        return stopwatchElapsedMs + (stopwatchStartedAt ? Date.now() - stopwatchStartedAt : 0);
+    }
+
+    function renderStopwatch() {
+        const display = document.getElementById('stopwatch-display');
+        const button = document.getElementById('stopwatch-start-button');
+        const status = document.getElementById('stopwatch-status');
+        if (!display || !button || !status) return;
+        display.textContent = formatStopwatch(currentStopwatchMs());
+        const running = Boolean(stopwatchStartedAt);
+        button.innerHTML = running
+            ? '<i class="fa-solid fa-pause mr-3"></i>暫停'
+            : `<i class="fa-solid fa-play mr-3"></i>${stopwatchElapsedMs ? '繼續' : '開始'}`;
+        status.textContent = running ? '計時中' : (stopwatchElapsedMs ? '已暫停' : '準備開始');
+    }
+
+    function refreshStopwatchTimer() {
+        if (stopwatchTimer) window.clearInterval(stopwatchTimer);
+        stopwatchTimer = null;
+        if (stopwatchStartedAt) stopwatchTimer = window.setInterval(renderStopwatch, 50);
+        renderStopwatch();
+    }
+
+    function toggleStopwatch() {
+        if (stopwatchStartedAt) {
+            stopwatchElapsedMs = currentStopwatchMs();
+            stopwatchStartedAt = null;
+        } else {
+            stopwatchStartedAt = Date.now();
+        }
+        refreshStopwatchTimer();
+    }
+
+    function resetStopwatch() {
+        stopwatchElapsedMs = 0;
+        stopwatchStartedAt = null;
+        refreshStopwatchTimer();
+    }
+
+    function switchClassTool(mode) {
+        classToolMode = mode === 'stopwatch' ? 'stopwatch' : 'wheel';
+        const wheelPanel = document.getElementById('class-tool-wheel-panel');
+        const stopwatchPanel = document.getElementById('class-tool-stopwatch-panel');
+        const wheelTab = document.getElementById('class-tool-wheel-tab');
+        const stopwatchTab = document.getElementById('class-tool-stopwatch-tab');
+        if (!wheelPanel || !stopwatchPanel || !wheelTab || !stopwatchTab) return;
+        const wheelActive = classToolMode === 'wheel';
+        wheelPanel.classList.toggle('hidden', !wheelActive);
+        stopwatchPanel.classList.toggle('hidden', wheelActive);
+        stopwatchPanel.classList.toggle('flex', !wheelActive);
+        wheelTab.className = `rounded-xl px-6 py-3 text-xl font-black transition-colors ${wheelActive ? 'bg-[#f6d365] text-[#2b2415] shadow-lg' : 'text-white/65 hover:bg-white/10 hover:text-white'}`;
+        stopwatchTab.className = `rounded-xl px-6 py-3 text-xl font-black transition-colors ${!wheelActive ? 'bg-[#8fd3f4] text-[#17372a] shadow-lg' : 'text-white/65 hover:bg-white/10 hover:text-white'}`;
+        if (wheelActive) renderLuckyWheel();
+        else renderStopwatch();
     }
 
     let luckySelectedSeats = [];
