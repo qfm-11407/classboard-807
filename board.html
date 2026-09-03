@@ -750,7 +750,7 @@
     window.addEventListener('resize', resizeApp); resizeApp();
 
     const CLOUD_ENDPOINT = '/api/classroom';
-    const CLOUD_KEYS = ['classroomTotalStudents','classroomStudentNames','classroomStudentRoster','classSeating','classroomSeatingLayout','classTimetable','classTimeSlots','subjectTeachers','subjectTeacherOrder','examSchedule','examScheduleDays','examDayCount','examActiveDay','subjectData','dailyTasks','todayTasks','tomorrowTasks','taskHistory','taskDate','scheduledTasks','nonSchoolDays','cleaningTasks','cleaningTaskConfig','cleaningAssignments','femaleRestroomLayout','dutyAssignments','dutyRotationStartDate','classCadres','classCadreConfig','lunchAssignments','lunchCategoryLimits','lunchWeeklyGroup','lunchRotationStartDate','monthlyMenus','notebookCheckins'];
+    const CLOUD_KEYS = ['classroomTotalStudents','classroomStudentNames','classroomStudentRoster','classSeating','classroomSeatingLayout','classTimetable','classTimeSlots','subjectTeachers','subjectTeacherOrder','examSchedule','examScheduleDays','examDayCount','examActiveDay','subjectData','dailyTasks','todayTasks','tomorrowTasks','taskHistory','taskDate','scheduledTasks','nonSchoolDays','cleaningTasks','cleaningTaskConfig','cleaningAssignments','femaleRestroomLayout','dutyAssignments','dutyRotationStartDate','classCadres','classCadreConfig','leaveRecords','lunchAssignments','lunchCategoryLimits','lunchWeeklyGroup','lunchRotationStartDate','monthlyMenus','notebookCheckins'];
     const PUBLIC_MENU_URL = 'https://raw.githubusercontent.com/qfm-11407/classboard-807/main/data/monthly-menu.json';
     let publicMonthlyMenus = {};
     async function loadPublicMenus() {
@@ -993,6 +993,21 @@
         return layout;
     }
 
+    function leaveSeatsForDate(day = dateKey()) {
+        const records = readTaskObject('leaveRecords', {});
+        const validSeats = new Set(studentRoster.map(student => student.seat));
+        return new Set((Array.isArray(records?.[day]) ? records[day] : []).map(Number).filter(seat => validSeats.has(seat)));
+    }
+
+    function isLeaveDayClosed() {
+        const parts = new Intl.DateTimeFormat('en-US', { timeZone:'Asia/Taipei', hour:'2-digit', hourCycle:'h23' }).formatToParts(new Date());
+        return Number(parts.find(part => part.type === 'hour')?.value || 0) >= 17;
+    }
+
+    function isSeatAbsentToday(seat) {
+        return Boolean(seatingState[seat - 1]) || (!isLeaveDayClosed() && leaveSeatsForDate().has(seat));
+    }
+
     function renderSeatingGrid() {
         document.getElementById('global-student-count').value = totalStudents;
         const grid = document.getElementById('seating-grid');
@@ -1005,7 +1020,7 @@
             const student = studentRoster.find(item => item.seat === seat);
             if (!student) return;
             const num = student.seat.toString().padStart(2, '0');
-            const state = seatingState[student.seat - 1] || 0;
+            const state = isSeatAbsentToday(student.seat) ? 1 : 0;
             const name = student.name;
             const openid = student.openid;
             
@@ -1166,7 +1181,7 @@
     let luckyTargetSeats = [];
 
     function luckyCandidates() {
-        return studentRoster.filter(student => !(seatingState[student.seat - 1] || 0));
+        return studentRoster.filter(student => !isSeatAbsentToday(student.seat));
     }
 
     function remainingLuckyCandidates() {
@@ -1859,8 +1874,7 @@
     function timeToMinutes(t) { const [h, m] = t.split(':').map(Number); return h * 60 + m; }
     
     function renderExamAttendance() {
-        let states=[]; try { states=JSON.parse(localStorage.getItem('classSeating')) || []; } catch (_) {}
-        const absent=studentRoster.filter(student=>Boolean(states[student.seat-1]));
+        const absent=studentRoster.filter(student=>isSeatAbsentToday(student.seat));
         document.getElementById('exam-attendance-total').textContent=studentRoster.length;
         document.getElementById('exam-attendance-present').textContent=studentRoster.length-absent.length;
         document.getElementById('exam-attendance-absent').textContent=absent.length;
