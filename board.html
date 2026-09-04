@@ -452,7 +452,7 @@
                     <input type="text" id="task-name-input" readonly class="w-2/3 bg-transparent border-b-2 border-white/30 text-white text-4xl font-bold text-center pb-4 mb-4 focus:outline-none transition-colors" placeholder="點此輸入任務名稱...">
                     <div class="flex w-full max-w-4xl gap-3 mb-4"><input id="new-course-task-name" class="flex-1 bg-black/25 border border-white/30 rounded-2xl px-5 py-3 text-white text-xl" placeholder="輸入新的任務名稱"><input id="course-submit-password" type="password" class="w-52 bg-black/25 border border-white/30 rounded-2xl px-5 py-3 text-white text-xl" placeholder="填寫密碼"><button type="button" onclick="submitCourseTask()" class="bg-[#f6d365] text-black rounded-2xl px-6 text-xl font-bold">新增任務</button></div>
                     <div class="flex space-x-6 mb-4"><div class="text-white text-xl font-bold bg-white/10 px-5 py-2 rounded-full">點選學生小卡可標示完成</div><div class="text-white text-2xl font-bold bg-white/10 px-6 py-2 rounded-full">進度：<span id="task-progress" class="text-green-400 ml-2">0 / 0</span></div></div><p id="course-message" class="text-[#f6d365] text-lg min-h-6"></p>
-                    <div class="student-display-rows mt-2" id="students-grid"></div>
+                    <div class="seating-display-grid mt-2" id="students-grid"></div>
                 </div>
             </div>
 
@@ -1596,21 +1596,24 @@
         const createButton = document.querySelector('#app-content-subject button[onclick="submitCourseTask()"]');
         taskTitle.style.borderColor = color;
         if (createButton) { createButton.style.background = color; createButton.style.color = '#fff'; createButton.onclick = createCourseTaskInPlace; }
-        grid.className = 'grid grid-cols-7 gap-3 w-full max-w-5xl flex-1 overflow-y-auto no-scrollbar pb-5';
+        // 課程任務沿用實際座位表的 5 排 × 6 位位置，空位也保留，方便依座號快速點選。
+        grid.className = 'seating-display-grid mt-2 pb-5';
         taskTitle.value = task?.name || '尚未選擇任務';
         if (!task) {
-            grid.innerHTML = '<div class="col-span-7 flex items-center justify-center text-center text-white/50 text-2xl">請先在左側建立或選擇任務。</div>';
+            grid.innerHTML = '<div class="flex items-center justify-center text-center text-white/50 text-2xl" style="grid-column:1 / -1;grid-row:1 / -1">請先在左側建立或選擇任務。</div>';
             document.getElementById('task-progress').innerText = `0 / ${totalStudents}`;
             return;
         }
-        let completed = 0;
-        grid.innerHTML = studentRoster.filter(student => student.seat <= 28).map(student => {
+        const completed = studentRoster.filter(student => Boolean(task.records[student.seat - 1])).length;
+        grid.innerHTML = getSeatingLayout().map(placedSeat => {
+            if (!placedSeat) return '<div class="w-full h-full rounded-xl border-2 border-dashed border-white/20 bg-black/10 flex items-center justify-center text-white/20 text-xl">空位</div>';
+            const student = studentRoster.find(item => item.seat === placedSeat);
+            if (!student) return '<div class="w-full h-full rounded-xl border-2 border-dashed border-white/20 bg-black/10 flex items-center justify-center text-white/20 text-xl">空位</div>';
             const isDone = Boolean(task.records[student.seat - 1]);
-            if (isDone) completed++;
             const seat = String(student.seat).padStart(2, '0');
             const surface = isDone ? `${color}b8` : 'rgba(0,0,0,.20)';
             const border = isDone ? color : 'rgba(255,255,255,.18)';
-            return `<button type="button" class="neon-btn flex flex-col items-start justify-between p-3 text-left font-bold" style="aspect-ratio:1;background:${surface};border-color:${border};color:#fff;${isDone ? `box-shadow:0 0 16px ${color}88` : ''}${courseCompletionSyncing ? ';opacity:.62;cursor:not-allowed' : ''}" onclick="toggleCourseCompletion(${student.seat})" ${courseCompletionSyncing ? 'disabled aria-disabled="true"' : ''}><span class="text-sm opacity-70">${seat} 號</span><span class="text-xl leading-tight w-full truncate">${escapeHTML(student.name)}</span><span class="text-sm" style="color:${isDone ? '#fff' : color}">${courseCompletionSyncing ? '同步中…' : (isDone ? '已完成' : '待完成')}</span></button>`;
+            return `<button type="button" class="neon-btn w-full h-full min-h-0 flex flex-col items-center justify-center p-3 text-center font-bold overflow-hidden" style="background:${surface};border-color:${border};color:#fff;${isDone ? `box-shadow:0 0 16px ${color}88` : ''}${courseCompletionSyncing ? ';opacity:.62;cursor:not-allowed' : ''}" onclick="toggleCourseCompletion(${student.seat})" ${courseCompletionSyncing ? 'disabled aria-disabled="true"' : ''}><span class="text-base opacity-70 leading-none mb-2">${seat} 號</span><span class="text-3xl leading-tight w-full truncate px-1">${escapeHTML(student.name)}</span><span class="text-base mt-2" style="color:${isDone ? '#fff' : color}">${courseCompletionSyncing ? '同步中…' : (isDone ? '已完成' : '待完成')}</span></button>`;
         }).join('');
         document.getElementById('task-progress').innerText = `${completed} / ${totalStudents}`;
     }
