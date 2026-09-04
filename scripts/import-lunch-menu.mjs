@@ -50,7 +50,8 @@ async function lunchServiceIds(firstDate) {
 }
 
 async function dishesForDate(date, serviceIds) {
-  const meals = (await Promise.all(serviceIds.map(serviceId => api('/offered/meal2', { SchoolId: SCHOOL_ID, period: date, MenuType: serviceId })))).flat();
+  // 公開搜尋頁使用 /offered/meal；meal2 是另一種登入後資料格式，會回傳空白資料。
+  const meals = (await Promise.all(serviceIds.map(serviceId => api('/offered/meal', { SchoolId: SCHOOL_ID, period: date, MenuType: serviceId, KitchenId: 'all' })))).flat();
   const batches = [...new Set(meals.map(meal => meal?.BatchDataId).filter(Boolean))];
   if (!batches.length) return [];
   const collections = await Promise.all(batches.map(batchId => api('/dish', { BatchDataId: batchId })));
