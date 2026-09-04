@@ -846,6 +846,14 @@
         '家政':'#be7b5d', '輔導':'#4aa0bb'
     };
     const currentSubjectColor = () => COURSE_SUBJECT_COLORS[currentSubject] || '#8fd3f4';
+    function courseTaskProgress(task) {
+        const total = studentRoster.length;
+        const completed = studentRoster.filter(student => Boolean(task?.records?.[student.seat - 1])).length;
+        return { total, completed, finished: total > 0 && completed >= total };
+    }
+    function subjectPendingTaskCount(subject) {
+        return (Array.isArray(subjectData[subject]) ? subjectData[subject] : []).filter(task => !task.hidden && !courseTaskProgress(task).finished).length;
+    }
 
     function openApp(type, subject = "") {
         document.getElementById('app-modal').classList.remove('hidden');
@@ -929,11 +937,22 @@
     }
 
     function closeApp() {
+        // 在單一科目內按叉號時，先回到課程任務的科目清單，而非直接回首頁。
+        if (currentActiveApp === 'subject') {
+            document.querySelectorAll('#app-window > div').forEach(div => div.classList.add('hidden'));
+            document.getElementById('app-content-courses').classList.remove('hidden');
+            currentActiveApp = 'courses';
+            currentSubject = '';
+            currentTaskId = null;
+            renderCourseFolders();
+            return;
+        }
         document.getElementById('app-modal').classList.add('opacity-0');
         document.getElementById('app-window').classList.add('scale-95');
         setTimeout(() => document.getElementById('app-modal').classList.add('hidden'), 300);
         stopExamTracker();
         updateWidgetTasks();
+        currentActiveApp = null;
     }
 
     let seatingState = JSON.parse(localStorage.getItem('classSeating')) || Array(highestSeatNumber()).fill(0);
@@ -1490,7 +1509,11 @@
     function renderCourseFolders() {
         const colors=['bg-pastel-rose','bg-pastel-blue','bg-pastel-yellow','bg-pastel-green','bg-pastel-orange','bg-pastel-mint','bg-pastel-purple'];
         const container = document.getElementById('course-folders');
-        container.innerHTML = COURSE_SUBJECTS.map((subject, index) => `<div class="flex flex-col items-center gap-3 cursor-pointer group" onclick="openApp('subject','${subject}')"><div class="w-32 h-32 squircle ${colors[index % colors.length]} flex items-center justify-center"><i class="fa-solid ${COURSE_SUBJECT_ICONS[subject] || 'fa-folder'} text-6xl text-white/90 drop-shadow-md"></i></div><span class="text-white font-bold text-2xl tracking-widest group-hover:text-[#8fd3f4] transition-colors">${subject}</span></div>`).join('');
+        container.innerHTML = COURSE_SUBJECTS.map((subject, index) => {
+            const pending = subjectPendingTaskCount(subject);
+            const badge = pending ? `<span class="absolute -right-3 -top-3 flex min-w-9 h-9 items-center justify-center rounded-full border-2 border-white bg-[#ef476f] px-2 text-base font-black text-white shadow-lg" title="${pending} 個未完成任務">${pending > 9 ? '9+' : pending}</span>` : '';
+            return `<div class="flex flex-col items-center gap-3 cursor-pointer group" onclick="openApp('subject','${subject}')"><div class="relative w-32 h-32 squircle ${colors[index % colors.length]} flex items-center justify-center"><i class="fa-solid ${COURSE_SUBJECT_ICONS[subject] || 'fa-folder'} text-6xl text-white/90 drop-shadow-md"></i>${badge}</div><span class="text-white font-bold text-2xl tracking-widest group-hover:text-[#8fd3f4] transition-colors">${subject}${pending ? `<small class="ml-2 text-lg text-[#ff9eb5]">${pending}</small>` : ''}</span></div>`;
+        }).join('');
     }
 
     function loadSubjectTasks() {
@@ -1583,7 +1606,11 @@
         const tasks = subjectData[currentSubject].filter(task => !task.hidden);
         listDiv.innerHTML = tasks.length ? tasks.map(task => {
             const active = task.id === currentTaskId;
-            return `<button type="button" onclick="switchTask('${task.id}')" class="w-full text-left p-4 rounded-2xl font-bold text-xl transition-all border" style="${active ? `background:${color}42;border-color:${color};color:#fff;box-shadow:0 0 16px ${color}55` : 'background:rgba(0,0,0,.18);border-color:rgba(255,255,255,.1);color:rgba(255,255,255,.62)'}"><i class="fa-solid fa-clipboard-check mr-3" style="color:${color}"></i>${escapeHTML(task.name)}</button>`;
+            const progress = courseTaskProgress(task);
+            const status = progress.finished
+                ? '<span class="shrink-0 rounded-full bg-emerald-400/20 px-3 py-1 text-base font-black text-emerald-200">已結束</span>'
+                : `<span class="shrink-0 rounded-full bg-[#ef476f]/20 px-3 py-1 text-base font-black text-[#ffb0c2]">${progress.completed}/${progress.total}</span>`;
+            return `<button type="button" onclick="switchTask('${task.id}')" class="w-full text-left p-4 rounded-2xl font-bold text-xl transition-all border" style="${active ? `background:${color}42;border-color:${color};color:#fff;box-shadow:0 0 16px ${color}55` : 'background:rgba(0,0,0,.18);border-color:rgba(255,255,255,.1);color:rgba(255,255,255,.62)'}"><span class="flex items-center gap-3"><i class="fa-solid ${progress.finished ? 'fa-circle-check' : 'fa-clipboard-check'}" style="color:${progress.finished ? '#7ee6b8' : color}"></i><span class="min-w-0 flex-1 truncate">${escapeHTML(task.name)}</span>${status}</span></button>`;
         }).join('') : `<div class="text-white/45 text-xl leading-relaxed py-8">尚未建立任務。建立後即可由學生點選自己的小卡，登記完成狀態。</div>`;
     }
 
@@ -1598,13 +1625,14 @@
         if (createButton) { createButton.style.background = color; createButton.style.color = '#fff'; createButton.onclick = createCourseTaskInPlace; }
         // 課程任務沿用實際座位表的 5 排 × 6 位位置，空位也保留，方便依座號快速點選。
         grid.className = 'seating-display-grid mt-2 pb-5';
-        taskTitle.value = task?.name || '尚未選擇任務';
+        const taskProgress = courseTaskProgress(task);
+        taskTitle.value = task ? `${task.name}${taskProgress.finished ? '（已結束）' : ''}` : '尚未選擇任務';
         if (!task) {
             grid.innerHTML = '<div class="flex items-center justify-center text-center text-white/50 text-2xl" style="grid-column:1 / -1;grid-row:1 / -1">請先在左側建立或選擇任務。</div>';
             document.getElementById('task-progress').innerText = `0 / ${totalStudents}`;
             return;
         }
-        const completed = studentRoster.filter(student => Boolean(task.records[student.seat - 1])).length;
+        const completed = taskProgress.completed;
         grid.innerHTML = getSeatingLayout().map(placedSeat => {
             if (!placedSeat) return '<div class="w-full h-full rounded-xl border-2 border-dashed border-white/20 bg-black/10 flex items-center justify-center text-white/20 text-xl">空位</div>';
             const student = studentRoster.find(item => item.seat === placedSeat);
@@ -1615,7 +1643,7 @@
             const border = isDone ? color : 'rgba(255,255,255,.18)';
             return `<button type="button" class="neon-btn w-full h-full min-h-0 flex flex-col items-center justify-center p-3 text-center font-bold overflow-hidden" style="background:${surface};border-color:${border};color:#fff;${isDone ? `box-shadow:0 0 16px ${color}88` : ''}${courseCompletionSyncing ? ';opacity:.62;cursor:not-allowed' : ''}" onclick="toggleCourseCompletion(${student.seat})" ${courseCompletionSyncing ? 'disabled aria-disabled="true"' : ''}><span class="text-base opacity-70 leading-none mb-2">${seat} 號</span><span class="text-3xl leading-tight w-full truncate px-1">${escapeHTML(student.name)}</span><span class="text-base mt-2" style="color:${isDone ? '#fff' : color}">${courseCompletionSyncing ? '同步中…' : (isDone ? '已完成' : '待完成')}</span></button>`;
         }).join('');
-        document.getElementById('task-progress').innerText = `${completed} / ${totalStudents}`;
+        document.getElementById('task-progress').innerText = `${completed} / ${totalStudents}${taskProgress.finished ? '（已結束）' : ''}`;
     }
 
     async function submitCourseChange(operation, extra) {
