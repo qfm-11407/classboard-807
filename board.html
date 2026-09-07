@@ -854,7 +854,8 @@
             updateWidgetTasks();
             updateWidgetTomorrow();
             renderDutyWidget();
-        }
+        } else if (currentActiveApp === 'seating') renderSeatingGrid();
+        else if (currentActiveApp === 'lunch') renderLunchMenu();
     }
     const COURSE_SUBJECTS = ['國文','英文','數學','理化','地理','歷史','公民','本土','資科','生科','健康','體育','音樂','表演','美術','童軍','家政','輔導'];
     const COURSE_SUBJECT_ICONS = {
