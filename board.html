@@ -776,7 +776,7 @@
     window.addEventListener('resize', resizeApp); resizeApp();
 
     const CLOUD_ENDPOINT = '/api/classroom';
-    const CLOUD_KEYS = ['classroomTotalStudents','classroomStudentNames','classroomStudentRoster','classSeating','classroomSeatingLayout','classTimetable','classTimeSlots','subjectTeachers','subjectTeacherOrder','examSchedule','examScheduleDays','examDayCount','examActiveDay','subjectData','dailyTasks','todayTasks','tomorrowTasks','taskHistory','taskDate','scheduledTasks','nonSchoolDays','cleaningTasks','cleaningTaskConfig','cleaningAssignments','femaleRestroomLayout','dutyAssignments','dutyRotationStartDate','classCadres','classCadreConfig','leaveRecords','lunchAssignments','lunchCategoryLimits','lunchWeeklyGroup','lunchRotationStartDate','monthlyMenus','notebookCheckins'];
+    const CLOUD_KEYS = ['classroomTotalStudents','classroomStudentNames','classroomStudentRoster','classSeating','classSeatingSession','classroomSeatingLayout','classTimetable','classTimeSlots','subjectTeachers','subjectTeacherOrder','examSchedule','examScheduleDays','examDayCount','examActiveDay','subjectData','dailyTasks','todayTasks','tomorrowTasks','taskHistory','taskDate','scheduledTasks','nonSchoolDays','cleaningTasks','cleaningTaskConfig','cleaningAssignments','femaleRestroomLayout','dutyAssignments','dutyRotationStartDate','classCadres','classCadreConfig','leaveRecords','leaveHalfDayRecords','lunchAssignments','lunchCategoryLimits','lunchWeeklyGroup','lunchRotationStartDate','monthlyMenus','notebookCheckins'];
     const PUBLIC_MENU_URL = 'https://raw.githubusercontent.com/qfm-11407/classboard-807/main/data/monthly-menu.json';
     let publicMonthlyMenus = {};
     async function loadPublicMenus() {
@@ -837,6 +837,7 @@
         if (examTimeEl) examTimeEl.innerText = now.toLocaleTimeString('zh-TW', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
     }
     setInterval(updateClocks, 1000); updateClocks();
+    setInterval(() => { if(currentActiveApp === 'seating') renderSeatingGrid(); if(currentActiveApp === 'exam') renderExamSchedule(); }, 60000);
     setInterval(() => { if (currentActiveApp === 'timetable' && !isEditingTimetable) renderTimetable(); }, 30000);
 
     let currentActiveApp = null;
@@ -1036,10 +1037,17 @@
         return layout;
     }
 
-    function leaveSeatsForDate(day = dateKey()) {
-        const records = readTaskObject('leaveRecords', {});
+    function currentLeaveSession() {
+        const hour=Number(new Intl.DateTimeFormat('en-US',{timeZone:'Asia/Taipei',hour:'2-digit',hourCycle:'h23'}).format(new Date()));
+        return hour < 12 ? 'morning' : 'afternoon';
+    }
+    function leaveSeatsForDate(day = dateKey(), session = currentLeaveSession()) {
+        const records = readTaskObject('leaveRecords', {}), halfRecords=readTaskObject('leaveHalfDayRecords', {});
         const validSeats = new Set(studentRoster.map(student => student.seat));
-        return new Set((Array.isArray(records?.[day]) ? records[day] : []).map(Number).filter(seat => validSeats.has(seat)));
+        const full=Array.isArray(records?.[day]) ? records[day] : [];
+        const half=halfRecords?.[day] && typeof halfRecords[day]==='object' ? halfRecords[day] : {};
+        const selected=session==='all' ? [...(Array.isArray(half.morning)?half.morning:[]),...(Array.isArray(half.afternoon)?half.afternoon:[])] : (Array.isArray(half[session])?half[session]:[]);
+        return new Set([...full,...selected].map(Number).filter(seat => validSeats.has(seat)));
     }
 
     function isLeaveDayClosed() {
@@ -1048,7 +1056,9 @@
     }
 
     function isSeatAbsentToday(seat) {
-        return Boolean(seatingState[seat - 1]) || (!isLeaveDayClosed() && leaveSeatsForDate().has(seat));
+        let seatingSession='';try{seatingSession=JSON.parse(localStorage.getItem('classSeatingSession')||'""');}catch(_){}
+        const temporary=!seatingSession||seatingSession===currentLeaveSession();
+        return (temporary&&Boolean(seatingState[seat - 1])) || (!isLeaveDayClosed() && leaveSeatsForDate().has(seat));
     }
 
     function renderSeatingGrid() {
