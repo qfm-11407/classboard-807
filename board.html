@@ -858,20 +858,20 @@
         } else if (currentActiveApp === 'seating') renderSeatingGrid();
         else if (currentActiveApp === 'lunch') renderLunchMenu();
     }
-    const COURSE_SUBJECTS = ['國文','英文','數學','理化','地理','歷史','公民','本土','資科','生科','健康','體育','音樂','表演','美術','童軍','家政','輔導'];
+    const COURSE_SUBJECTS = ['國文','英文','數學','理化','地理','歷史','公民','本土','資科','生科','健康','體育','音樂','表演','美術','童軍','家政','輔導','閱讀'];
     const COURSE_SUBJECT_ICONS = {
         '國文':'fa-book-open', '英文':'fa-language', '數學':'fa-square-root-variable', '理化':'fa-flask',
         '地理':'fa-earth-asia', '歷史':'fa-landmark', '公民':'fa-scale-balanced', '本土':'fa-mountain-sun', '資科':'fa-laptop-code',
         '生科':'fa-dna', '健康':'fa-heart-pulse', '體育':'fa-person-running', '音樂':'fa-music',
         '表演':'fa-masks-theater', '美術':'fa-palette', '童軍':'fa-campground', '家政':'fa-house-chimney',
-        '輔導':'fa-comments'
+        '輔導':'fa-comments', '閱讀':'fa-book-bookmark'
     };
 
     const COURSE_SUBJECT_COLORS = {
         '國文':'#e37758', '英文':'#3b82c4', '數學':'#ce8b2c', '理化':'#3a9d73', '地理':'#2aa7a2',
         '歷史':'#9d5ec8', '公民':'#d45d67', '本土':'#c86f48', '資科':'#2463a9', '生科':'#4c9b62', '健康':'#e64a72',
         '體育':'#f58b45', '音樂':'#845ec2', '表演':'#d462a6', '美術':'#ed7d5b', '童軍':'#5ea557',
-        '家政':'#be7b5d', '輔導':'#4aa0bb'
+        '家政':'#be7b5d', '輔導':'#4aa0bb', '閱讀':'#5c7cbe'
     };
     const currentSubjectColor = () => COURSE_SUBJECT_COLORS[currentSubject] || '#8fd3f4';
     function courseTaskProgress(task) {
