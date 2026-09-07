@@ -237,7 +237,7 @@
         .lunch-seating-board { width:min(86%,860px); margin:0 auto 16px; padding:8px; border:2px solid rgba(132,250,176,.35); border-radius:12px; background:rgba(132,250,176,.1); color:#d9ffea; text-align:center; font-size:1.1rem; font-weight:900; letter-spacing:.55em; }
         .lunch-seating-grid { width:min(100%,1080px); gap:14px 22px; padding-bottom:10px; }
         .lunch-seat-card { min-width:0; min-height:0; display:flex; flex-direction:column; align-items:center; justify-content:center; overflow:hidden; border:2px solid #84fab0; border-radius:18px; background:rgba(132,250,176,.25); color:#fff; box-shadow:0 0 16px rgba(132,250,176,.35); font-weight:900; }
-        .lunch-seat-card.fixed { border-color:#f6d365; background:rgba(246,211,101,.28); box-shadow:0 0 16px rgba(246,211,101,.4); }
+        .lunch-seat-card.lunch-seat-helper-card { border-color:#f6d365; background:rgba(246,211,101,.28); box-shadow:0 0 16px rgba(246,211,101,.4); }
         .lunch-seat-number { font-size:1.1rem; line-height:1; opacity:.75; }.lunch-seat-name { margin-top:7px; padding:0 6px; font-size:2rem; line-height:1.1; white-space:nowrap; }.lunch-seat-helper { margin-top:6px; font-size:.82rem; opacity:.82; }
         .lunch-seat-empty { min-width:0; min-height:0; border:1px dashed rgba(255,255,255,.12); border-radius:18px; background:rgba(255,255,255,.025); }
         .cadre-display { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:22px; width:100%; flex:1; min-height:0; }
@@ -1991,7 +1991,7 @@
         grid.innerHTML = getSeatingLayout().map(seat => {
             const student=studentRoster.find(item=>item.seat===seat);
             if(!student || !activeSeats.has(student.seat)) return '<div class="lunch-seat-empty" aria-hidden="true"></div>';
-            return `<div class="lunch-seat-card ${student.seat===14?'fixed':''}"><span class="lunch-seat-number">${String(student.seat).padStart(2,'0')} 號</span><span class="lunch-seat-name">${escapeHTML(student.name)}</span>${student.seat===14?'<span class="lunch-seat-helper">固定協助</span>':''}</div>`;
+            return `<div class="lunch-seat-card ${student.seat===14?'lunch-seat-helper-card':''}"><span class="lunch-seat-number">${String(student.seat).padStart(2,'0')} 號</span><span class="lunch-seat-name">${escapeHTML(student.name)}</span>${student.seat===14?'<span class="lunch-seat-helper">固定協助</span>':''}</div>`;
         }).join('');
     }
 
