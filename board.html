@@ -584,7 +584,7 @@
                 </div>
                 <div class="w-2/3 flex flex-col p-10 items-center relative overflow-hidden">
                     <div id="lunch-weekly-title" class="text-3xl text-white font-bold mb-2">本週午餐小組</div>
-                    <div id="lunch-weekly-subtitle" class="text-white/60 text-lg mb-6">14 號固定協助</div>
+                    <div id="lunch-weekly-subtitle" class="text-white/60 text-lg mb-6">14、24 號固定協助</div>
                     <div id="lunch-current-item" class="hidden"></div>
                     <div class="lunch-seating-board">黑板／講台</div>
                     <div class="student-display-rows" id="lunch-students-grid"></div>
@@ -776,7 +776,7 @@
     window.addEventListener('resize', resizeApp); resizeApp();
 
     const CLOUD_ENDPOINT = '/api/classroom';
-    const CLOUD_KEYS = ['classroomTotalStudents','classroomStudentNames','classroomStudentRoster','classSeating','classSeatingSession','classroomSeatingLayout','classTimetable','classTimeSlots','subjectTeachers','subjectTeacherOrder','examSchedule','examScheduleDays','examDayCount','examActiveDay','subjectData','dailyTasks','todayTasks','tomorrowTasks','taskHistory','taskDate','scheduledTasks','nonSchoolDays','cleaningTasks','cleaningTaskConfig','cleaningAssignments','femaleRestroomLayout','dutyAssignments','dutyRotationStartDate','classCadres','classCadreConfig','leaveRecords','leaveHalfDayRecords','lunchAssignments','lunchCategoryLimits','lunchWeeklyGroup','lunchRotationStartDate','monthlyMenus','notebookCheckins'];
+    const CLOUD_KEYS = ['classroomTotalStudents','classroomStudentNames','classroomStudentRoster','classSeating','classSeatingSession','classroomSeatingLayout','classTimetable','classTimeSlots','subjectTeachers','subjectTeacherOrder','examSchedule','examScheduleDays','examDayCount','examActiveDay','subjectData','dailyTasks','todayTasks','tomorrowTasks','taskHistory','taskDate','scheduledTasks','nonSchoolDays','cleaningTasks','cleaningTaskConfig','cleaningAssignments','femaleRestroomLayout','dutyAssignments','dutyRotationStartDate','classCadres','classCadreConfig','leaveRecords','leaveHalfDayRecords','lunchAssignments','lunchCategoryLimits','lunchWeeklyGroup','lunchWeeklyGroups','lunchRotationStartDate','monthlyMenus','notebookCheckins'];
     const PUBLIC_MENU_URL = 'https://raw.githubusercontent.com/qfm-11407/classboard-807/main/data/monthly-menu.json';
     let publicMonthlyMenus = {};
     async function loadPublicMenus() {
@@ -1954,18 +1954,29 @@
     document.getElementById('tomorrow-password').required=false;
     updateWidgetTasks(); updateWidgetTomorrow(); renderDutyWidget(); setInterval(renderDutyWidget, 60000);
 
-    const LUNCH_WEEKLY_GROUPS = [
-        { id:'group-1', label:'第 1 組', seats:[1,2,3,4,5,6,7,8,9,10,14] },
-        { id:'group-2', label:'第 2 組', seats:[11,12,13,14,15,16,17,18,19] },
-        { id:'group-3', label:'第 3 組', seats:[20,21,22,23,14,25,26,27,28] }
+    const LUNCH_HELPER_SEATS = [14,24];
+    const DEFAULT_LUNCH_WEEKLY_GROUPS = [
+        { id:'group-1', label:'第 1 組', seats:[1,2,3,4,5,6,7,8,9,10] },
+        { id:'group-2', label:'第 2 組', seats:[11,12,13,15,16,17,18,19] },
+        { id:'group-3', label:'第 3 組', seats:[20,21,22,23,25,26,27,28] }
     ];
+    function lunchWeeklyGroups() {
+        const validSeats=new Set(studentRoster.map(student=>student.seat)), saved=readTaskList('lunchWeeklyGroups',null);
+        const source=Array.isArray(saved) ? saved : DEFAULT_LUNCH_WEEKLY_GROUPS, used=new Set();
+        return DEFAULT_LUNCH_WEEKLY_GROUPS.map(fallback=>{
+            const found=source.find(group=>group?.id===fallback.id), candidates=Array.isArray(found?.seats)?found.seats:fallback.seats, seats=[];
+            candidates.forEach(raw=>{const seat=Number(raw);if(validSeats.has(seat)&&!LUNCH_HELPER_SEATS.includes(seat)&&!used.has(seat)){seats.push(seat);used.add(seat);}});
+            fallback.seats.forEach(seat=>{if(seats.length<fallback.seats.length&&validSeats.has(seat)&&!used.has(seat)){seats.push(seat);used.add(seat);}});
+            return {id:fallback.id,label:fallback.label,seats};
+        });
+    }
     function lunchWeekStart(day=dateKey()) { const [year,month,date]=String(day).split('-').map(Number),value=new Date(Date.UTC(year,month-1,date)),weekday=value.getUTCDay();value.setUTCDate(value.getUTCDate()-(weekday===0?6:weekday-1));return value.toISOString().slice(0,10); }
     function storedLunchRotationStartDate(fallback=lunchWeekStart()) { let value=fallback;try{value=JSON.parse(localStorage.getItem('lunchRotationStartDate')) ?? fallback;}catch(_){}return /^\d{4}-\d{2}-\d{2}$/.test(String(value)) ? String(value) : fallback; }
     function lunchWeekSteps(startDay,endDay=dateKey()) { const start=new Date(`${lunchWeekStart(startDay)}T00:00:00Z`),end=new Date(`${lunchWeekStart(endDay)}T00:00:00Z`);return Math.round((end-start)/(7*24*60*60*1000)); }
     function currentLunchWeeklyGroup() {
         let baseId='group-1'; try { baseId=JSON.parse(localStorage.getItem('lunchWeeklyGroup')) || baseId; } catch (_) {}
-        const baseIndex=Math.max(0,LUNCH_WEEKLY_GROUPS.findIndex(group=>group.id===baseId)),steps=lunchWeekSteps(storedLunchRotationStartDate());
-        return LUNCH_WEEKLY_GROUPS[((baseIndex+steps)%LUNCH_WEEKLY_GROUPS.length+LUNCH_WEEKLY_GROUPS.length)%LUNCH_WEEKLY_GROUPS.length];
+        const groups=lunchWeeklyGroups(),baseIndex=Math.max(0,groups.findIndex(group=>group.id===baseId)),steps=lunchWeekSteps(storedLunchRotationStartDate());
+        return groups[((baseIndex+steps)%groups.length+groups.length)%groups.length];
     }
     function renderLunchMenu() {
         const menu = document.getElementById('lunch-menu');
@@ -1983,15 +1994,15 @@
         renderLunchGrid();
     }
     function renderLunchGrid() {
-        const group=currentLunchWeeklyGroup(), orderedSeats=[...group.seats.filter(seat=>seat!==14),14], members=orderedSeats.map(seat=>studentRoster.find(student=>student.seat===seat)).filter(Boolean), activeSeats=new Set(members.map(student=>student.seat));
+        const group=currentLunchWeeklyGroup(), orderedSeats=[...group.seats,...LUNCH_HELPER_SEATS], members=orderedSeats.map(seat=>studentRoster.find(student=>student.seat===seat)).filter(Boolean), activeSeats=new Set(members.map(student=>student.seat));
         document.getElementById('lunch-weekly-title').textContent=`本週午餐小組｜${group.label}`;
-        document.getElementById('lunch-weekly-subtitle').textContent=`${members.length} 人輪值｜14 號固定協助`;
+        document.getElementById('lunch-weekly-subtitle').textContent=`${group.seats.length} 人輪值｜14、24 號固定協助`;
         const grid = document.getElementById('lunch-students-grid');
         grid.className = 'seating-display-grid lunch-seating-grid';
         grid.innerHTML = getSeatingLayout().map(seat => {
             const student=studentRoster.find(item=>item.seat===seat);
             if(!student || !activeSeats.has(student.seat)) return '<div class="lunch-seat-empty" aria-hidden="true"></div>';
-            return `<div class="lunch-seat-card ${student.seat===14?'lunch-seat-helper-card':''}"><span class="lunch-seat-number">${String(student.seat).padStart(2,'0')} 號</span><span class="lunch-seat-name">${escapeHTML(student.name)}</span>${student.seat===14?'<span class="lunch-seat-helper">固定協助</span>':''}</div>`;
+            return `<div class="lunch-seat-card ${LUNCH_HELPER_SEATS.includes(student.seat)?'lunch-seat-helper-card':''}"><span class="lunch-seat-number">${String(student.seat).padStart(2,'0')} 號</span><span class="lunch-seat-name">${escapeHTML(student.name)}</span>${LUNCH_HELPER_SEATS.includes(student.seat)?'<span class="lunch-seat-helper">固定協助</span>':''}</div>`;
         }).join('');
     }
 
