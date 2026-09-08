@@ -1056,9 +1056,7 @@
     }
 
     function isSeatAbsentToday(seat) {
-        let seatingSession='';try{seatingSession=JSON.parse(localStorage.getItem('classSeatingSession')||'""');}catch(_){}
-        const temporary=!seatingSession||seatingSession===currentLeaveSession();
-        return (temporary&&Boolean(seatingState[seat - 1])) || (!isLeaveDayClosed() && leaveSeatsForDate().has(seat));
+        return Boolean(seatingState[seat - 1]) || (!isLeaveDayClosed() && leaveSeatsForDate().has(seat));
     }
 
     function renderSeatingGrid() {
