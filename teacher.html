@@ -219,7 +219,7 @@
 
     <section class="panel" id="panel-daily"><h2>打掃任務</h2><p class="hint">先選擇分區並新增工作，再點選學生分配；每位學生只能分配一項打掃工作。</p><div class="row" style="margin:0 0 14px"><button class="btn light" id="download-cleaning-summary" type="button">下載總表圖片</button></div><div class="row" style="margin-bottom:14px"><select id="cleaning-area" aria-label="打掃分區" style="width:110px"><option>教室</option><option>樓梯</option><option>男廁</option><option>女廁</option></select><input id="new-cleaning-task" type="text" placeholder="例如：掃地"><input id="cleaning-limit" type="number" min="1" max="60" value="2" style="width:100px"><button class="btn" id="add-cleaning-task">新增工作</button></div><div id="cleaning-task-buttons" class="lunch-category-buttons"></div><p class="hint" id="cleaning-workload-count" style="margin:10px 0;font-weight:800"></p><p class="hint" id="cleaning-total-count" style="margin:10px 0;font-weight:800"></p><p class="hint" id="cleaning-count" style="margin:10px 0"></p><div id="cleaning-grid" class="student-grid"></div><p class="notice" id="daily-message"></p></section>
 
-    <section class="panel" id="panel-scheduled"><h2>事項排程</h2><p class="hint">指定「事項日期」後，當天才會列入學生端的明日事項；下一個上課日會自動移至今日任務，之後可在歷史任務查詢。週六、日不能排定事項；平日可標記為假日，仍可安排必要事項。</p><div class="card" style="max-width:800px"><div class="row" style="justify-content:space-between;margin-bottom:10px"><strong>今日確認碼：<span id="daily-delete-code">載入中…</span></strong><button class="btn light" id="refresh-delete-code" type="button">生成今日確認碼</button></div><p class="hint">修改或刪除事項時，請輸入這組四位數確認碼；每天會自動換一組。</p><div class="grid2"><div><label for="scheduled-date">事項日期</label><input id="scheduled-date" type="date"></div><div><label for="scheduled-subject">科目／類別</label><select id="scheduled-subject"></select></div></div><label style="display:flex;align-items:center;gap:8px;margin-top:14px;cursor:pointer"><input id="scheduled-nonschool-day" type="checkbox" style="width:20px;height:20px">設為假日（仍可安排事項）</label><label for="scheduled-author" style="margin-top:14px">填寫人</label><select id="scheduled-author"><option value="老師">老師</option><option value="小老師">小老師</option></select><label for="scheduled-text" style="margin-top:14px">事項內容</label><textarea id="scheduled-text" style="min-height:110px" placeholder="例如：請於當日繳交國文第 3 課習作第 20 頁"></textarea><button class="btn" id="add-scheduled-task" type="button" style="margin-top:14px">加入排程</button><p id="scheduled-message" class="notice"></p></div><div class="schedule-calendar"><div class="schedule-calendar-head"><button class="btn light" id="scheduled-prev" type="button">‹</button><div class="schedule-title"><h3 id="scheduled-month"></h3><span id="scheduled-total" class="schedule-total"></span></div><button class="btn light" id="scheduled-next" type="button">›</button></div><div class="schedule-weekdays"><span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span></div><div id="scheduled-calendar" class="schedule-days"></div></div><div class="card" style="margin-top:18px"><h3 style="margin-top:0">已排定事項</h3><div id="scheduled-list" class="list"></div></div></section>
+    <section class="panel" id="panel-scheduled"><h2>事項排程</h2><p class="hint">指定「事項日期」後，當天才會列入學生端的明日事項；下一個上課日會自動移至今日任務，之後可在歷史任務查詢。若誤刪，可選擇上一個上課日補登並立即恢復今日任務。週六、日不能排定事項；平日可標記為假日，仍可安排必要事項。</p><div class="card" style="max-width:800px"><div class="row" style="justify-content:space-between;margin-bottom:10px"><strong>今日確認碼：<span id="daily-delete-code">載入中…</span></strong><button class="btn light" id="refresh-delete-code" type="button">生成今日確認碼</button></div><p class="hint">修改或刪除事項時，請輸入這組四位數確認碼；每天會自動換一組。</p><div class="grid2"><div><label for="scheduled-date">事項日期</label><input id="scheduled-date" type="date"></div><div><label for="scheduled-subject">科目／類別</label><select id="scheduled-subject"></select></div></div><label style="display:flex;align-items:center;gap:8px;margin-top:14px;cursor:pointer"><input id="scheduled-nonschool-day" type="checkbox" style="width:20px;height:20px">設為假日（仍可安排事項）</label><label for="scheduled-author" style="margin-top:14px">填寫人</label><select id="scheduled-author"><option value="老師">老師</option><option value="小老師">小老師</option></select><label for="scheduled-text" style="margin-top:14px">事項內容</label><textarea id="scheduled-text" style="min-height:110px" placeholder="例如：請於當日繳交國文第 3 課習作第 20 頁"></textarea><button class="btn" id="add-scheduled-task" type="button" style="margin-top:14px">加入排程</button><p id="scheduled-message" class="notice"></p></div><div class="schedule-calendar"><div class="schedule-calendar-head"><button class="btn light" id="scheduled-prev" type="button">‹</button><div class="schedule-title"><h3 id="scheduled-month"></h3><span id="scheduled-total" class="schedule-total"></span></div><button class="btn light" id="scheduled-next" type="button">›</button></div><div class="schedule-weekdays"><span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span></div><div id="scheduled-calendar" class="schedule-days"></div></div><div class="card" style="margin-top:18px"><h3 style="margin-top:0">已排定事項</h3><div id="scheduled-list" class="list"></div></div></section>
 
     <section class="panel" id="panel-duty"><h2>今日值日生</h2><p class="hint">固定兩位；設定今天的起始組合後，每個上課日 00:00 會自動輪替下一組兩位，週六、日維持原組，並顯示在公開看板左側。</p><div id="duty-grid" class="student-grid"></div><p class="notice" id="duty-message"></p></section>
 
@@ -302,6 +302,8 @@
     function weekdayOfDate(date) { const [year,month,day]=String(date).split('-').map(Number);return new Date(Date.UTC(year,month-1,day)).getUTCDay(); }
     function isTeachingDay(date) { const weekday=weekdayOfDate(date);return weekday>0&&weekday<6&&!nonSchoolDays().includes(date); }
     const nextDay = date => { let next=shiftDateKey(date,1);while(!isTeachingDay(next))next=shiftDateKey(next,1);return next; };
+    const previousTeachingDay = date => { let previous=shiftDateKey(date,-1);while(!isTeachingDay(previous))previous=shiftDateKey(previous,-1);return previous; };
+    const canChangeScheduledItem = date => /^\d{4}-\d{2}-\d{2}$/.test(date) && date >= previousTeachingDay(taipeiDay());
     let scheduledCursor = new Date();
     async function refreshDailyDeleteCode() { try { $('daily-delete-code').textContent=await FirebaseClassroom.getDailyDeleteCode(); } catch (_) { $('daily-delete-code').textContent='登入後可查看'; } }
     function organizeScheduledPanel() {
@@ -410,7 +412,7 @@
     function removeScheduledTaskRemnants(item) { if (!item.id) return; const sameId=task=>String(task?.id || '')===String(item.id); ['todayTasks','tomorrowTasks','dailyTasks'].forEach(key=>{const list=readJSON(key,[]);if(Array.isArray(list))localStorage.setItem(key,JSON.stringify(list.filter(task=>!sameId(task))));}); const history=readJSON('taskHistory',{});if(history&&typeof history==='object'){Object.keys(history).forEach(day=>{if(Array.isArray(history[day]))history[day]=history[day].filter(task=>!sameId(task));});localStorage.setItem('taskHistory',JSON.stringify(history));} }
     async function renderScheduledTasks() { const select=$('scheduled-subject'), date=$('scheduled-date'), list=$('scheduled-list'); if (!select.options.length) select.innerHTML=['其他',...subjects].map(subject=>`<option>${subject}</option>`).join(''); if (!date.value) date.value=taipeiDay(); const scheduled=readJSON('scheduledTasks',[]).filter(item=>item&&/^\d{4}-\d{2}-\d{2}$/.test(item.targetDate)&&String(item.text||'').trim()).map(item=>({...item,source:'schedule'})); let submitted=[];try{submitted=(await FirebaseClassroom.getTomorrowSubmissions()).filter(item=>item&&/^\d{4}-\d{2}-\d{2}$/.test(item.targetDate)&&String(item.text||'').trim()).map(item=>({...item,source:'submission'}));}catch(_){}const items=[...scheduled,...submitted].sort((a,b)=>a.targetDate.localeCompare(b.targetDate)||String(a.createdAt||'').localeCompare(String(b.createdAt||''))); renderScheduledCalendar(items); list.innerHTML=''; refreshDailyDeleteCode(); if (!items.length) { const empty=document.createElement('p'); empty.className='hint'; empty.textContent='尚未排定事項。'; list.append(empty); return; } items.forEach(item=>{const row=document.createElement('div');row.className='item';const dateText=document.createElement('strong');dateText.textContent=item.targetDate;const content=document.createElement('div');const title=document.createElement('strong');title.textContent=`${item.subject || '其他'}｜${item.text}`;const detail=document.createElement('small');detail.textContent=`${item.source==='submission'?'前端登記':'教師排程'}｜填寫人：${item.author || '未填寫'}；前一天顯示明日事項`;content.append(title,detail);const remove=document.createElement('button');remove.className='btn danger';remove.type='button';remove.textContent='刪除';remove.onclick=async()=>{if(!confirm(`確定刪除「${item.text}」？`))return;if(item.source==='submission'){try{await FirebaseClassroom.teacherDeleteTomorrowSubmission(item.id);message('scheduled-message','已刪除前端登記事項，學生端將自動更新。');}catch(error){message('scheduled-message',error.message||'刪除失敗。');return;}}else{const next=scheduled.filter(candidate=>candidate.id!==item.id);localStorage.setItem('scheduledTasks',JSON.stringify(next));removeScheduledTaskRemnants(item);message('scheduled-message','正在同步刪除…');try{await syncCloudNow();message('scheduled-message','已刪除排程事項，學生端將自動更新。');}catch(error){message('scheduled-message',error.message||'同步失敗，請稍後再試。');return;}}renderScheduledTasks();};row.append(dateText,content,remove);list.append(row);}); }
     $('scheduled-prev').addEventListener('click',()=>{scheduledCursor.setMonth(scheduledCursor.getMonth()-1);renderScheduledTasks();});$('scheduled-next').addEventListener('click',()=>{scheduledCursor.setMonth(scheduledCursor.getMonth()+1);renderScheduledTasks();});$('refresh-delete-code').addEventListener('click',refreshDailyDeleteCode);
-    $('add-scheduled-task').addEventListener('click',()=>{const targetDate=$('scheduled-date').value, subject=$('scheduled-subject').value, author=$('scheduled-author').value.trim(), text=$('scheduled-text').value.trim(); if(!/^\d{4}-\d{2}-\d{2}$/.test(targetDate)||!text)return message('scheduled-message','請選擇事項日期並填寫內容。'); if(targetDate < taipeiDay()) return message('scheduled-message','事項日期不可早於今天。'); const items=readJSON('scheduledTasks',[]); items.push({id:crypto.randomUUID(),targetDate,subject,author,text,createdAt:new Date().toISOString()});writeJSON('scheduledTasks',items);$('scheduled-text').value='';renderScheduledTasks();message('scheduled-message','已加入事項排程，並同步到 Firebase。');});
+    $('add-scheduled-task').addEventListener('click',()=>{const targetDate=$('scheduled-date').value, subject=$('scheduled-subject').value, author=$('scheduled-author').value.trim(), text=$('scheduled-text').value.trim(); if(!/^\d{4}-\d{2}-\d{2}$/.test(targetDate)||!text)return message('scheduled-message','請選擇事項日期並填寫內容。'); if(targetDate < previousTeachingDay(taipeiDay())) return message('scheduled-message','僅可補登上一個上課日的事項。'); const items=readJSON('scheduledTasks',[]); items.push({id:crypto.randomUUID(),targetDate,subject,author,text,createdAt:new Date().toISOString()});writeJSON('scheduledTasks',items);$('scheduled-text').value='';renderScheduledTasks();message('scheduled-message','已加入事項排程，並同步到 Firebase。');});
     let editingScheduledId = '';
     async function requireTodayCode(action) {
       const entered = window.prompt(`請輸入今日四位數確認碼以${action}`);
@@ -432,6 +434,7 @@
       $('cancel-scheduled-edit')?.remove();
     }
     function beginScheduledEdit(item) {
+      if (!canChangeScheduledItem(item.targetDate)) return message('scheduled-message', '上一個上課日前的事項已鎖定，無法修改。');
       editingScheduledId = item.id;
       $('scheduled-date').value = item.targetDate;
       $('scheduled-subject').value = item.subject || '其他';
@@ -475,11 +478,15 @@
         const detail = document.createElement('small'); detail.textContent = `${sourceLabel}｜填寫人：${item.author || '未填寫'}`;
         content.append(title, detail);
         const actions = document.createElement('div'); actions.className = 'actions schedule-item-actions';
-        if (item.source === 'schedule') {
+        const isLocked = !canChangeScheduledItem(item.targetDate);
+        if (item.source === 'schedule' && !isLocked) {
           const edit = document.createElement('button'); edit.className = 'btn light'; edit.type = 'button'; edit.textContent = '修改'; edit.onclick = () => beginScheduledEdit(item); actions.append(edit);
         }
-        const remove = document.createElement('button'); remove.className = 'btn danger'; remove.type = 'button'; remove.textContent = '刪除';
-        remove.onclick = async () => {
+        if (isLocked) {
+          const locked = document.createElement('span'); locked.className = 'hint'; locked.textContent = '已鎖定'; actions.append(locked);
+        } else {
+          const remove = document.createElement('button'); remove.className = 'btn danger'; remove.type = 'button'; remove.textContent = '刪除';
+          remove.onclick = async () => {
           if (!window.confirm(`確定要刪除「${item.subject || '其他'}｜${item.text}」嗎？`)) return;
           try {
             if (item.source === 'submission') await FirebaseClassroom.teacherDeleteTomorrowSubmission(item.id);
@@ -495,8 +502,10 @@
             }
             message('scheduled-message', '事項已刪除。'); renderScheduledTasks();
           } catch (error) { message('scheduled-message', error.message || '刪除失敗。'); }
-        };
-        actions.append(remove); row.append(dateText, content, actions); list.append(row);
+          };
+          actions.append(remove);
+        }
+        row.append(dateText, content, actions); list.append(row);
       });
     }
     const previousScheduleButton = $('add-scheduled-task');
@@ -506,7 +515,7 @@
       const targetDate = $('scheduled-date').value, subject = $('scheduled-subject').value, author = $('scheduled-author').value.trim(), text = $('scheduled-text').value.trim();
       if (!/^\d{4}-\d{2}-\d{2}$/.test(targetDate) || !text) return message('scheduled-message', '請選擇事項日期並填寫內容。');
       if ([0,6].includes(weekdayOfDate(targetDate))) return message('scheduled-message', '週六、日不能安排事項。');
-      if (targetDate < taipeiDay()) return message('scheduled-message', '事項日期不可早於今天。');
+      if (targetDate < previousTeachingDay(taipeiDay())) return message('scheduled-message', '僅可補登上一個上課日的事項。');
       const items = readJSON('scheduledTasks', []);
       if (editingScheduledId) {
         const index = items.findIndex(item => item.id === editingScheduledId);
