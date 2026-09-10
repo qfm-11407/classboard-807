@@ -238,6 +238,7 @@
         .lunch-seating-grid { width:min(100%,1080px); gap:14px 22px; padding-bottom:10px; }
         .lunch-seat-card { min-width:0; min-height:0; display:flex; flex-direction:column; align-items:center; justify-content:center; overflow:hidden; border:2px solid #84fab0; border-radius:18px; background:rgba(132,250,176,.25); color:#fff; box-shadow:0 0 16px rgba(132,250,176,.35); font-weight:900; }
         .lunch-seat-card.lunch-seat-helper-card { border-color:#f6d365; background:rgba(246,211,101,.28); box-shadow:0 0 16px rgba(246,211,101,.4); }
+        .lunch-seat-card.lunch-seat-absent { border-color:#ff8a8a; background:rgba(205,63,72,.34); box-shadow:0 0 20px rgba(255,108,116,.5); color:#ffe5e5; }
         .lunch-seat-number { font-size:1.1rem; line-height:1; opacity:.75; }.lunch-seat-name { margin-top:7px; padding:0 6px; font-size:2rem; line-height:1.1; white-space:nowrap; }.lunch-seat-helper { margin-top:6px; font-size:.82rem; opacity:.82; }
         .lunch-seat-empty { min-width:0; min-height:0; border:1px dashed rgba(255,255,255,.12); border-radius:18px; background:rgba(255,255,255,.025); }
         .cadre-display { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:22px; width:100%; flex:1; min-height:0; }
@@ -1995,15 +1996,15 @@
         renderLunchGrid();
     }
     function renderLunchGrid() {
-        const group=currentLunchWeeklyGroup(), orderedSeats=[...group.seats,...LUNCH_HELPER_SEATS], members=orderedSeats.map(seat=>studentRoster.find(student=>student.seat===seat)).filter(Boolean), activeSeats=new Set(members.map(student=>student.seat));
+        const group=currentLunchWeeklyGroup(), orderedSeats=[...group.seats,...LUNCH_HELPER_SEATS], members=orderedSeats.map(seat=>studentRoster.find(student=>student.seat===seat)).filter(Boolean), activeSeats=new Set(members.map(student=>student.seat)), absentSeats=new Set(members.filter(student=>isSeatAbsentToday(student.seat)).map(student=>student.seat));
         document.getElementById('lunch-weekly-title').textContent=`本週午餐小組｜${group.label}`;
-        document.getElementById('lunch-weekly-subtitle').textContent=`${group.seats.length} 人輪值｜14、24 號固定協助`;
+        document.getElementById('lunch-weekly-subtitle').textContent=`${group.seats.length} 人輪值｜14、24 號固定協助${absentSeats.size?`｜${absentSeats.size} 人請假`:''}`;
         const grid = document.getElementById('lunch-students-grid');
         grid.className = 'seating-display-grid lunch-seating-grid';
         grid.innerHTML = getSeatingLayout().map(seat => {
             const student=studentRoster.find(item=>item.seat===seat);
             if(!student || !activeSeats.has(student.seat)) return '<div class="lunch-seat-empty" aria-hidden="true"></div>';
-            return `<div class="lunch-seat-card ${LUNCH_HELPER_SEATS.includes(student.seat)?'lunch-seat-helper-card':''}"><span class="lunch-seat-number">${String(student.seat).padStart(2,'0')} 號</span><span class="lunch-seat-name">${escapeHTML(student.name)}</span>${LUNCH_HELPER_SEATS.includes(student.seat)?'<span class="lunch-seat-helper">固定協助</span>':''}</div>`;
+            const absent=absentSeats.has(student.seat);return `<div class="lunch-seat-card ${LUNCH_HELPER_SEATS.includes(student.seat)?'lunch-seat-helper-card':''} ${absent?'lunch-seat-absent':''}"><span class="lunch-seat-number">${String(student.seat).padStart(2,'0')} 號</span><span class="lunch-seat-name">${escapeHTML(student.name)}</span>${absent?'<span class="lunch-seat-helper">請假</span>':LUNCH_HELPER_SEATS.includes(student.seat)?'<span class="lunch-seat-helper">固定協助</span>':''}</div>`;
         }).join('');
     }
 
