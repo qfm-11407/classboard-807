@@ -404,24 +404,24 @@
       if ([0,6].includes(weekdayOfDate(targetDate))) return message('scheduled-message', '週六、日不能安排事項。');
       if (!canChangeScheduledItem(targetDate)) return message('scheduled-message', '上一個上課日前的日期已鎖定。');
       const choices = allItems.filter(item => item.source === 'schedule' && item.targetDate === targetDate);
-      let selectedId = choices[0]?.id || '';
       let modal = $('schedule-editor-modal');
       if (!modal) { modal = document.createElement('div'); modal.id = 'schedule-editor-modal'; modal.className = 'schedule-editor-modal'; document.body.append(modal); }
       const close = () => modal.remove();
       const render = () => {
-        const selected = choices.find(item => item.id === selectedId);
-        modal.innerHTML = `<section class="schedule-editor-sheet" role="dialog" aria-modal="true"><div class="row" style="justify-content:space-between"><h3>${targetDate.replaceAll('-','/')}｜${selected ? '修改事項' : '新增事項'}</h3><button class="btn light" type="button" data-close>✕</button></div>${choices.length ? `<label>本日已排定事項</label><select id="schedule-editor-choice"><option value="">＋ 新增另一項事項</option>${choices.map((item,index)=>`<option value="${escapeHTML(item.id)}" ${item.id===selectedId?'selected':''}>${index+1}. ${escapeHTML(item.text)}</option>`).join('')}</select>` : ''}<label for="schedule-editor-text" style="margin-top:14px">事項內容</label><textarea id="schedule-editor-text" placeholder="請輸入事項內容">${escapeHTML(selected?.text || '')}</textarea><div class="row" style="justify-content:flex-end;margin-top:14px"><button class="btn light" type="button" data-close>取消</button><button class="btn" id="schedule-editor-save" type="button">${selected ? '儲存修改' : '新增事項'}</button></div></section>`;
+        const combinedText = choices.map(item => String(item.text || '').trim()).filter(Boolean).join('\n');
+        modal.innerHTML = `<section class="schedule-editor-sheet" role="dialog" aria-modal="true"><div class="row" style="justify-content:space-between"><h3>${targetDate.replaceAll('-','/')}｜${choices.length ? '編輯事項' : '新增事項'}</h3><button class="btn light" type="button" data-close>✕</button></div><p class="hint">同一天的事項會儲存為一筆資料；請以換行分隔每一點。</p><label for="schedule-editor-text" style="margin-top:14px">事項內容</label><textarea id="schedule-editor-text" placeholder="每一行輸入一項事項">${escapeHTML(combinedText)}</textarea><div class="row" style="justify-content:flex-end;margin-top:14px"><button class="btn light" type="button" data-close>取消</button><button class="btn" id="schedule-editor-save" type="button">${choices.length ? '儲存修改' : '新增事項'}</button></div></section>`;
         modal.querySelectorAll('[data-close]').forEach(button => button.onclick = close);
-        const chooser = modal.querySelector('#schedule-editor-choice');
-        if (chooser) chooser.onchange = () => { selectedId = chooser.value; render(); };
         modal.querySelector('#schedule-editor-save').onclick = async () => {
           const text = modal.querySelector('#schedule-editor-text').value.trim();
           if (!text) return;
-          const tasks = readJSON('scheduledTasks', []), index = tasks.findIndex(item => item.id === selectedId);
-          if (selectedId && index >= 0) tasks[index] = {...tasks[index], targetDate, text, updatedAt:new Date().toISOString()};
+          const tasks = readJSON('scheduledTasks', []), primaryId = choices[0]?.id || '';
+          const index = tasks.findIndex(item => item.id === primaryId);
+          if (index >= 0) tasks[index] = {...tasks[index], targetDate, text, updatedAt:new Date().toISOString()};
           else tasks.push({id:crypto.randomUUID(), targetDate, text, createdAt:new Date().toISOString()});
+          const duplicateIds = new Set(choices.slice(1).map(item => item.id));
+          for (let cursor=tasks.length-1;cursor>=0;cursor--) if (duplicateIds.has(tasks[cursor].id)) tasks.splice(cursor,1);
           writeJSON('scheduledTasks', tasks);
-          try { await syncCloudNow(); close(); renderScheduledTasks(); message('scheduled-message', selectedId ? '事項已修改。' : '已新增事項。'); }
+          try { await syncCloudNow(); close(); renderScheduledTasks(); message('scheduled-message', choices.length ? '事項已合併並修改。' : '已新增事項。'); }
           catch (error) { message('scheduled-message', error.message || '同步失敗，請稍後再試。'); }
         };
       };
@@ -551,8 +551,15 @@
         items[index] = {...items[index], targetDate, text, updatedAt:new Date().toISOString()};
         message('scheduled-message', '事項已修改並同步。');
       } else {
-        items.push({id:crypto.randomUUID(), targetDate, text, createdAt:new Date().toISOString()});
-        message('scheduled-message', '已加入事項排程，並同步到 Firebase。');
+        const sameDay = items.map((item,index)=>item?.targetDate===targetDate?index:-1).filter(index=>index>=0);
+        if (sameDay.length) {
+          const first = sameDay.shift(); items[first] = {...items[first], targetDate, text, updatedAt:new Date().toISOString()};
+          sameDay.reverse().forEach(index=>items.splice(index,1));
+          message('scheduled-message', '本日事項已合併並同步。');
+        } else {
+          items.push({id:crypto.randomUUID(), targetDate, text, createdAt:new Date().toISOString()});
+          message('scheduled-message', '已加入事項排程，並同步到 Firebase。');
+        }
       }
       writeJSON('scheduledTasks', items); resetScheduledEditor(); renderScheduledTasks();
     });
