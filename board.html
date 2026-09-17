@@ -777,7 +777,7 @@
     window.addEventListener('resize', resizeApp); resizeApp();
 
     const CLOUD_ENDPOINT = '/api/classroom';
-    const CLOUD_KEYS = ['classroomTotalStudents','classroomStudentNames','classroomStudentRoster','classSeating','classSeatingSession','classroomSeatingLayout','classTimetable','classTimeSlots','subjectTeachers','subjectTeacherOrder','examSchedule','examScheduleDays','examDayCount','examActiveDay','subjectData','dailyTasks','todayTasks','tomorrowTasks','taskHistory','taskDate','scheduledTasks','nonSchoolDays','cleaningTasks','cleaningTaskConfig','cleaningAssignments','femaleRestroomLayout','dutyAssignments','dutyRotationStartDate','classCadres','classCadreConfig','leaveRecords','leaveHalfDayRecords','lunchAssignments','lunchCategoryLimits','lunchWeeklyGroup','lunchWeeklyGroups','lunchRotationStartDate','monthlyMenus','notebookCheckins'];
+    const CLOUD_KEYS = ['classroomTotalStudents','classroomStudentNames','classroomStudentRoster','classSeating','classSeatingSession','classroomSeatingLayout','classTimetable','classTimeSlots','subjectTeachers','subjectTeacherOrder','examSchedule','examScheduleDays','examDayCount','examActiveDay','subjectData','dailyTasks','todayTasks','tomorrowTasks','taskHistory','taskDate','scheduledTasks','nonSchoolDays','cleaningTasks','cleaningTaskConfig','cleaningAssignments','femaleRestroomLayout','dutyAssignments','dutyRotationStartDate','classCadres','classCadreConfig','leaveRecords','leaveHalfDayRecords','lunchAssignments','lunchCategoryLimits','lunchWeeklyGroup','lunchWeeklyGroups','lunchRotationStartDate','lunchRotationVersion','monthlyMenus','notebookCheckins'];
     const PUBLIC_MENU_URL = 'https://raw.githubusercontent.com/qfm-11407/classboard-807/main/data/monthly-menu.json';
     let publicMonthlyMenus = {};
     async function loadPublicMenus() {
@@ -1957,6 +1957,7 @@
     updateWidgetTasks(); updateWidgetTomorrow(); renderDutyWidget(); setInterval(renderDutyWidget, 60000);
 
     const LUNCH_HELPER_SEATS = [14,24];
+    const LUNCH_ROTATION_START = '2026-08-31';
     const DEFAULT_LUNCH_WEEKLY_GROUPS = [
         { id:'group-1', label:'第 1 組', seats:[1,3,4,6,7,8,9,10] },
         { id:'group-2', label:'第 2 組', seats:[11,12,13,15,16,17,18,19] },
@@ -1975,10 +1976,11 @@
         return groups;
     }
     function lunchWeekStart(day=dateKey()) { const [year,month,date]=String(day).split('-').map(Number),value=new Date(Date.UTC(year,month-1,date)),weekday=value.getUTCDay();value.setUTCDate(value.getUTCDate()-(weekday===0?6:weekday-1));return value.toISOString().slice(0,10); }
-    function storedLunchRotationStartDate(fallback=lunchWeekStart()) { let value=fallback;try{value=JSON.parse(localStorage.getItem('lunchRotationStartDate')) ?? fallback;}catch(_){}return /^\d{4}-\d{2}-\d{2}$/.test(String(value)) ? String(value) : fallback; }
+    function hasCurrentLunchRotation() { try { return Number(JSON.parse(localStorage.getItem('lunchRotationVersion'))) >= 1; } catch (_) { return false; } }
+    function storedLunchRotationStartDate(fallback=LUNCH_ROTATION_START) { if(!hasCurrentLunchRotation())return fallback;let value=fallback;try{value=JSON.parse(localStorage.getItem('lunchRotationStartDate')) ?? fallback;}catch(_){}return /^\d{4}-\d{2}-\d{2}$/.test(String(value)) ? String(value) : fallback; }
     function lunchWeekSteps(startDay,endDay=dateKey()) { const start=new Date(`${lunchWeekStart(startDay)}T00:00:00Z`),end=new Date(`${lunchWeekStart(endDay)}T00:00:00Z`);return Math.round((end-start)/(7*24*60*60*1000)); }
     function currentLunchWeeklyGroup() {
-        let baseId='group-1'; try { baseId=JSON.parse(localStorage.getItem('lunchWeeklyGroup')) || baseId; } catch (_) {}
+        let baseId='group-1'; if(hasCurrentLunchRotation())try { baseId=JSON.parse(localStorage.getItem('lunchWeeklyGroup')) || baseId; } catch (_) {}
         const groups=lunchWeeklyGroups(),baseIndex=Math.max(0,groups.findIndex(group=>group.id===baseId)),steps=lunchWeekSteps(storedLunchRotationStartDate());
         return groups[((baseIndex+steps)%groups.length+groups.length)%groups.length];
     }
