@@ -2,7 +2,8 @@
   "firestore": {
     "rules": "firestore.rules"
   },
-  "hosting": {
+  "hosting": [{
+    "target": "classboard",
     "public": ".",
     "ignore": [
       "firebase.json",
@@ -24,5 +25,28 @@
     "rewrites": [
       { "source": "**", "destination": "/board.html" }
     ]
-  }
+  }, {
+    "target": "legacy",
+    "public": ".",
+    "ignore": [
+      "firebase.json",
+      ".firebaserc",
+      "firestore.rules",
+      "README.md",
+      ".git/**",
+      ".github/**",
+      "netlify/**",
+      "scripts/**",
+      "node_modules/**"
+    ],
+    "headers": [
+      {
+        "source": "**/*.html",
+        "headers": [{ "key": "Cache-Control", "value": "no-cache" }]
+      }
+    ],
+    "rewrites": [
+      { "source": "**", "destination": "/board.html" }
+    ]
+  }]
 }

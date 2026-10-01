@@ -1,5 +1,13 @@
 {
   "projects": {
     "default": "colabprogram-c8014"
+  },
+  "targets": {
+    "colabprogram-c8014": {
+      "hosting": {
+        "classboard": ["qfmclass-807"],
+        "legacy": ["colabprogram-c8014"]
+      }
+    }
   }
 }
