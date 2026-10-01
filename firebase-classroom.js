@@ -363,6 +363,13 @@
       if (!isTeacher(auth.currentUser)) { await auth.signOut(); throw new Error(`請使用 ${TEACHER_DOMAIN} 教師帳號。`); }
       return auth.currentUser;
     },
+    changeTeacherPassword: async (currentPassword, newPassword) => {
+      const user = auth.currentUser;
+      if (!isTeacher(user)) throw new Error('請先登入教師帳號。');
+      const credential = firebase.auth.EmailAuthProvider.credential(user.email, currentPassword);
+      await user.reauthenticateWithCredential(credential);
+      await user.updatePassword(newPassword);
+    },
     signOut: () => auth.signOut(),
     getState: publicState,
     saveState,
