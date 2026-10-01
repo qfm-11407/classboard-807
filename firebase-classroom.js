@@ -29,6 +29,10 @@
   const dailyConfirmationRef = classroomRef.collection('teacherPrivate').doc('dailyConfirmation');
   const deleteRequestRef = classroomRef.collection('deleteRequests');
   const editRequestRef = classroomRef.collection('editRequests');
+  const restorePointsRef = classroomRef.collection('restorePoints');
+  const restoreMetaRef = classroomRef.collection('teacherPrivate').doc('restoreMeta');
+  const RESTORE_POINT_LIMIT = 30;
+  let stateBaseline = null;
 
   const parseJSON = (value, fallback) => {
     try { const parsed = JSON.parse(value); return parsed ?? fallback; } catch (_) { return fallback; }
@@ -79,14 +83,16 @@
     return next;
   }
 
-  async function coreState() {
-    const snapshot = await classroomRef.get();
+  async function readCoreState() {
+    const snapshot = await classroomRef.get({ source: 'server' });
     const raw = snapshot.exists && snapshot.data()?.data && typeof snapshot.data().data === 'object' ? snapshot.data().data : {};
-    return rollTasks(raw);
+    return { raw, data: rollTasks(raw), restoreEpoch: snapshot.data()?.restoreEpoch || 0 };
   }
+  async function coreState() { return (await readCoreState()).data; }
 
   async function publicState() {
-    const [data, completionSnapshot, checkinSnapshot, tomorrowSnapshot] = await Promise.all([coreState(), completionRef.get(), checkinRef.get(), tomorrowRef.get()]);
+    const [core, completionSnapshot, checkinSnapshot, tomorrowSnapshot] = await Promise.all([readCoreState(), completionRef.get(), checkinRef.get(), tomorrowRef.get()]);
+    const data = core.data;
     const subjectData = parseJSON(data.subjectData, {});
     const roster = parseJSON(data.classroomStudentRoster, []);
     const activeSeats = new Set(Array.isArray(roster) ? roster.map(student => Number(student?.seat)).filter(seat => Number.isInteger(seat) && seat > 0) : []);
@@ -148,13 +154,76 @@
     data.tomorrowTasks = JSON.stringify(tomorrowTasks);
     data.taskHistory = JSON.stringify(taskHistory);
 
+    stateBaseline = { raw: { ...core.raw }, view: { ...data }, restoreEpoch: core.restoreEpoch };
     return { hasData: Object.keys(data).length > 0, data, updatedAt: null };
   }
 
-  async function saveState(data) {
-    if (!isTeacher(auth.currentUser)) throw new Error('請先以教師帳號登入。');
+  function requireTeacher() { if (!isTeacher(auth.currentUser)) throw new Error('請先以教師帳號登入。'); }
+  function syncConflict(message) { const error = new Error(message); error.code = 'classroom/conflict'; return error; }
+  function writeRestorePoint(transaction, meta, data, label, kind) {
+    const sequence = Number(meta.sequence || 0) + 1;
+    transaction.set(restorePointsRef.doc(`point-${(sequence - 1) % RESTORE_POINT_LIMIT}`), {
+      data: { ...data }, label: String(label || '').slice(0, 60), kind, sequence,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+    });
+    transaction.set(restoreMetaRef, { sequence });
+  }
+  async function saveState(data, options = {}) {
+    requireTeacher();
     if (!data || typeof data !== 'object' || Array.isArray(data)) throw new Error('資料格式不正確。');
-    await classroomRef.set({ data: rollTasks(data), updatedAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
+    const base = options.baseline || stateBaseline;
+    if (!base) throw syncConflict('請先重新載入雲端資料後再儲存。');
+    const requested = { ...data };
+    const changed = (options.managedKeys || Object.keys(requested)).filter(key => requested[key] !== base.view[key]);
+    if (!changed.length) return;
+    const result = await db.runTransaction(async transaction => {
+      const [snapshot, metaSnapshot] = await Promise.all([transaction.get(classroomRef), transaction.get(restoreMetaRef)]);
+      const current = snapshot.data() || {}, remote = current.data || {};
+      if ((current.restoreEpoch || 0) !== base.restoreEpoch) throw syncConflict('其他電腦已還原班級資料。您的修改仍在本機，請重新載入後再編輯。');
+      const conflicts = changed.filter(key => remote[key] !== base.raw[key] && remote[key] !== requested[key]);
+      if (conflicts.length) throw syncConflict('其他電腦已修改相同資料。您的修改仍在本機，請先下載本機資料，再重新載入雲端。');
+      const merged = { ...remote };
+      changed.forEach(key => { if (Object.hasOwn(requested, key)) merged[key] = requested[key]; else delete merged[key]; });
+      const next = rollTasks(merged);
+      writeRestorePoint(transaction, metaSnapshot.data() || {}, remote, '自動備份：儲存前', 'automatic');
+      transaction.set(classroomRef, { data: next, syncVersion: 2, revision: Number(current.revision || 0) + 1, restoreEpoch: current.restoreEpoch || 0, updatedAt: firebase.firestore.FieldValue.serverTimestamp() }, { mergeFields: ['data','syncVersion','revision','restoreEpoch','updatedAt'] });
+      return next;
+    });
+    // Keep the original baseline for untouched fields to detect later edits from a stale screen.
+    const raw = { ...base.raw };
+    changed.forEach(key => { if (Object.hasOwn(result, key)) raw[key] = result[key]; else delete raw[key]; });
+    if (!options.baseline) stateBaseline = { raw, view: requested, restoreEpoch: base.restoreEpoch };
+  }
+  async function createRestorePoint(label = '', initialOnly = false) {
+    requireTeacher();
+    await db.runTransaction(async transaction => {
+      const [snapshot, metaSnapshot] = await Promise.all([transaction.get(classroomRef), transaction.get(restoreMetaRef)]);
+      const meta = metaSnapshot.data() || {};
+      if (initialOnly && meta.sequence) return;
+      if (!snapshot.exists) throw new Error('尚無班級資料可備份。');
+      writeRestorePoint(transaction, meta, snapshot.data().data || {}, label || (initialOnly ? '啟用還原點時的資料' : '手動還原點'), initialOnly ? 'initial' : 'manual');
+    });
+  }
+  async function getRestorePoints() {
+    requireTeacher();
+    const snapshot = await restorePointsRef.get({ source: 'server' });
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), createdAt: doc.data().createdAt?.toDate()?.toISOString() || '' })).sort((a,b) => b.sequence - a.sequence);
+  }
+  async function restorePoint(id, scope = 'records', expectedSequence) {
+    requireTeacher();
+    if (!/^point-\d+$/.test(id) || !['records','all'].includes(scope)) throw new Error('還原點資料不正確。');
+    const recordKeys = ['scheduledTasks','taskHistory','todayTasks','tomorrowTasks','dailyTasks','taskDate','leaveRecords','leaveHalfDayRecords','leaveSettlements'];
+    await db.runTransaction(async transaction => {
+      const [snapshot, pointSnapshot, metaSnapshot] = await Promise.all([transaction.get(classroomRef), transaction.get(restorePointsRef.doc(id)), transaction.get(restoreMetaRef)]);
+      if (!pointSnapshot.exists || pointSnapshot.data().sequence !== expectedSequence) throw new Error('此還原點已被較新的備份取代，請重新載入清單。');
+      const current = snapshot.data() || {}, saved = pointSnapshot.data().data || {}, next = scope === 'all' ? { ...saved } : { ...(current.data || {}) };
+      if (scope === 'records') recordKeys.forEach(key => { if (Object.hasOwn(saved, key)) next[key] = saved[key]; else delete next[key]; });
+      const roster = parseJSON(next.classroomStudentRoster, []), highestSeat = Math.max(0,...roster.map(student => Number(student.seat) || 0));
+      next.classSeating = JSON.stringify(Array(highestSeat).fill(0));
+      next.classSeatingSession = JSON.stringify('');
+      writeRestorePoint(transaction, metaSnapshot.data() || {}, current.data || {}, '自動備份：還原前', 'before-restore');
+      transaction.set(classroomRef, { data: next, syncVersion: 2, revision: Number(current.revision || 0) + 1, restoreEpoch: Number(current.restoreEpoch || 0) + 1, updatedAt: firebase.firestore.FieldValue.serverTimestamp() }, { mergeFields: ['data','syncVersion','revision','restoreEpoch','updatedAt'] });
+    });
   }
 
   async function saveCourse(body) {
@@ -162,7 +231,8 @@
     const operation = body?.operation;
     if (!subject || !['create', 'toggle'].includes(operation)) throw new Error('科目任務資料不正確。');
 
-    const data = await coreState();
+    const core = await readCoreState(), data = core.data;
+    const courseBaseline = { raw: core.raw, view: { ...data }, restoreEpoch: core.restoreEpoch };
     const subjectData = parseJSON(data.subjectData, {});
     if (!subjectData || typeof subjectData !== 'object' || Array.isArray(subjectData)) throw new Error('找不到科目任務資料。');
     if (!Array.isArray(subjectData[subject])) subjectData[subject] = [];
@@ -175,7 +245,7 @@
       const highestSeat = Array.isArray(roster) ? Math.max(0, ...roster.map(student => Number(student?.seat) || 0)) : 0;
       subjectData[subject].push({ id: crypto.randomUUID(), name, records: Array(highestSeat).fill(false) });
       data.subjectData = JSON.stringify(subjectData);
-      await saveState(data);
+      await saveState(data, { baseline: courseBaseline, managedKeys: ['subjectData'] });
       return publicState();
     }
 
@@ -373,6 +443,9 @@
     signOut: () => auth.signOut(),
     getState: publicState,
     saveState,
+    createRestorePoint,
+    getRestorePoints,
+    restorePoint,
     getNotebookMonth: notebookMonth,
     addNotebookCheckin,
     getStickyMessages,

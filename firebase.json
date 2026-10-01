@@ -12,6 +12,7 @@
       ".git/**",
       ".github/**",
       "netlify/**",
+      "scripts/**",
       "node_modules/**"
     ],
     "headers": [

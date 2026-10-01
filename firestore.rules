@@ -9,7 +9,28 @@ service cloud.firestore {
 
     match /classrooms/classboard-807 {
       allow read: if true;
-      allow create, update, delete: if isTeacher();
+      allow create: if isTeacher()
+        && request.resource.data.syncVersion == 2
+        && request.resource.data.revision == 1;
+      allow update: if isTeacher()
+        && request.resource.data.syncVersion == 2
+        && request.resource.data.revision == resource.data.get('revision', 0) + 1;
+      allow delete: if isTeacher();
+
+      match /restorePoints/{pointId} {
+        allow read: if isTeacher();
+        allow create, update: if isTeacher()
+          && pointId.matches('^point-([0-9]|[12][0-9])$')
+          && request.resource.data.data is map
+          && request.resource.data.sequence is int
+          && request.resource.data.createdAt == request.time;
+        allow delete: if false;
+      }
+
+      match /teacherPrivate/restoreMeta {
+        allow read, create, update: if isTeacher();
+        allow delete: if false;
+      }
 
       match /courseCompletions/{completionId} {
         allow read: if true;
