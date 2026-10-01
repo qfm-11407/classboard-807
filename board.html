@@ -1991,8 +1991,8 @@
         const importedDish = publicMenuDish(today);
         const localDish = String((menus[today.slice(0,7)] || {})[today] || '').trim();
         const dish = localDish || importedDish || '今日菜單尚未設定';
-        const unavailable = dish === '今日菜單尚未設定';
-        const dishes = unavailable ? [] : dish.split(/[、\r\n]+/).map(item => item.trim()).filter(Boolean);
+        const dishes = dish === '今日菜單尚未設定' ? [] : dish.split(/[、\r\n]+/).map(item => item.trim()).filter(item => item && !item.includes('調味料'));
+        const unavailable = dishes.length === 0;
         const content = unavailable
             ? '<p class="text-center text-5xl font-black leading-[1.2] text-white">今日菜單<br>尚未設定</p>'
             : dishes.map((item,index) => `<p class="flex items-center gap-5 text-5xl font-black leading-[1.12] text-white break-words"><span class="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-[#84fab0]/20 text-3xl text-[#84fab0]">${index + 1}</span><span>${escapeHTML(item)}</span></p>`).join('');

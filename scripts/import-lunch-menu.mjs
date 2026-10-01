@@ -55,7 +55,7 @@ async function dishesForDate(date, serviceIds) {
   const batches = [...new Set(meals.map(meal => meal?.BatchDataId).filter(Boolean))];
   if (!batches.length) return [];
   const collections = await Promise.all(batches.map(batchId => api('/dish', { BatchDataId: batchId })));
-  return [...new Set(collections.flat().map(dish => String(dish?.DishName || '').trim()).filter(name => name && name !== '調味料'))];
+  return [...new Set(collections.flat().map(dish => String(dish?.DishName || '').trim()).filter(name => name && !name.includes('調味料')))];
 }
 
 async function readExisting() {
