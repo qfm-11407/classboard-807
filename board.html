@@ -26,6 +26,12 @@
             font-family: 'Nunito', 'Microsoft JhengHei', sans-serif;
         }
         body.cloud-loading { visibility: hidden; }
+        .day-battery { display:inline-flex; align-items:center; gap:9px; color:#34c759; font-variant-numeric:tabular-nums; transition:color .4s ease; }
+        .day-battery[data-level="medium"] { color:#ffcc00; }
+        .day-battery[data-level="low"] { color:#ff453a; }
+        .day-battery-shell { position:relative; display:flex; align-items:center; flex-shrink:0; width:29px; height:15px; padding:2px; border:2px solid currentColor; border-radius:4px; margin-right:3px; }
+        .day-battery-shell::after { content:""; position:absolute; right:-5px; top:50%; transform:translateY(-50%); width:3px; height:6px; border-radius:0 2px 2px 0; background:currentColor; }
+        .day-battery-fill { height:100%; min-width:1px; border-radius:1px; background:currentColor; transition:width .4s ease; }
 
         /* 絕對比例結界 */
         #scale-wrapper {
@@ -355,7 +361,7 @@
         <div>高雄市立前峰國中 807</div>
         <div class="flex items-center space-x-6">
             <span><i class="fa-solid fa-wifi mr-2"></i></span>
-            <span><i class="fa-solid fa-battery-three-quarters mr-2"></i>98%</span>
+            <span id="day-battery" class="day-battery" data-level="normal" role="img" aria-label="時間進度電量 100%" title="時間進度電量：07:30 為 100%，17:00 為 1%（非裝置實際電量）"><span class="day-battery-shell" aria-hidden="true"><span id="day-battery-fill" class="day-battery-fill" style="width:100%"></span></span><span id="day-battery-percent" aria-hidden="true">100%</span></span>
             <span id="header-time">12:00 AM</span>
         </div>
     </div>
@@ -826,8 +832,25 @@
     let totalStudents = studentRoster.length;
     const highestSeatNumber = () => Math.max(0, ...studentRoster.map(student => student.seat));
 
+    function dayBatteryState(now = new Date()) {
+        const parts = new Intl.DateTimeFormat('en-US', {timeZone:'Asia/Taipei', hourCycle:'h23', hour:'2-digit', minute:'2-digit', second:'2-digit'}).formatToParts(now);
+        const value = type => Number(parts.find(part => part.type === type)?.value || 0);
+        const seconds = value('hour') * 3600 + value('minute') * 60 + value('second');
+        const start = (7 * 60 + 30) * 60, end = 17 * 3600;
+        const progress = Math.max(0, Math.min(1, (seconds - start) / (end - start)));
+        const percent = Math.max(1, Math.min(100, Math.ceil(100 - 99 * progress)));
+        return {percent, level:percent <= 20 ? 'low' : percent <= 50 ? 'medium' : 'normal'};
+    }
+    function updateDayBattery(now) {
+        const {percent, level} = dayBatteryState(now), battery = document.getElementById('day-battery');
+        battery.dataset.level = level;
+        battery.setAttribute('aria-label', `時間進度電量 ${percent}%`);
+        document.getElementById('day-battery-percent').textContent = `${percent}%`;
+        document.getElementById('day-battery-fill').style.width = `${percent}%`;
+    }
     function updateClocks() {
         const now = new Date();
+        updateDayBattery(now);
         document.getElementById('header-time').innerText = now.toLocaleTimeString('zh-TW', { hour12: true, hour: '2-digit', minute: '2-digit' });
         document.getElementById('widget-time').innerText = now.toLocaleTimeString('zh-TW', { hour12: false, hour: '2-digit', minute: '2-digit' });
         document.getElementById('widget-date').innerText = now.toLocaleDateString('zh-TW', { month: 'short', day: 'numeric', weekday: 'long' });
