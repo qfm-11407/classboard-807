@@ -100,7 +100,7 @@ function reset(table) {
 
 const tables = Array.from({ length: 4 }, (_, index) => createTable(index));
 const updateDailyBest = () => { $('best').textContent = window.ClassroomGameScores.dailyBest('tic-tac-toe', 'wins') ?? '—'; };
-window.ClassroomGameScores.attach({ trigger:$('open-score-rank'), game:'tic-tac-toe', mode:()=>'wins', title:'圈叉對決', modeLabel:()=>'各桌 O／X 每日累積勝場（同一桌／方每日一筆）', unit:'勝', onChange:updateDailyBest });
+window.ClassroomGameScores.attach({ trigger:$('open-score-rank'), game:'tic-tac-toe', mode:()=>'wins', title:'圈叉對決', modeLabel:()=>'各裝置／桌 O／X 每日累積勝場', unit:'勝', onChange:updateDailyBest });
 updateDailyBest();
 
 $('fullscreen').hidden = !document.fullscreenEnabled;

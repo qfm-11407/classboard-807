@@ -17,6 +17,49 @@ service cloud.firestore {
         && request.resource.data.revision == resource.data.get('revision', 0) + 1;
       allow delete: if isTeacher();
 
+      // Only fun scores are public-writable; classroom/teacher data stays protected.
+      match /gameRankings/{bucket} {
+        function validBucket() {
+          return bucket.matches('^(mole-pop|moving-dot)-(30|60|90)$') || bucket == 'tic-tac-toe-wins';
+        }
+        function validScore(scoreId) {
+          let data = request.resource.data;
+          return validBucket()
+            && scoreId.size() <= 200
+            && data.keys().hasAll(['score','date','time','label','participant','client','createdAt'])
+            && data.keys().hasOnly(['score','date','time','label','participant','client','createdAt'])
+            && data.score is int && data.score >= -10000 && data.score <= 100000
+            && data.date is string && data.date.matches('^\\d{4}-\\d{2}-\\d{2}$')
+            && data.time is int && data.time > 0 && data.time <= 4102444800000
+            && data.label is string && data.label.size() <= 40
+            && data.client is string && data.client.matches('^[a-zA-Z0-9_-]{8,80}$')
+            && scoreId.matches('^' + data.client + '_[a-zA-Z0-9:_-]+$')
+            && data.participant is string
+            && ((bucket == 'tic-tac-toe-wins' && data.participant.matches('^[0-3]:[OX]$') && data.score >= 1)
+              || (bucket != 'tic-tac-toe-wins' && data.participant == ''));
+        }
+        function newScore(scoreId) {
+          return validScore(scoreId) && request.resource.data.createdAt == request.time;
+        }
+        function increasedWins(scoreId) {
+          return validScore(scoreId) && bucket == 'tic-tac-toe-wins'
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['score'])
+            && request.resource.data.score > resource.data.score;
+        }
+        match /scores/{scoreId} {
+          allow read: if validBucket();
+          allow create: if newScore(scoreId);
+          allow update: if increasedWins(scoreId);
+          allow delete: if isTeacher();
+        }
+        match /days/{date}/scores/{scoreId} {
+          allow read: if validBucket();
+          allow create: if newScore(scoreId) && request.resource.data.date == date;
+          allow update: if increasedWins(scoreId) && request.resource.data.date == date;
+          allow delete: if isTeacher();
+        }
+      }
+
       match /restorePoints/{pointId} {
         allow read: if isTeacher();
         allow create, update: if isTeacher()
