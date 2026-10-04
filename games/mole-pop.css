@@ -2,17 +2,36 @@
 .mole-page .primary-button:hover { background: #ffe0ae; }
 .mole-arena { display: grid; place-items: center; background-color: #152923; background-image: radial-gradient(#44695155 .8px, transparent .8px); padding: 32px 20px 20px; min-height: 320px; }
 .field-caption { position: absolute; top: 14px; left: 20px; right: 20px; display: flex; justify-content: space-between; color: #85a590; font-size: 10px; letter-spacing: .16em; pointer-events: none; }
-.mole-field { width: min(100%, var(--field-width, 600px)); aspect-ratio: 6 / 5; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); grid-template-rows: repeat(5, minmax(0, 1fr)); gap: clamp(4px, .8vw, 10px); }
-.mole-hole { position: relative; padding: 0; border: 1px solid #63866a33; border-radius: 18%; background: #ffffff03; overflow: hidden; touch-action: none; }
+.mole-field { width: 100%; height: var(--field-height, 300px); display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); grid-template-rows: repeat(5, minmax(0, 1fr)); column-gap: clamp(8px, 3vw, 64px); row-gap: clamp(4px, .8vw, 10px); }
+.mole-hole { position: relative; width: min(100%, var(--hole-size, 54px)); height: var(--hole-size, 54px); justify-self: center; align-self: center; padding: 0; border: 1px solid #63866a33; border-radius: 18%; background: #ffffff03; overflow: hidden; touch-action: none; }
 .mole-hole::before { content: ""; position: absolute; width: 82%; height: 31%; left: 9%; bottom: 13%; border-radius: 50%; background: #091611; box-shadow: 0 3px 0 3px #39533d, inset 0 5px 4px #0008; }
 .hole-number { position: absolute; top: 7%; left: 9%; font-size: clamp(8px, .8vw, 12px); color: #a4bdaa66; pointer-events: none; }
 .mole-clip { position: absolute; width: 84%; height: 86%; left: 8%; bottom: 17%; overflow: hidden; border-radius: 0 0 42% 42%; pointer-events: none; }
 .mole-character { display: block; width: 100%; height: 100%; transform: translateY(105%); opacity: 0; transition: transform .13s ease-out, opacity .1s; pointer-events: none; }
 .mole-hole.up { border-color: #ffce8366; background: #ffce8309; }
 .mole-hole.up .mole-character { transform: translateY(0); opacity: 1; }
+.mole-hole.decoy { --mole-ear: #b52743; --mole-body: #ed4967; --mole-face: #ff99aa; --mole-feet: #e25370; }
+.mole-hole.up.decoy { border-color: #ff7899aa; background: #ff496718; }
+.mole-warning { display: none; position: absolute; right: 4%; top: 5%; width: 27%; aspect-ratio: 1; border-radius: 50%; background: #a51937; border: 1px solid #ffd4dc; color: #fff; font-size: clamp(12px, 1.5vw, 24px); font-weight: 800; line-height: 1; place-items: center; pointer-events: none; }
+.mole-hole.up.decoy .mole-warning { display: grid; }
+.mole-legend { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px 32px; font-size: 13px; }
+.mole-legend > span { display: flex; align-items: center; gap: 8px; }
+.mole-legend i { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; color: #fff; font-weight: 800; font-style: normal; }
+.regular-symbol { background: #946239; }
+.decoy-symbol { background: #b52743; }
 .mole-hole.hit::after { content: "★"; position: absolute; inset: 0; display: grid; place-items: center; color: #ffeab8; font-size: clamp(20px, 3vw, 42px); text-shadow: 0 0 20px #ffc57499; animation: mole-hit .3s ease-out both; pointer-events: none; }
+.mole-hole.wrong { border-color: #ff919180; background: #ff91911a; }
+.mole-hole.wrong::after { content: "×"; position: absolute; inset: 0; display: grid; place-items: center; color: #ff9191; font-size: clamp(20px, 3vw, 42px); pointer-events: none; }
 .mole-page .overlay { z-index: 2; background: #11221aca; }
 .mole-page .feedback { z-index: 1; }
+.mole-page .feedback.negative, .mole-page #score[data-negative="true"] { color: #ff9191; }
+.mole-page .duration-options small { display: block; margin-top: 4px; font-size: 11px; }
+.mole-page .mode-rules { color: var(--lime); font-size: 14px; margin: 12px 0 18px; }
+.mole-page .game-footer { flex-wrap: wrap; }
+@media (min-width: 601px) {
+  .mole-page:not(.embedded) .overlay { padding: 20px; }
+  .mole-page:not(.embedded) .dialog h2 { margin: 12px 0; }
+}
 @keyframes mole-hit { from { transform: scale(.6); opacity: 1; } to { transform: scale(1.15); opacity: 0; } }
 .game-card + .game-card { margin-top: 22px; }
 .mole-card .card-art { background: radial-gradient(circle at 50% 50%, #3c5940, #172b22 85%); display: grid; place-items: center; }
@@ -23,12 +42,19 @@
 .mole-page.embedded { --lime: #ffce83; }
 .embedded .mole-arena { background-color: #10261a55; padding: 38px 20px 18px; }
 .embedded .field-caption { font-size: 13px; }
+.mole-page.embedded .mode-rules { font-size: 20px; }
+.mole-page.embedded .duration-options small { font-size: 15px; }
+.mole-page.embedded .mole-legend { font-size: 20px; }
 @media (max-width: 600px) {
   .mole-arena { padding: 32px 8px 16px; }
   .field-caption { left: 12px; right: 12px; font-size: 9px; }
   .mole-hole { border-radius: 12px; }
+  .mole-field { column-gap: 6px; }
   .hole-number { font-size: 8px; }
   .embedded .mole-arena { padding: 32px 8px 16px; }
   .embedded .field-caption { font-size: 9px; }
+  .mole-page.embedded .mode-rules { font-size: 14px; }
+  .mole-page.embedded .duration-options small { font-size: 11px; }
+  .mole-legend, .mole-page.embedded .mole-legend { font-size: 12px; gap: 8px 20px; }
 }
 @media (prefers-reduced-motion: reduce) { .mole-character { transition: none; } .mole-hole.hit::after { animation: none; } }

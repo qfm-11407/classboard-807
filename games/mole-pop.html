@@ -5,22 +5,23 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#111827">
   <title>地鼠出沒｜互動遊戲室</title>
-  <link rel="stylesheet" href="games.css?v=mole-1">
-  <link rel="stylesheet" href="mole-pop.css?v=mole-1">
-  <script src="mole-pop.js?v=mole-1" defer></script>
+  <link rel="stylesheet" href="games.css?v=mole-3">
+  <link rel="stylesheet" href="mole-pop.css?v=mole-3">
+  <script src="mole-pop.js?v=mole-4" defer></script>
 </head>
 <body class="game-page mole-page">
   <main id="game" class="game-shell">
     <header class="game-header">
-      <div class="game-heading"><a class="back-link" href="./">← 遊戲室</a><h1>地鼠出沒 <span>6 × 5 · 三十個洞口</span></h1></div>
+      <div class="game-heading"><a class="back-link" href="./">← 遊戲室</a><h1>地鼠出沒 <span>6 × 5 · 單關挑戰</span></h1></div>
       <div class="toolbar"><button id="pause" class="quiet-button" disabled>暫停</button><button id="fullscreen" class="quiet-button">全螢幕</button></div>
     </header>
     <section class="scoreboard" aria-label="遊戲狀態">
-      <div><span>點中次數</span><strong id="score">0</strong></div>
+      <div><span>得分</span><strong id="score">0</strong></div>
       <div><span>剩餘時間</span><strong><span id="time">60</span><small> 秒</small></strong></div>
-      <div><span>挑戰等級</span><strong id="level">01</strong></div>
-      <div><span>最佳紀錄</span><strong id="best">0</strong></div>
+      <div><span>難度</span><strong id="mode">正常</strong></div>
+      <div><span>最佳得分</span><strong id="best">0</strong></div>
     </section>
+    <div class="mole-legend" aria-label="地鼠顏色規則"><span><i class="regular-symbol" aria-hidden="true">+</i><span id="target-rules">棕色可打 +2</span></span><span><i class="decoy-symbol" aria-hidden="true">−</i><span id="decoy-rules">紅色避開 −1</span></span></div>
     <section id="arena" class="arena mole-arena" aria-label="打地鼠遊戲區，6 欄 5 列，共 30 個洞口">
       <div class="field-caption" aria-hidden="true"><span>THE LITTLE BURROW</span><span>6 × 5</span></div>
       <div id="field" class="mole-field" role="group" aria-label="30 個地鼠洞口" inert></div>
@@ -28,17 +29,18 @@
         <div class="dialog">
           <div id="dialog-tag" class="eyebrow">THIRTY HOLES · ONE CHALLENGE</div>
           <h2 id="dialog-title">小地鼠，躲哪裡？</h2>
-          <p id="dialog-description">6 欄 × 5 列，30 個洞口。<br>看見地鼠就點一下，趁牠縮回去前得分！</p>
+          <p id="dialog-description">6 欄 × 5 列，30 個洞口。<br>棕色地鼠可打，紅色地鼠要避開！</p>
           <div id="results" class="results" hidden></div>
-          <fieldset id="duration-options" class="duration-options"><legend>選擇回合時間</legend><label><input type="radio" name="duration" value="30"><span>30 秒</span></label><label><input type="radio" name="duration" value="60" checked><span>60 秒</span></label><label><input type="radio" name="duration" value="90"><span>90 秒</span></label></fieldset>
+          <fieldset id="duration-options" class="duration-options"><legend>選擇時間與難度</legend><label><input type="radio" name="duration" value="30"><span>30 秒<small>簡易</small></span></label><label><input type="radio" name="duration" value="60" checked><span>60 秒<small>正常</small></span></label><label><input type="radio" name="duration" value="90"><span>90 秒<small>挑戰</small></span></label></fieldset>
+          <p id="mode-rules" class="mode-rules">正常：棕色 +2 分，打空或紅色 −1 分</p>
           <button id="start" class="primary-button">開始挑戰 <span aria-hidden="true">↗</span></button>
           <button id="restart" class="text-button" hidden>重新開始</button>
-          <p id="dialog-note" class="dialog-note">支援觸控與滑鼠 · 點空洞不扣分</p>
+          <p id="dialog-note" class="dialog-note">單關固定難度 · 地鼠逾時不扣分 · 分數可低於 0</p>
         </div>
       </div>
       <div id="feedback" class="feedback" aria-hidden="true"></div>
     </section>
-    <footer class="game-footer"><span><i></i> 看見地鼠就點一下，越玩越快！</span><span id="misses">漏掉 0 隻</span></footer>
+    <footer class="game-footer"><span><i></i> <span id="rules">正常 · 打空或誤打紅色 −1</span></span><span id="misses">命中 0 · 打空 0 · 誤打 0 · 漏掉 0</span></footer>
     <div id="announcement" class="sr-only" role="status" aria-live="polite"></div>
   </main>
 </body>
