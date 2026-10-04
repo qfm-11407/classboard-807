@@ -7,7 +7,9 @@
   <title>地鼠出沒｜互動遊戲室</title>
   <link rel="stylesheet" href="games.css?v=mole-3">
   <link rel="stylesheet" href="mole-pop.css?v=mole-3">
-  <script src="mole-pop.js?v=mole-4" defer></script>
+  <link rel="stylesheet" href="game-rankings.css?v=1">
+  <script src="game-rankings.js?v=1" defer></script>
+  <script src="mole-pop.js?v=rank-1" defer></script>
 </head>
 <body class="game-page mole-page">
   <main id="game" class="game-shell">
@@ -19,7 +21,7 @@
       <div><span>得分</span><strong id="score">0</strong></div>
       <div><span>剩餘時間</span><strong><span id="time">60</span><small> 秒</small></strong></div>
       <div><span>難度</span><strong id="mode">正常</strong></div>
-      <div><span>最佳得分</span><strong id="best">0</strong></div>
+      <button type="button" id="open-score-rank" class="score-rank-trigger" aria-label="今日最佳，查看前十名排行榜"><span>今日最佳 <small>排行 ›</small></span><strong id="best">—</strong></button>
     </section>
     <div class="mole-legend" aria-label="地鼠顏色規則"><span><i class="regular-symbol" aria-hidden="true">+</i><span id="target-rules">棕色可打 +2</span></span><span><i class="decoy-symbol" aria-hidden="true">−</i><span id="decoy-rules">紅色避開 −1</span></span></div>
     <section id="arena" class="arena mole-arena" aria-label="打地鼠遊戲區，6 欄 5 列，共 30 個洞口">

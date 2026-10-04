@@ -77,6 +77,7 @@ function play(table, cellIndex) {
     state.winner = mark;
     state.winning = [...line];
     state.scores[mark] += 1;
+    window.ClassroomGameScores.increment('tic-tac-toe', 'wins', `${table.index}:${mark}`, `第 ${table.index + 1} 桌 · ${mark}`);
   } else if (state.cells.every(Boolean)) {
     state.finished = true;
     state.scores.draw += 1;
@@ -98,6 +99,9 @@ function reset(table) {
 }
 
 const tables = Array.from({ length: 4 }, (_, index) => createTable(index));
+const updateDailyBest = () => { $('best').textContent = window.ClassroomGameScores.dailyBest('tic-tac-toe', 'wins') ?? '—'; };
+window.ClassroomGameScores.attach({ trigger:$('open-score-rank'), game:'tic-tac-toe', mode:()=>'wins', title:'圈叉對決', modeLabel:()=>'各桌 O／X 每日累積勝場（同一桌／方每日一筆）', unit:'勝', onChange:updateDailyBest });
+updateDailyBest();
 
 $('fullscreen').hidden = !document.fullscreenEnabled;
 $('fullscreen').addEventListener('click', async () => {

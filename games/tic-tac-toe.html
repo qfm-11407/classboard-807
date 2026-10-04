@@ -7,13 +7,15 @@
   <title>圈叉對決｜互動遊戲室</title>
   <link rel="stylesheet" href="games.css?v=ox-1">
   <link rel="stylesheet" href="tic-tac-toe.css?v=ox-1">
-  <script src="tic-tac-toe.js?v=ox-1" defer></script>
+  <link rel="stylesheet" href="game-rankings.css?v=1">
+  <script src="game-rankings.js?v=1" defer></script>
+  <script src="tic-tac-toe.js?v=rank-1" defer></script>
 </head>
 <body class="game-page ox-page">
   <main id="game" class="game-shell">
     <header class="game-header">
       <div class="game-heading"><a class="back-link" href="./">← 遊戲室</a><h1>圈叉對決 <span>四桌同場 · 各自對決</span></h1></div>
-      <div class="toolbar"><button id="fullscreen" class="quiet-button">全螢幕</button></div>
+      <div class="toolbar"><button type="button" id="open-score-rank" class="quiet-button ox-best-button" aria-label="今日最佳，查看前十名勝場排行榜">今日最佳 <strong id="best">—</strong><small> 勝 ›</small></button><button id="fullscreen" class="quiet-button">全螢幕</button></div>
     </header>
     <section id="tables" class="ox-deck" aria-label="2 欄 2 列，四桌獨立的 OX 棋盤"></section>
     <footer class="game-footer"><span><i></i> 每桌兩人 · O 先手 · 橫、直、斜三連線獲勝</span><span>各桌獨立，重開互不影響</span></footer>

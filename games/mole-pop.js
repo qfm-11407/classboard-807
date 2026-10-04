@@ -66,8 +66,7 @@ const active = new Map();
 const effects = new Map();
 
 function best() {
-  const value = records[duration];
-  return Number.isFinite(value) ? Math.floor(value) : 0;
+  return window.ClassroomGameScores.dailyBest('mole-pop', duration);
 }
 
 function updateStats() {
@@ -75,7 +74,7 @@ function updateStats() {
   $('score').dataset.negative = String(score < 0);
   $('time').textContent = Math.max(0, Math.ceil(remaining));
   $('mode').textContent = mode.name;
-  $('best').textContent = best();
+  $('best').textContent = best() ?? '—';
   $('misses').textContent = `命中 ${hits} · 打空 ${errors} · 誤打 ${wrongMoles} · 漏掉 ${misses}`;
   $('target-rules').textContent = `棕色可打 +${mode.reward}`;
   $('decoy-rules').textContent = `紅色避開${mode.penalty ? ` −${mode.penalty}` : ' · 不加分'}`;
@@ -259,11 +258,13 @@ function resumeGame() {
 }
 
 function finish() {
+  if (state !== 'running') return;
   state = 'finished';
   cancelAnimationFrame(frame);
   clearField();
-  const newBest = score > best();
-  if (!Number.isFinite(records[duration]) || newBest) {
+  const newBest = best() === null || score > best();
+  window.ClassroomGameScores.record('mole-pop', duration, score);
+  if (!Number.isFinite(records[duration]) || score > records[duration]) {
     records[duration] = score;
     try { localStorage.setItem(storageKey, JSON.stringify(records)); } catch { /* Optional persistence. */ }
   }
@@ -276,8 +277,8 @@ function finish() {
   unit.textContent = ' 分';
   $('results').append(unit);
   $('results').hidden = false;
-  $('dialog-note').textContent = `最佳得分依模式分開儲存 · 本局 ${duration} 秒${mode.name}`;
-  showDialog(newBest ? 'NEW PERSONAL BEST' : 'WELL PLAYED', newBest ? '抓出新紀錄！' : '挑戰完成！', `命中 ${hits} 次，打空 ${errors} 次，誤打紅色 ${wrongMoles} 次，漏掉棕色 ${misses} 隻。`, '再玩一次');
+  $('dialog-note').textContent = `今日最佳依台灣日期計算 · 完整回合列入前十名 · ${duration} 秒${mode.name}`;
+  showDialog(newBest ? 'TODAY\'S BEST' : 'WELL PLAYED', newBest ? '刷新今日最佳！' : '挑戰完成！', `命中 ${hits} 次，打空 ${errors} 次，誤打紅色 ${wrongMoles} 次，漏掉棕色 ${misses} 隻。`, '再玩一次');
   updateStats();
   $('announcement').textContent = `挑戰完成，${score} 分，命中 ${hits} 次，打空 ${errors} 次，誤打紅色 ${wrongMoles} 次，漏掉棕色 ${misses} 隻。`;
 }
@@ -333,4 +334,5 @@ function configureEmbeddedGame() {
   });
 }
 configureEmbeddedGame();
+window.ClassroomGameScores.attach({ trigger:$('open-score-rank'), game:'mole-pop', mode:()=>duration, title:'地鼠出沒', modeLabel:()=>`${duration} 秒 · ${mode.name}`, beforeOpen:pauseGame, onChange:() => { $('best').textContent = best() ?? '—'; } });
 updateStats();

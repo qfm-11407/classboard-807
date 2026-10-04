@@ -22,15 +22,14 @@ let generation = 0;
 let target = null;
 
 function best() {
-  const value = Number(records[duration]);
-  return Number.isFinite(value) && value >= 0 ? Math.floor(value) : 0;
+  return window.ClassroomGameScores.dailyBest('moving-dot', duration);
 }
 
 function updateStats() {
   $('score').textContent = score;
   $('time').textContent = Math.max(0, Math.ceil(remaining));
   $('level').textContent = String(1 + Math.floor(score / 5)).padStart(2, '0');
-  $('best').textContent = best();
+  $('best').textContent = best() ?? '—';
   $('misses').textContent = `逾時 ${misses} 次`;
 }
 
@@ -157,10 +156,12 @@ function resumeGame() {
 }
 
 function finish() {
+  if (state !== 'running') return;
   state = 'finished';
   cancelAnimationFrame(frame);
-  const newBest = score > best();
-  if (newBest) {
+  const newBest = best() === null || score > best();
+  window.ClassroomGameScores.record('moving-dot', duration, score);
+  if (score > (records[duration] || 0)) {
     records[duration] = score;
     try { localStorage.setItem(storageKey, JSON.stringify(records)); } catch { /* Optional persistence. */ }
   }
@@ -173,8 +174,8 @@ function finish() {
   unit.textContent = ' 次點中';
   $('results').append(unit);
   $('results').hidden = false;
-  $('dialog-note').textContent = `最佳紀錄依回合時間分開儲存 · 本回合 ${duration} 秒`;
-  showDialog(newBest ? 'NEW PERSONAL BEST' : 'NICE PLAY', newBest ? '刷新自己的紀錄！' : '挑戰完成！', `圓點逾時 ${misses} 次。再試一次，挑戰自己的反應力。`, '再玩一次');
+  $('dialog-note').textContent = `今日最佳依台灣日期計算 · 完整回合列入前十名 · ${duration} 秒`;
+  showDialog(newBest ? 'TODAY\'S BEST' : 'NICE PLAY', newBest ? '刷新今日最佳！' : '挑戰完成！', `圓點逾時 ${misses} 次。再試一次，挑戰自己的反應力。`, '再玩一次');
   updateStats();
   $('announcement').textContent = `挑戰完成，點中 ${score} 次，逾時 ${misses} 次。`;
 }
@@ -253,4 +254,5 @@ function configureEmbeddedGame() {
   });
 }
 configureEmbeddedGame();
+window.ClassroomGameScores.attach({ trigger:$('open-score-rank'), game:'moving-dot', mode:()=>duration, title:'追光點點', modeLabel:()=>`${duration} 秒`, beforeOpen:pauseGame, onChange:() => { $('best').textContent = best() ?? '—'; } });
 updateStats();

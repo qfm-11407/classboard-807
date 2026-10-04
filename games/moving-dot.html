@@ -6,7 +6,9 @@
   <meta name="theme-color" content="#111827">
   <title>追光點點｜互動遊戲室</title>
   <link rel="stylesheet" href="games.css?v=interaction-1">
-  <script src="moving-dot.js?v=interaction-1" defer></script>
+  <link rel="stylesheet" href="game-rankings.css?v=1">
+  <script src="game-rankings.js?v=1" defer></script>
+  <script src="moving-dot.js?v=rank-1" defer></script>
 </head>
 <body class="game-page">
   <main id="game" class="game-shell">
@@ -18,7 +20,7 @@
       <div><span>點中次數</span><strong id="score">0</strong></div>
       <div><span>剩餘時間</span><strong><span id="time">60</span><small> 秒</small></strong></div>
       <div><span>挑戰等級</span><strong id="level">01</strong></div>
-      <div><span>最佳紀錄</span><strong id="best">0</strong></div>
+      <button type="button" id="open-score-rank" class="score-rank-trigger" aria-label="今日最佳，查看前十名排行榜"><span>今日最佳 <small>排行 ›</small></span><strong id="best">—</strong></button>
     </section>
     <section id="arena" class="arena" aria-label="圓點遊戲區">
       <div class="arena-label" aria-hidden="true">FOLLOW THE LIGHT</div>

@@ -1,0 +1,31 @@
+.scoreboard > .score-rank-trigger { display:block; text-align:left; border:0; border-radius:0; border-left:1px solid var(--line); padding:0 24px; background:transparent; color:var(--text); }
+.scoreboard > .score-rank-trigger > span { display:block; color:var(--muted); font-size:12px; margin-bottom:4px; }
+.score-rank-trigger:hover { background:#ffffff08; }
+.score-rank-trigger small { margin-left:6px; font-size:11px; }
+.game-rank-dialog { width:min(620px,calc(100% - 24px)); max-height:calc(100dvh - 32px); padding:24px; border:1px solid #ffffff35; border-radius:24px; color:var(--text); background:#192c27; box-shadow:0 24px 80px #0008; overflow:auto; overscroll-behavior:contain; }
+.game-rank-dialog::backdrop { background:#071a16b3; backdrop-filter:blur(8px); }
+.game-rank-head { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:14px; }
+.game-rank-head h2 { margin:0; font-size:clamp(18px,2.8vw,28px); }
+.game-rank-mode { margin:7px 0 0; color:#c5dbd1; font-size:14px; }
+.game-rank-close { flex:none; min-width:44px; min-height:44px; border:1px solid #ffffff35; border-radius:14px; background:#ffffff10; color:#fff; font-size:20px; }
+.game-rank-list { margin:0; padding:0; list-style:none; display:grid; gap:7px; }
+.game-rank-row { display:flex; align-items:center; gap:14px; padding:10px 14px; border:1px solid #ffffff18; border-radius:14px; background:#ffffff08; }
+.game-rank-number { flex:none; font-weight:900; font-size:20px; color:var(--lime); font-variant-numeric:tabular-nums; }
+.game-rank-value { display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; }
+.game-rank-value strong { font-size:22px; font-variant-numeric:tabular-nums; }
+.game-rank-date { font-size:15px; color:#c5dbd1; white-space:nowrap; }
+.game-rank-value small { flex-basis:100%; color:#c5dbd1; font-size:13px; }
+.game-rank-note,.game-rank-empty { color:#c5dbd1; font-size:13px; line-height:1.6; }
+.game-rank-note { margin:14px 0 0; }
+.game-rank-empty { padding:24px 0; text-align:center; }
+.embedded .scoreboard > .score-rank-trigger > span { font-size:18px; }
+.embedded .score-rank-trigger small { font-size:13px; }
+.ox-best-button strong { color:var(--lime); margin-left:5px; }
+@media(max-width:600px) {
+  .scoreboard > .score-rank-trigger { padding:0 12px; }
+  .embedded .scoreboard > .score-rank-trigger > span { font-size:12px; }
+  .game-rank-dialog { padding:16px; border-radius:20px; }
+  .game-rank-value strong { font-size:20px; }
+  .game-rank-date { font-size:13px; }
+  .ox-page .toolbar { flex-wrap:wrap; justify-content:flex-end; }
+}

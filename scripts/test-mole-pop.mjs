@@ -1,6 +1,8 @@
 import fs from 'node:fs';
 import vm from 'node:vm';
 import assert from 'node:assert/strict';
+import { createScoreFixture } from './game-score-test-fixture.mjs';
+const scoreService = createScoreFixture();
 
 function element() {
   const classes = new Set();
@@ -40,7 +42,7 @@ seededMath.random = () => { if (forcedRandom !== null) return forcedRandom; seed
 const source = fs.readFileSync(new URL('../games/mole-pop.js', import.meta.url), 'utf8');
 const game = vm.runInNewContext(`${source}\n({startGame,hit,advance,pauseGame,resumeGame,snapshot:()=>({state,score,hits,errors,wrongMoles,misses,duration,remaining,active:[...active.keys()],targets:[...active].map(([index,mole])=>({index,decoy:mole.decoy,remaining:mole.expires-elapsed})),lifetimes:[...active.values()].map(mole=>mole.expires-elapsed)})})`, {
   document, Math: seededMath, URLSearchParams,
-  window: { parent, location: { search: '?embedded=1', origin: 'https://example.test', protocol: 'https:' },
+  window: { ClassroomGameScores:scoreService, parent, location: { search: '?embedded=1', origin: 'https://example.test', protocol: 'https:' },
     addEventListener: (name, handler) => { windowEvents[name] = handler; } },
   localStorage: { getItem: key => saved.get(key) || null, setItem: (key, value) => saved.set(key, value) },
   performance: { now: () => now }, requestAnimationFrame: () => 1, cancelAnimationFrame() {},
@@ -123,6 +125,7 @@ assert.equal(game.snapshot().state, 'finished');
 assert.equal(game.snapshot().remaining, 0);
 assert.equal(holes.filter(hole => hole.classList.contains('up')).length, 0);
 assert.equal(JSON.parse(saved.get('classroom-mole-pop-best-v3'))['90'], 20);
+assert.deepEqual(scoreService.completed.at(-1), { game:'mole-pop', mode:'90', score:20 });
 assert.equal(saved.get('classroom-mole-pop-best-v1'), '{"60":99}', 'Preserve the old hit-count records');
 assert.equal(saved.get('classroom-mole-pop-best-v2'), '{"60":80}', 'Preserve pre-decoy score records');
 game.hit(0);
@@ -132,7 +135,7 @@ game.startGame();
 assert.equal(game.snapshot().score, 0);
 assert.equal(game.snapshot().misses, 0);
 assert.equal(game.snapshot().remaining, 30);
-assert.equal(get('best').textContent, 0, 'Best records are separate for each duration');
+assert.equal(get('best').textContent, '—', 'Today records are separate for each duration, and undated legacy records are not imported');
 document.hidden = true;
 docEvents.visibilitychange();
 assert.equal(game.snapshot().state, 'paused', 'Switching tabs pauses the round');

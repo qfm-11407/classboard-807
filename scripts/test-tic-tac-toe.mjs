@@ -1,6 +1,8 @@
 import fs from 'node:fs';
 import vm from 'node:vm';
 import assert from 'node:assert/strict';
+import { createScoreFixture } from './game-score-test-fixture.mjs';
+const scoreService = createScoreFixture();
 
 function element() {
   const classes = new Set(), selectors = new Map(), attributes = new Map();
@@ -25,7 +27,7 @@ const source = fs.readFileSync(new URL('../games/tic-tac-toe.js', import.meta.ur
 const game = vm.runInNewContext(`${source}\n({tables,winningLines,playAt:(table,cell)=>play(tables[table],cell),resetAt:index=>reset(tables[index]),snapshot:()=>tables.map(table=>table.state)})`, {
   document: { getElementById: get, createElement: element, fullscreenEnabled: false,
     querySelector: () => back, body: element(), addEventListener() {} },
-  window: { parent, location: { search: '?embedded=1', protocol: 'https:', origin: 'https://example.test' } },
+  window: { ClassroomGameScores:scoreService, parent, location: { search: '?embedded=1', protocol: 'https:', origin: 'https://example.test' } },
   URLSearchParams, ResizeObserver: class { observe() {} },
 });
 const snapshot = () => JSON.parse(JSON.stringify(game.snapshot()));
@@ -88,11 +90,14 @@ for (const mark of ['O', 'X']) {
   }
 }
 assert.deepEqual(snapshot()[0].scores, { O: 8, X: 8, draw: 0 });
+assert.equal(scoreService.completed.length,16,'Each real victory updates daily wins once');
+assert.equal(get('best').textContent,8);
 game.resetAt(0);
 for (const cell of [0, 1, 2, 4, 3, 5, 7, 6, 8]) assert(game.playAt(0, cell));
 assert.equal(snapshot()[0].finished, true);
 assert.equal(snapshot()[0].winner, null);
 assert.equal(snapshot()[0].scores.draw, 1);
+assert.equal(scoreService.completed.length,16,'A draw is not counted as a victory');
 assert.equal(game.tables[0].status.textContent, '平手，再來一局！');
 const scores = snapshot()[0].scores;
 game.resetAt(0);

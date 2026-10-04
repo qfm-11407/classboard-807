@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import vm from 'node:vm';
 import assert from 'node:assert/strict';
+import { createScoreFixture } from './game-score-test-fixture.mjs';
 
 const board = fs.readFileSync(new URL('../board.html',import.meta.url),'utf8');
 function extract(source,name) {
@@ -70,8 +71,9 @@ const gameElements=new Map(),events={},parentPosts=[];
 const gameGet=id=>{if(!gameElements.has(id))gameElements.set(id,element());return gameElements.get(id);};
 const back=element(),parent={postMessage:data=>parentPosts.push(data)};
 let now=0;
-const gameWindow={parent,location:{search:'?embedded=1',protocol:'https:',origin:'https://example.test'},addEventListener:(name,handler)=>{events[name]=handler;}};
-const game=vm.runInNewContext(`${gameSource}\n({startGame,hit,gameState:()=>({state,score,remaining})})`,{
+const dotScoreService=createScoreFixture();
+const gameWindow={ClassroomGameScores:dotScoreService,parent,location:{search:'?embedded=1',protocol:'https:',origin:'https://example.test'},addEventListener:(name,handler)=>{events[name]=handler;}};
+const game=vm.runInNewContext(`${gameSource}\n({startGame,hit,advance,resumeGame,finish,gameState:()=>({state,score,remaining})})`,{
   document:{getElementById:gameGet,body:element(),hidden:false,fullscreenEnabled:false,
     querySelector:selector=>selector==='.back-link'?back:{value:'60'},querySelectorAll:()=>[],addEventListener(){},createTextNode:value=>value,createElement:element},
   window:gameWindow,URLSearchParams,localStorage:{getItem:()=>null,setItem(){}},
@@ -84,5 +86,8 @@ events.message({source:parent,origin:'https://example.test',data:{type:'classroo
 assert.equal(game.gameState().state,'paused','Hiding an embedded game must pause its countdown');
 let prevented=false;back.listeners.click({preventDefault(){prevented=true;}});
 assert(prevented);assert.equal(parentPosts.at(-1).type,'classroom-interaction-back');
+game.resumeGame(); now+=61000; game.advance(now);
+assert.deepEqual(dotScoreService.completed, [{game:'moving-dot',mode:'60',score:1}]);
+game.finish(); assert.equal(dotScoreService.completed.length,1,'A completed round is recorded once');
 assert(board.includes('src="doodle.html?embedded=1"'),'Keep the original sticky-board module');
 console.log('Interaction hub tests: passed (nested navigation, lazy game load, pause on close, game scoring, embedded back, origin/source validation).');
