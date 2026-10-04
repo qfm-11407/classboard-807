@@ -410,7 +410,7 @@
                 </div>
                 <div class="flex flex-col items-center gap-3 cursor-pointer group" onclick="openApp('reading')">
                     <div class="w-32 h-32 squircle bg-pastel-purple flex items-center justify-center"><i class="fa-solid fa-book-open-reader text-6xl text-white/90 drop-shadow-md"></i></div>
-                    <span class="text-white font-bold text-2xl tracking-widest group-hover:text-[#8fd3f4] transition-colors">愛閱網</span>
+                    <span class="text-white font-bold text-2xl tracking-widest group-hover:text-[#8fd3f4] transition-colors">學習天地</span>
                 </div>
                 <div class="flex flex-col items-center gap-3 cursor-pointer group" onclick="openApp('wheel')">
                     <div class="w-32 h-32 squircle bg-pastel-green flex items-center justify-center relative"><i class="fa-solid fa-dice text-6xl text-white/90 drop-shadow-md"></i><i class="fa-solid fa-stopwatch absolute right-5 bottom-5 text-2xl text-white/80"></i></div>
@@ -712,11 +712,12 @@
 
             <div id="app-content-reading" class="w-full h-full hidden p-10">
                 <div class="w-full h-full flex flex-col items-center justify-center">
-                    <h2 class="text-5xl font-bold text-white tracking-widest"><i class="fa-solid fa-book-open-reader mr-5 text-[#f6d365]"></i>愛閱網</h2>
-                    <p class="mt-4 mb-8 text-2xl text-white/75">請掃描 QR Code，開啟閱讀資源</p>
-                    <div class="grid grid-cols-2 gap-10 w-full max-w-5xl">
-                        <section class="glass-panel rounded-[2rem] p-7 flex flex-col items-center"><div class="w-full aspect-square rounded-2xl bg-white p-4"><img src="assets/iread-qr.png" alt="愛閱網 QR Code" class="w-full h-full object-contain"></div><h3 class="mt-5 text-3xl font-black text-[#f6d365]">愛閱網</h3><p class="mt-2 text-xl text-white/70">掃描後開啟愛閱網</p></section>
-                        <section class="glass-panel rounded-[2rem] p-7 flex flex-col items-center"><div class="w-full aspect-square rounded-2xl bg-white p-4"><img src="assets/wifi-qfm-d303-qr.png" alt="QFM-D303 Wi-Fi QR Code" class="w-full h-full object-contain"></div><h3 class="mt-5 text-3xl font-black text-[#84fab0]"><i class="fa-solid fa-wifi mr-3"></i>Wi‑Fi</h3><p class="mt-2 text-xl text-white/70">QFM-D303｜掃描即可連線</p><p class="mt-1 text-lg font-bold tracking-widest text-white/80">密碼：1880 7996 3219</p></section>
+                    <h2 class="text-5xl font-bold text-white tracking-widest"><i class="fa-solid fa-book-open-reader mr-5 text-[#f6d365]"></i>學習天地</h2>
+                    <p class="mt-4 mb-8 text-2xl text-white/75">掃描 QR Code，或點選卡片在新分頁開啟</p>
+                    <div id="learning-resources" class="grid grid-cols-3 gap-8 w-full max-w-6xl">
+                        <a href="https://happyread.kh.edu.tw/readerquiz/" target="_blank" rel="noopener noreferrer" aria-label="愛閱網（在新分頁開啟）" class="glass-panel rounded-[2rem] p-6 flex flex-col items-center transition-colors hover:bg-white/15 focus-visible:outline focus-visible:outline-4 focus-visible:outline-[#f6d365]"><div class="w-full aspect-square rounded-2xl bg-white p-3"><img src="assets/iread-qr.png" alt="愛閱網 QR Code" class="w-full h-full object-contain"></div><h3 class="mt-5 text-3xl font-black text-[#f6d365]">愛閱網</h3><p class="mt-3 text-xl font-bold text-white/75"><i class="fa-solid fa-arrow-up-right-from-square mr-2" aria-hidden="true"></i>點選開啟</p></a>
+                        <a href="https://idiom-quest-suyun.suyungsheng.chatgpt.site/" target="_blank" rel="noopener noreferrer" aria-label="成語闖關（在新分頁開啟）" class="glass-panel rounded-[2rem] p-6 flex flex-col items-center transition-colors hover:bg-white/15 focus-visible:outline focus-visible:outline-4 focus-visible:outline-[#84fab0]"><div class="w-full aspect-square rounded-2xl bg-white p-3"><img src="assets/idiom-quest-qr.png" alt="成語闖關 QR Code" class="w-full h-full object-contain"></div><h3 class="mt-5 text-3xl font-black text-[#84fab0]">成語闖關</h3><p class="mt-3 text-xl font-bold text-white/75"><i class="fa-solid fa-arrow-up-right-from-square mr-2" aria-hidden="true"></i>點選開啟</p></a>
+                        <a href="https://science-115-first-midterm-quiz.suyungsheng.chatgpt.site/" target="_blank" rel="noopener noreferrer" aria-label="理化習作（在新分頁開啟）" class="glass-panel rounded-[2rem] p-6 flex flex-col items-center transition-colors hover:bg-white/15 focus-visible:outline focus-visible:outline-4 focus-visible:outline-[#8fd3f4]"><div class="w-full aspect-square rounded-2xl bg-white p-3"><img src="assets/science-workbook-qr.png" alt="理化習作 QR Code" class="w-full h-full object-contain"></div><h3 class="mt-5 text-3xl font-black text-[#8fd3f4]">理化習作</h3><p class="mt-3 text-xl font-bold text-white/75"><i class="fa-solid fa-arrow-up-right-from-square mr-2" aria-hidden="true"></i>點選開啟</p></a>
                     </div>
                 </div>
             </div>

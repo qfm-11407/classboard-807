@@ -14,6 +14,7 @@
       ".github/**",
       "netlify/**",
       "scripts/**",
+      "assets/wifi-qfm-d303-qr.png",
       "node_modules/**"
     ],
     "headers": [
@@ -37,6 +38,7 @@
       ".github/**",
       "netlify/**",
       "scripts/**",
+      "assets/wifi-qfm-d303-qr.png",
       "node_modules/**"
     ],
     "headers": [
