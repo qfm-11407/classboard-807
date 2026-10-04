@@ -17,6 +17,8 @@
   <script src="https://www.gstatic.com/firebasejs/12.17.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/12.17.1/firebase-firestore-compat.js"></script>
   <script src="firebase-classroom.js?v=restore-points-1"></script>
+  <link rel="stylesheet" href="teacher-board-preview.css?v=1">
+  <script src="teacher-board-preview.js?v=1" defer></script>
   <style>
     :root { --ink:#18352a; --green:#2d7654; --mint:#eaf7ef; --line:#d8e7dd; --cream:#fbfdfb; --danger:#b63847; }
     * { box-sizing: border-box; }
@@ -184,7 +186,7 @@
   <main id="admin" class="shell hidden">
     <header>
       <div><h1><span>807</span> 班級看板・教師管理</h1><p class="sub">所有變更都會儲存到 Firebase，並同步給各裝置的班級看板。</p></div>
-      <div class="actions"><button class="btn light" id="open-restore-points" type="button" aria-label="資料還原點"><span class="password-trigger-label">還原點</span><span class="password-trigger-icon" aria-hidden="true">↶</span></button><button class="btn light" id="open-password-change" type="button" aria-label="修改密碼"><span class="password-trigger-label">修改密碼</span><span class="password-trigger-icon" aria-hidden="true">🔒</span></button><a class="btn light" href="board.html">班級看板</a></div>
+      <div class="actions"><button class="btn light" id="open-restore-points" type="button" aria-label="資料還原點"><span class="password-trigger-label">還原點</span><span class="password-trigger-icon" aria-hidden="true">↶</span></button><button class="btn light" id="open-password-change" type="button" aria-label="修改密碼"><span class="password-trigger-label">修改密碼</span><span class="password-trigger-icon" aria-hidden="true">🔒</span></button><a class="btn light" id="open-board-preview" href="board.html" target="_blank" rel="noopener noreferrer">班級看板</a></div>
     </header>
     <div id="cloud-sync-status" class="cloud-sync-status" role="status" aria-live="polite"><span id="cloud-sync-text">已載入雲端資料</span><div id="cloud-sync-recovery" class="actions hidden"><button class="btn light" id="export-local-state" type="button">下載本機資料</button><button class="btn light" id="reload-cloud-state" type="button">重新載入雲端</button></div></div>
     <nav class="tabs" aria-label="教師管理功能">
@@ -243,6 +245,13 @@
     <section class="panel" id="panel-lunch"><h2>午餐小組</h2><p class="hint">每週由一組輪值，不區分工作項目。14、24 號固定協助三組；點選目前負責小組後，每週一會自動輪替下一組。</p><div class="card"><h3 style="margin-top:0">本週午餐輪值組別</h3><div id="lunch-weekly-groups" class="lunch-weekly-groups"></div><p class="notice" id="lunch-message"></p></div><div class="card" style="margin-top:18px"><h3 style="margin-top:0">調整小組成員</h3><p class="hint">先點選一位學生，再點選另一組學生即可互換；各組人數會維持不變。</p><div id="lunch-swap-groups" class="lunch-swap-groups"></div><p id="lunch-swap-hint" class="notice"></p></div><div class="card" style="margin-top:18px"><h3 style="margin-top:0">每月菜單</h3><div class="row"><input id="menu-month" type="month" style="width:auto"><button class="btn light" id="load-menu" type="button">載入月份</button><button class="btn" id="save-menu" type="button">儲存菜單</button></div><p class="hint" style="margin-top:12px">可貼上「日期,菜單名稱」或「日,菜單名稱」，每行一筆。</p><textarea id="menu-paste" placeholder="1,咖哩雞肉&#10;2,滷肉飯" style="min-height:90px"></textarea><div class="table-wrap" style="margin-top:12px"><table><thead><tr><th>日期</th><th>菜單名稱</th></tr></thead><tbody id="monthly-menu-body"></tbody></table></div><p class="notice" id="menu-message"></p></div></section>
 
   </main>
+
+  <dialog id="board-preview-dialog" aria-labelledby="board-preview-title">
+    <div class="board-preview-shell">
+      <div class="board-preview-toolbar"><h2 id="board-preview-title">班級看板預覽</h2><button id="close-board-preview" type="button" autofocus>✕ 返回教師端</button></div>
+      <iframe id="board-preview-frame" title="學生端班級看板預覽"></iframe>
+    </div>
+  </dialog>
 
   <section id="cloud-login" class="cloud-login"><form id="cloud-login-form" class="cloud-card"><h2>教師雲端登入</h2><p class="hint">使用 Firebase 教師帳號登入；帳號只需輸入 @qfm.kh.edu.tw 前的部分。</p><label for="cloud-username">帳號</label><div class="email-input"><input id="cloud-username" type="text" required autocomplete="username" placeholder="teacher807"><span>@qfm.kh.edu.tw</span></div><label for="cloud-password" style="margin-top:14px">密碼</label><input id="cloud-password" type="password" required autocomplete="current-password"><button class="btn" style="width:100%;margin-top:18px" type="submit">開啟管理頁</button><p id="cloud-error" class="cloud-error"></p></form></section>
 
