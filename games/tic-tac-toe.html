@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#111827">
+  <title>圈叉對決｜互動遊戲室</title>
+  <link rel="stylesheet" href="games.css?v=ox-1">
+  <link rel="stylesheet" href="tic-tac-toe.css?v=ox-1">
+  <script src="tic-tac-toe.js?v=ox-1" defer></script>
+</head>
+<body class="game-page ox-page">
+  <main id="game" class="game-shell">
+    <header class="game-header">
+      <div class="game-heading"><a class="back-link" href="./">← 遊戲室</a><h1>圈叉對決 <span>四桌同場 · 各自對決</span></h1></div>
+      <div class="toolbar"><button id="fullscreen" class="quiet-button">全螢幕</button></div>
+    </header>
+    <section id="tables" class="ox-deck" aria-label="2 欄 2 列，四桌獨立的 OX 棋盤"></section>
+    <footer class="game-footer"><span><i></i> 每桌兩人 · O 先手 · 橫、直、斜三連線獲勝</span><span>各桌獨立，重開互不影響</span></footer>
+    <div id="announcement" class="sr-only" role="status" aria-live="polite"></div>
+  </main>
+</body>
+</html>

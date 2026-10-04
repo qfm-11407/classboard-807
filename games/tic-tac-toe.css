@@ -1,0 +1,70 @@
+.ox-page { --lime: #9ad9ff; min-height: 660px; }
+.ox-deck { flex: 1; min-height: 520px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.ox-table { --table-color: #9ad9ff; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; gap: 8px; min-width: 0; padding: 12px 20px; border: 1px solid var(--line); border-top: 3px solid var(--table-color); border-radius: 18px; background: var(--panel); }
+.ox-table:nth-child(2) { --table-color: #ffce83; }
+.ox-table:nth-child(3) { --table-color: #a8e5bd; }
+.ox-table:nth-child(4) { --table-color: #cfb4ff; }
+.table-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; min-width: 0; }
+.table-head h2 { display: flex; align-items: center; gap: 9px; font-size: 16px; margin: 0; white-space: nowrap; }
+.table-number { color: var(--table-color); font-size: 11px; letter-spacing: .1em; font-weight: 500; }
+.turn-badge { font-size: 12px; padding: 7px 12px; border-radius: 8px; background: #ffffff08; color: var(--muted); white-space: nowrap; }
+.turn-badge[data-mark="O"] { color: #9ad9ff; background: #9ad9ff12; }
+.turn-badge[data-mark="X"] { color: #ffad99; background: #ffad9912; }
+.ox-table.finished .turn-badge { font-weight: 700; box-shadow: inset 0 0 0 1px #ffffff20; }
+.table-body { min-height: 144px; display: grid; place-items: center; }
+.ox-board { width: min(100%, var(--board-side, 180px)); aspect-ratio: 1; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: repeat(3, minmax(0, 1fr)); gap: 5px; }
+.ox-cell { display: grid; place-items: center; padding: 0; border: 1px solid #5d718a40; border-radius: 11px; background: #0c1421; touch-action: none; user-select: none; -webkit-user-select: none; }
+.ox-cell:hover:enabled { border-color: var(--table-color); background: #243147; }
+.ox-cell:active:enabled { background: #344258; }
+.ox-cell:disabled { cursor: default; opacity: 1; }
+.ox-cell svg { width: 57%; height: 57%; pointer-events: none; }
+.ox-cell[data-mark="O"] { color: #9ad9ff; }
+.ox-cell[data-mark="X"] { color: #ffad99; }
+.ox-cell.winning { background: #a8e5bd18; border-color: #a8e5bd88; }
+.table-footer { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.table-scores { display: flex; gap: 12px; color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.table-scores b { color: var(--text); font-weight: 600; }
+.score-o { color: #9ad9ff; }
+.score-x { color: #ffad99; }
+.table-reset { border: 1px solid #50607960; border-radius: 8px; background: #ffffff06; color: var(--muted); padding: 8px 12px; font-size: 12px; min-height: 38px; white-space: nowrap; }
+.table-reset:hover { background: #ffffff12; color: var(--text); }
+.ox-card .card-art { background: radial-gradient(circle at 50% 50%, #2d4159, #172334 85%); display: grid; place-items: center; }
+.card-ox { display: grid; grid-template-columns: repeat(3, 54px); gap: 7px; transform: rotate(-8deg); }
+.card-ox span { display: grid; place-items: center; height: 54px; background: #111c2b; border: 1px solid #ffffff18; border-radius: 9px; font: 36px/1 system-ui, sans-serif; color: #9ad9ff; }
+.card-ox span:nth-child(2), .card-ox span:nth-child(4), .card-ox span:nth-child(6) { color: #ffad99; }
+.ox-card .tag, .ox-card .card-cta span { color: #9ad9ff; }
+.ox-card:hover { border-color: #9ad9ff; }
+.ox-page.embedded { --lime: #9ad9ff; }
+.embedded .ox-deck { gap: 22px; }
+.embedded .ox-table { padding: 16px 24px; border-radius: 24px; gap: 12px; }
+.embedded .table-head h2 { font-size: 26px; }
+.embedded .table-number { font-size: 16px; }
+.embedded .turn-badge { font-size: 20px; }
+.embedded .table-scores, .embedded .table-reset { font-size: 18px; }
+.embedded .table-reset { min-height: 44px; }
+.embedded .ox-cell { background: #0003; border-color: #ffffff25; border-radius: 16px; }
+.embedded .ox-cell.winning { background: #a8e5bd22; border-color: #a8e5bd88; }
+@media (min-width: 801px) {
+  .ox-table { grid-template-columns: minmax(0, 1fr) 150px; grid-template-rows: auto minmax(0, 1fr); column-gap: 20px; }
+  .table-head { grid-column: 2; grid-row: 1; flex-direction: column; align-items: flex-start; gap: 16px; padding-top: 10px; }
+  .table-head h2 { font-size: 20px; }
+  .table-body { grid-column: 1; grid-row: 1 / span 2; }
+  .table-footer { grid-column: 2; grid-row: 2; flex-direction: column; align-items: stretch; justify-content: flex-end; gap: 14px; padding-bottom: 10px; }
+  .table-scores { gap: 8px; justify-content: space-between; }
+  .embedded .ox-table { grid-template-columns: minmax(0, 1fr) 220px; }
+}
+@media (max-width: 600px) {
+  .ox-deck { gap: 10px; min-height: 572px; }
+  .ox-table, .embedded .ox-table { padding: 10px; gap: 6px; border-radius: 14px; }
+  .table-head { flex-direction: column; align-items: flex-start; gap: 5px; }
+  .table-head h2, .embedded .table-head h2 { font-size: 14px; gap: 6px; }
+  .table-number, .embedded .table-number { font-size: 9px; }
+  .turn-badge, .embedded .turn-badge { font-size: 11px; padding: 5px 8px; }
+  .table-footer { flex-direction: column; align-items: stretch; gap: 6px; }
+  .table-scores, .embedded .table-scores { justify-content: space-between; gap: 4px; font-size: 10px; }
+  .table-reset, .embedded .table-reset { font-size: 12px; min-height: 40px; padding: 7px; }
+  .ox-board { gap: 4px; }
+  .ox-cell, .embedded .ox-cell { border-radius: 8px; }
+  .ox-page .game-footer { flex-wrap: wrap; }
+  .embedded .ox-deck { gap: 10px; }
+}
