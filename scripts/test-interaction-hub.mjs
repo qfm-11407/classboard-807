@@ -73,13 +73,22 @@ const back=element(),parent={postMessage:data=>parentPosts.push(data)};
 let now=0;
 const dotScoreService=createScoreFixture();
 const gameWindow={ClassroomGameScores:dotScoreService,parent,location:{search:'?embedded=1',protocol:'https:',origin:'https://example.test'},addEventListener:(name,handler)=>{events[name]=handler;}};
-const game=vm.runInNewContext(`${gameSource}\n({startGame,hit,advance,resumeGame,finish,gameState:()=>({state,score,remaining})})`,{
+const game=vm.runInNewContext(`${gameSource}\n({startGame,hit,advance,resumeGame,finish,gameState:()=>({state,score,remaining,target:{...target}})})`,{
   document:{getElementById:gameGet,body:element(),hidden:false,fullscreenEnabled:false,
     querySelector:selector=>selector==='.back-link'?back:{value:'60'},querySelectorAll:()=>[],addEventListener(){},createTextNode:value=>value,createElement:element},
-  window:gameWindow,URLSearchParams,localStorage:{getItem:()=>null,setItem(){}},
+  window:gameWindow,URLSearchParams,Math:Object.assign(Object.create(Math),{random:()=>.5}),localStorage:{getItem:()=>null,setItem(){}},
   requestAnimationFrame:()=>1,cancelAnimationFrame(){},performance:{now:()=>now},ResizeObserver:class{observe(){}},
 });
-assert.equal(back.textContent,'← 互動區');game.startGame();game.hit();assert.equal(game.gameState().score,1);
+assert.equal(back.textContent,'← 互動區');game.startGame();
+const initialTarget=game.gameState().target;
+assert(Math.abs(Math.hypot(initialTarget.vx,initialTarget.vy)-220)<1e-8,'The first dot starts at the faster speed');
+assert.equal(initialTarget.size,104);
+now+=100; game.advance(now);
+const movedTarget=game.gameState().target;
+assert(Math.abs(Math.hypot(movedTarget.x-initialTarget.x,movedTarget.y-initialTarget.y)-22)<1e-8,'The faster speed is applied to actual movement');
+game.hit();assert.equal(game.gameState().score,1);
+assert(Math.abs(Math.hypot(game.gameState().target.vx,game.gameState().target.vy)-230)<1e-8,'A hit still speeds up the next dot');
+assert.equal(game.gameState().target.size,101);
 events.message({source:parent,origin:'https://other.test',data:{type:'classroom-game-pause'}});
 assert.equal(game.gameState().state,'running');
 events.message({source:parent,origin:'https://example.test',data:{type:'classroom-game-pause'}});
@@ -89,5 +98,9 @@ assert(prevented);assert.equal(parentPosts.at(-1).type,'classroom-interaction-ba
 game.resumeGame(); now+=61000; game.advance(now);
 assert.deepEqual(dotScoreService.completed, [{game:'moving-dot',mode:'60',score:1}]);
 game.finish(); assert.equal(dotScoreService.completed.length,1,'A completed round is recorded once');
+game.startGame();
+for(let count=0;count<45;count++)game.hit();
+assert(Math.abs(Math.hypot(game.gameState().target.vx,game.gameState().target.vy)-420)<1e-8,'Speed remains capped');
+assert.equal(game.gameState().target.size,40,'Targets remain large enough to touch');
 assert(board.includes('src="doodle.html?embedded=1"'),'Keep the original sticky-board module');
 console.log('Interaction hub tests: passed (nested navigation, lazy game load, pause on close, game scoring, embedded back, origin/source validation).');

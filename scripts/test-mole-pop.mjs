@@ -40,7 +40,7 @@ let now = 0, seed = 123, forcedRandom = null;
 const seededMath = Object.create(Math);
 seededMath.random = () => { if (forcedRandom !== null) return forcedRandom; seed = (1664525 * seed + 1013904223) >>> 0; return seed / 2 ** 32; };
 const source = fs.readFileSync(new URL('../games/mole-pop.js', import.meta.url), 'utf8');
-const game = vm.runInNewContext(`${source}\n({startGame,hit,advance,pauseGame,resumeGame,snapshot:()=>({state,score,hits,errors,wrongMoles,misses,duration,remaining,active:[...active.keys()],targets:[...active].map(([index,mole])=>({index,decoy:mole.decoy,remaining:mole.expires-elapsed})),lifetimes:[...active.values()].map(mole=>mole.expires-elapsed)})})`, {
+const game = vm.runInNewContext(`${source}\n({startGame,hit,advance,pauseGame,resumeGame,finish,snapshot:()=>({state,score,hits,errors,wrongMoles,misses,duration,remaining,active:[...active.keys()],targets:[...active].map(([index,mole])=>({index,decoy:mole.decoy,remaining:mole.expires-elapsed})),lifetimes:[...active.values()].map(mole=>mole.expires-elapsed)})})`, {
   document, Math: seededMath, URLSearchParams,
   window: { ClassroomGameScores:scoreService, parent, location: { search: '?embedded=1', origin: 'https://example.test', protocol: 'https:' },
     addEventListener: (name, handler) => { windowEvents[name] = handler; } },
@@ -52,6 +52,20 @@ const advance = seconds => { now += seconds * 1000; game.advance(now); };
 const select = value => { selectedDuration.value = String(value); radios.find(input => input.value === String(value)).listeners.change(); };
 const backgroundTap = () => get('arena').listeners.pointerdown({ button: 0, target: { closest: () => null }, preventDefault() {} });
 const holes = get('field').children;
+function earnHits(count) {
+  forcedRandom = .99;
+  for (let hitCount = 0; hitCount < count; hitCount++) {
+    let regular = game.snapshot().targets.find(mole => !mole.decoy);
+    for (let wait = 0; !regular && wait < 100; wait++) {
+      advance(.05);
+      regular = game.snapshot().targets.find(mole => !mole.decoy);
+    }
+    assert(regular);
+    game.hit(regular.index);
+    advance(.3);
+  }
+  forcedRandom = null;
+}
 assert.equal(holes.length, 30, 'Exactly 30 distinct playable positions');
 assert.equal(new Set(holes.map(hole => hole.dataset.index)).size, 30);
 assert.equal(back.textContent, '← 互動區');
@@ -150,6 +164,8 @@ select(60);
 game.startGame();
 game.hit((game.snapshot().active[0] + 1) % 30);
 assert.equal(game.snapshot().score, -1);
+assert.equal(game.snapshot().state, 'finished', 'Negative scores end immediately without waiting for the timer');
+assert.equal(game.snapshot().remaining, 60);
 advance(60);
 assert.equal(JSON.parse(saved.get('classroom-mole-pop-best-v3'))['60'], -1);
 assert.equal(get('best').textContent, -1);
@@ -157,7 +173,7 @@ game.startGame();
 backgroundTap();
 backgroundTap();
 advance(60);
-assert.equal(JSON.parse(saved.get('classroom-mole-pop-best-v3'))['60'], -1, 'A lower negative score cannot replace the best score');
+assert.equal(JSON.parse(saved.get('classroom-mole-pop-best-v3'))['60'], -1, 'Taps after game over cannot change the saved score');
 game.startGame();
 game.hit(game.snapshot().active[0]);
 advance(60);
@@ -174,18 +190,20 @@ for (const settings of [
   assert.equal(game.snapshot().duration, settings.duration);
   assert.equal(game.snapshot().targets[0].decoy, false, 'Each round starts with a regular brown mole');
   assert(game.snapshot().lifetimes.every(lifetime => lifetime >= settings.lifetime[0] && lifetime <= settings.lifetime[1]));
+  earnHits(6);
+  const bank = settings.reward * 6;
   const moleIndex = game.snapshot().active[0];
   holes[moleIndex].listeners.pointerdown({ button: 0, preventDefault() {}, stopPropagation() {} });
   holes[moleIndex].listeners.click({ detail: 1 });
-  assert.equal(game.snapshot().score, settings.reward);
-  assert.equal(game.snapshot().hits, 1);
+  assert.equal(game.snapshot().score, bank + settings.reward);
+  assert.equal(game.snapshot().hits, 7);
   assert.equal(game.snapshot().errors, 0);
   get('arena').listeners.pointerdown({ button: 0, target: { closest: () => holes[moleIndex] } });
   assert.equal(game.snapshot().errors, 0, 'A hole tap is never penalized again by the background handler');
   backgroundTap();
-  assert.equal(game.snapshot().score, settings.reward - settings.penalty, 'Arena gaps and background obey the selected penalty');
+  assert.equal(game.snapshot().score, bank + settings.reward - settings.penalty, 'Arena gaps and background obey the selected penalty');
   game.hit((moleIndex + 1) % 30);
-  assert.equal(game.snapshot().score, settings.reward - settings.penalty * 2, 'Empty holes also deduct points');
+  assert.equal(game.snapshot().score, bank + settings.reward - settings.penalty * 2, 'Empty holes also deduct points');
   assert.equal(game.snapshot().errors, 2);
   // Force subsequent random spawns to red, exercising real spawn/expiry/hit paths.
   forcedRandom = 0;
@@ -217,8 +235,8 @@ for (const settings of [
   assert(nextRed);
   holes[nextRed.index].listeners.pointerdown({ button: 0, isPrimary: false, preventDefault() {}, stopPropagation() {} });
   holes[nextRed.index].listeners.click({ detail: 1 });
-  assert.equal(game.snapshot().score, settings.reward - settings.penalty * 3, 'Hitting red obeys the mode penalty and gives no reward');
-  assert.equal(game.snapshot().hits, 1, 'A red hit does not count as a regular hit');
+  assert.equal(game.snapshot().score, bank + settings.reward - settings.penalty * 3, 'Hitting red obeys the mode penalty and gives no reward');
+  assert.equal(game.snapshot().hits, 7, 'A red hit does not count as a regular hit');
   assert.equal(game.snapshot().errors, 2, 'Red hits and blank taps are counted separately');
   assert.equal(game.snapshot().wrongMoles, 1, 'Touch followed by click counts one red hit');
   assert(!game.snapshot().active.includes(nextRed.index), 'The hit decoy disappears');
@@ -232,7 +250,7 @@ for (const settings of [
     modeMaximum = Math.max(modeMaximum, game.snapshot().active.length);
     assert(game.snapshot().active.length <= settings.capacity);
   }
-  assert.equal(modeMaximum, settings.capacity, 'Difficulty is fixed by duration, even when points are zero or negative');
+  assert.equal(modeMaximum, settings.capacity, 'Difficulty is fixed by duration');
   assert.equal(game.snapshot().score, scoreBeforeExpiry, 'Missed moles are counted without point deductions');
   assert(game.snapshot().misses > 0);
   assert.equal(get('mode').textContent, settings.name, 'The single stage never changes difficulty');
@@ -247,6 +265,58 @@ for (const settings of [
   assert.equal(holes.filter(hole => hole.classList.contains('decoy')).length, 0, 'Finish clears colored target styling');
 }
 
+// Each penalty source must end a negative round and stop all subsequent activity.
+for (const settings of [{ duration:60, reward:2, penalty:1 }, { duration:90, reward:1, penalty:2 }]) {
+  select(settings.duration);
+  assert(get('dialog-note').textContent.includes('負分立即結束'));
+  for (const cause of ['blank', 'background', 'red']) {
+    game.startGame();
+    const recordsBefore = scoreService.completed.length;
+    if (cause === 'red') {
+      earnHits(2);
+      const tapsToZero = settings.reward * 2 / settings.penalty;
+      for (let tap = 0; tap < tapsToZero; tap++) backgroundTap();
+      assert.equal(game.snapshot().score, 0);
+      assert.equal(game.snapshot().state, 'running', 'Exactly zero remains playable');
+      forcedRandom = 0;
+      let red = game.snapshot().targets.find(mole => mole.decoy);
+      for (let wait = 0; !red && wait < 100; wait++) {
+        advance(.05);
+        red = game.snapshot().targets.find(mole => mole.decoy);
+      }
+      assert(red);
+      holes[red.index].listeners.pointerdown({ button:0, preventDefault() {}, stopPropagation() {} });
+      holes[red.index].listeners.click({ detail:1 });
+      assert.equal(game.snapshot().wrongMoles, 1);
+      forcedRandom = null;
+    } else if (cause === 'blank') {
+      game.hit((game.snapshot().active[0] + 1) % 30);
+    } else {
+      backgroundTap();
+    }
+    const ended = game.snapshot();
+    assert.equal(ended.state, 'finished', `${cause} causes immediate game over`);
+    assert.equal(ended.score, -settings.penalty);
+    assert(ended.remaining > 0, 'Early game over preserves the stopped countdown');
+    assert.equal(ended.active.length, 0);
+    assert.equal(get('field').inert, true);
+    assert.equal(get('overlay').hidden, false);
+    assert.equal(get('pause').disabled, true);
+    assert.equal(get('dialog-title').textContent, '負分了，遊戲結束！');
+    assert.equal(get('dialog-tag').textContent, 'GAME OVER', 'A first negative record is never celebrated as a win');
+    assert.equal(scoreService.completed.length, recordsBefore + 1, 'Early final scores are recorded once');
+    assert.equal(scoreService.completed.at(-1).score, ended.score);
+    game.hit(0);
+    backgroundTap();
+    game.pauseGame();
+    game.resumeGame();
+    advance(100);
+    game.finish();
+    assert.deepEqual(game.snapshot(), ended, 'No input, timer, or resume can revive a finished round');
+    assert.equal(scoreService.completed.length, recordsBefore + 1);
+  }
+}
+
 select(30);
 assert.equal(get('mode').textContent, '簡易');
 assert(get('mode-rules').textContent.includes('打空不扣分'), 'The picker previews the selected scoring rules');
@@ -255,7 +325,10 @@ game.startGame();
 assert.equal(game.snapshot().hits, 0);
 assert.equal(game.snapshot().errors, 0);
 assert.equal(game.snapshot().wrongMoles, 0, 'Restart clears wrong-colored hits');
+for (let tap = 0; tap < 20; tap++) backgroundTap();
+assert.equal(game.snapshot().score, 0);
+assert.equal(game.snapshot().state, 'running', 'Easy mode remains playable after mistakes at zero');
 select(90);
 assert.equal(game.snapshot().duration, 30, 'Hidden mode changes cannot change a live round');
 assert.equal(get('mode').textContent, '簡易');
-console.log('Mole game tests: passed (30 positions, 30/60/90 fixed difficulty, longer red lifetimes, brown rewards, red/blank/background penalties, decoy expiry without misses, no duplicate touch counting, negative scores, pause/resume, embedded navigation, finish, preserved separate records, restart).');
+console.log('Mole game tests: passed (30 positions, longer red lifetimes, scoring, negative game over for blank/background/red, zero continues, easy without deductions, stopped clock/input, final score recorded once, pause/resume, embedded navigation, restart).');

@@ -52,7 +52,7 @@ function spawnTarget() {
   // Every successful hit changes difficulty, with limits that remain touchable.
   const size = Math.min(Math.max(40, 104 - score * 3), arena.clientWidth, arena.clientHeight);
   const limits = bounds(size);
-  const speed = Math.min(420, 95 + score * 10);
+  const speed = Math.min(420, 220 + score * 10);
   const angle = random(0, Math.PI * 2);
   const lifetime = random(2, 4) / Math.min(1.7, 1 + score * .025);
   target = {

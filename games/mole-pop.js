@@ -78,7 +78,7 @@ function updateStats() {
   $('misses').textContent = `命中 ${hits} · 打空 ${errors} · 誤打 ${wrongMoles} · 漏掉 ${misses}`;
   $('target-rules').textContent = `棕色可打 +${mode.reward}`;
   $('decoy-rules').textContent = `紅色避開${mode.penalty ? ` −${mode.penalty}` : ' · 不加分'}`;
-  $('rules').textContent = `${mode.name} · ${mode.penalty ? `打空或誤打紅色 −${mode.penalty}` : '打空與誤打紅色都不扣分'}`;
+  $('rules').textContent = `${mode.name} · ${mode.penalty ? `打空或誤打紅色 −${mode.penalty} · 負分即結束` : '打空與誤打紅色都不扣分'}`;
   $('mode-rules').textContent = `${mode.name}：棕色 +${mode.reward} 分，${mode.penalty ? `打空或紅色 −${mode.penalty} 分` : '打空不扣分，紅色不加分也不扣分'}`;
 }
 
@@ -173,7 +173,7 @@ function startGame() {
   updateStats();
   lastTime = performance.now();
   frame = requestAnimationFrame(tick);
-  $('announcement').textContent = `地鼠出沒，${duration} 秒${mode.name}模式，棕色可打，加 ${mode.reward} 分；紅色避開，打空或誤打紅色扣 ${mode.penalty} 分。`;
+  $('announcement').textContent = `地鼠出沒，${duration} 秒${mode.name}模式，棕色可打，加 ${mode.reward} 分；紅色避開，打空或誤打紅色扣 ${mode.penalty} 分。${mode.penalty ? '分數低於 0 立即結束。' : ''}`;
 }
 
 function showFeedback(message, negative = false) {
@@ -188,6 +188,7 @@ function registerError(index = null) {
   if (state !== 'running') return;
   errors += 1;
   score -= mode.penalty;
+  if (score < 0) { finish(); return; }
   if (index !== null && !active.has(index)) {
     holes[index].classList.remove('hit');
     holes[index].classList.add('wrong');
@@ -210,6 +211,7 @@ function hit(index) {
   if (mole.decoy) {
     wrongMoles += 1;
     score -= mode.penalty;
+    if (score < 0) { finish(); return; }
     holes[index].classList.remove('hit');
     holes[index].classList.add('wrong');
     showFeedback(mode.penalty ? `−${mode.penalty} 紅色要避開！` : '紅色要避開，不加分也不扣分', mode.penalty > 0);
@@ -262,6 +264,7 @@ function finish() {
   state = 'finished';
   cancelAnimationFrame(frame);
   clearField();
+  const failed = score < 0;
   const newBest = best() === null || score > best();
   window.ClassroomGameScores.record('mole-pop', duration, score);
   if (!Number.isFinite(records[duration]) || score > records[duration]) {
@@ -277,10 +280,11 @@ function finish() {
   unit.textContent = ' 分';
   $('results').append(unit);
   $('results').hidden = false;
-  $('dialog-note').textContent = `今日最佳依台灣日期計算 · 完整回合列入前十名 · ${duration} 秒${mode.name}`;
-  showDialog(newBest ? 'TODAY\'S BEST' : 'WELL PLAYED', newBest ? '刷新今日最佳！' : '挑戰完成！', `命中 ${hits} 次，打空 ${errors} 次，誤打紅色 ${wrongMoles} 次，漏掉棕色 ${misses} 隻。`, '再玩一次');
+  $('dialog-note').textContent = failed ? '分數低於 0，回合已結束 · 再試一次！' : `今日最佳依台灣日期計算 · 結束回合列入前十名 · ${duration} 秒${mode.name}`;
+  const summary = `命中 ${hits} 次，打空 ${errors} 次，誤打紅色 ${wrongMoles} 次，漏掉棕色 ${misses} 隻。`;
+  showDialog(failed ? 'GAME OVER' : newBest ? 'TODAY\'S BEST' : 'WELL PLAYED', failed ? '負分了，遊戲結束！' : newBest ? '刷新今日最佳！' : '挑戰完成！', summary, '再玩一次');
   updateStats();
-  $('announcement').textContent = `挑戰完成，${score} 分，命中 ${hits} 次，打空 ${errors} 次，誤打紅色 ${wrongMoles} 次，漏掉棕色 ${misses} 隻。`;
+  $('announcement').textContent = `${failed ? '分數低於 0，遊戲結束' : '挑戰完成'}，${score} 分，${summary}`;
 }
 
 $('start').addEventListener('click', () => state === 'paused' ? resumeGame() : startGame());
@@ -291,7 +295,7 @@ document.querySelectorAll('input[name="duration"]').forEach(input => input.addEv
   duration = Number(input.value);
   mode = modes[duration];
   if (state === 'ready') remaining = duration;
-  $('dialog-note').textContent = `單關固定難度 · 地鼠逾時不扣分${mode.penalty ? ' · 分數可低於 0' : ''}`;
+  $('dialog-note').textContent = `單關固定難度 · 地鼠逾時不扣分${mode.penalty ? ' · 負分立即結束' : ''}`;
   updateStats();
 }));
 document.addEventListener('visibilitychange', () => { if (document.hidden) pauseGame(); });

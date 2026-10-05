@@ -12,7 +12,7 @@
   <script src="https://www.gstatic.com/firebasejs/12.17.1/firebase-firestore-compat.js" defer></script>
   <script src="game-rankings-cloud.js?v=1" defer></script>
   <script src="game-rankings.js?v=cloud-2" defer></script>
-  <script src="mole-pop.js?v=rank-1" defer></script>
+  <script src="mole-pop.js?v=negative-stop-1" defer></script>
 </head>
 <body class="game-page mole-page">
   <main id="game" class="game-shell">
@@ -40,12 +40,12 @@
           <p id="mode-rules" class="mode-rules">正常：棕色 +2 分，打空或紅色 −1 分</p>
           <button id="start" class="primary-button">開始挑戰 <span aria-hidden="true">↗</span></button>
           <button id="restart" class="text-button" hidden>重新開始</button>
-          <p id="dialog-note" class="dialog-note">單關固定難度 · 地鼠逾時不扣分 · 分數可低於 0</p>
+          <p id="dialog-note" class="dialog-note">單關固定難度 · 地鼠逾時不扣分 · 負分立即結束</p>
         </div>
       </div>
       <div id="feedback" class="feedback" aria-hidden="true"></div>
     </section>
-    <footer class="game-footer"><span><i></i> <span id="rules">正常 · 打空或誤打紅色 −1</span></span><span id="misses">命中 0 · 打空 0 · 誤打 0 · 漏掉 0</span></footer>
+    <footer class="game-footer"><span><i></i> <span id="rules">正常 · 打空或誤打紅色 −1 · 負分即結束</span></span><span id="misses">命中 0 · 打空 0 · 誤打 0 · 漏掉 0</span></footer>
     <div id="announcement" class="sr-only" role="status" aria-live="polite"></div>
   </main>
 </body>
