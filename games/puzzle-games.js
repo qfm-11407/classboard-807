@@ -2,18 +2,18 @@
   const $ = id => document.getElementById(id), rules = window.ClassroomPuzzles;
   const game = document.body.dataset.game, host = $('play-area'), overlay = $('overlay');
   const configs = {
-    'spot-difference': { title:'眼明手快', accent:'#ffce83', subtitle:'觀察細節 · 找出不同', intro:'找出唯一不同的圖案。完成 10 題，或挑戰 60 秒內能找到幾題！', help:'點選不同的圖案；選錯只計失誤，可繼續尋找。', total:10 },
-    'memory-match': { title:'記憶翻牌', accent:'#cfb4ff', subtitle:'翻開卡片 · 找到夥伴', intro:'每次翻開兩張卡片，找到相同圖案。可以和同學一起記住位置！', help:'翻開兩張相同的牌就配對成功；不同的牌稍後會蓋回。', total:1 },
-    'balance-ball': { title:'平衡高手', accent:'#a8e5bd', subtitle:'控制傾斜 · 穩穩前進', intro:'按住方向鍵傾斜平台，帶小球到旗子。避開黑洞，鬆手減速，按住煞車更穩！', help:'按住方向控制傾斜；空白鍵或「煞車」減速。掉洞會回起點，共 3 關。', total:3 },
+    'spot-difference': { title:'眼明手快', accent:'#ffce83', subtitle:'觀察細節 · 找出不同', intro:'找出唯一不同的圖案。60 秒挑戰 10 題，只有 3 顆生命；選錯 3 次就結束！', help:'點選不同的圖案；選錯失去一顆生命，三顆用完即結束。', total:10 },
+    'memory-match': { title:'記憶翻牌', accent:'#cfb4ff', subtitle:'翻開卡片 · 找到夥伴', intro:'每次翻開兩張卡片，找到相同圖案。起始 1000 分，每次配錯扣 45 分，每秒扣 2 分，完成後結算。', help:'相同即配對，不同稍後蓋回。結算：1000 分 − 每次配錯 45 分 − 每秒 2 分，最低 0 分。', total:1 },
+    'balance-ball': { title:'平衡高手', accent:'#a8e5bd', subtitle:'觸控傾斜 · 穩穩前進', intro:'在平台上按住並拖曳，往哪個方向拖，小球就往那個方向滾。拖得越遠，傾斜越大；放開即煞車。避開黑洞，到旗子過關！', help:'平台上按住拖曳控球，放開即煞車；也可按方向按鈕或鍵盤。掉洞回起點，共 3 關。', total:3 },
     'light-maze': { title:'光線解謎', accent:'#9ad9ff', subtitle:'轉動鏡面 · 點亮星星', intro:'點擊鏡子切換斜面，觀察光線反射。讓光線從箭頭出發，照到星星！', help:'只有鏡子可以旋轉。光線碰到邊界就停止，照到星星即可過關，共 3 關。', total:3 },
-    'bubble-connect': { title:'泡泡連線', accent:'#ffadcc', subtitle:'連起同色 · 填滿棋盤', intro:'從有數字的泡泡出發，連到相同顏色與數字的泡泡。路線不能交叉，最後填滿全部格子！', help:'拖曳連線，也可逐格點選。點起點可重畫；走回原路可退回，共 3 關。', total:3 },
+    'bubble-connect': { title:'泡泡連線', accent:'#ffadcc', subtitle:'連起同色 · 完成配對', intro:'從有數字的泡泡出發，連到相同顏色與數字的泡泡。路線不能交叉，全部配對連好就過關！', help:'拖曳或逐格點選連線，全部配對連好即過關。點起點可重畫，走回原路可退回，共 3 關。', total:3 },
   };
   const config = configs[game];
   if (!config) return;
   const icons = ['🍓','🍋','🍇','🍒','🥝','🍉','🍍','🍊','🦋','🐳','🐢','🐙'];
   const colors = ['#ff8399','#70d9ff','#ffdb72','#b4a0ff','#85e9af'];
   let state = 'ready', level = 1, elapsed = 0, last = 0, frame = 0, round = 0, errors = 0, actions = 0;
-  let memory, spot, light, flow, ball, hideAt = 0, wrongAt = 0, wrongButton = null, drag = null;
+  let memory, spot, light, flow, ball, tilt = null, hideAt = 0, wrongAt = 0, wrongButton = null, drag = null;
   const held = new Map(), keys = new Set();
   document.body.style.setProperty('--lime',config.accent);
   $('title').textContent = config.title;
@@ -31,7 +31,11 @@
     $('progress-label').textContent = ['memory-match','bubble-connect'].includes(game) ? '完成配對' : '完成題數';
     $('time').textContent = game === 'spot-difference' ? Math.max(0,Math.ceil(60-elapsed)) : Math.floor(elapsed);
     $('time-label').textContent = game === 'spot-difference' ? '剩餘時間' : '使用時間';
-    $('details').textContent = `${game === 'memory-match' ? `翻牌 ${memory?.turns || 0} 回` : game === 'light-maze' ? `轉鏡 ${actions} 次` : game === 'bubble-connect' ? `已填 ${rules.flowProgress(flow?.paths || [],flow?.ends || [],flow?.n || 1).filled} 格 · 第 ${Math.min(round+1,3)} 關` : `失誤 ${errors} 次`}`;
+    if (game === 'spot-difference') {
+      $('details').parentElement.querySelector('span').textContent = '剩餘生命';
+      const lives = Math.max(0,3-errors);
+      $('details').innerHTML = `<span class="life-icons" role="img" aria-label="剩餘 ${lives} 顆生命">${Array.from({length:3},(_,i) => `<span class="life-heart${i >= lives ? ' lost' : ''}" aria-hidden="true">♥</span>`).join('')}</span>`;
+    } else $('details').textContent = `${game === 'memory-match' ? `配錯 ${errors} 次 · 翻牌 ${memory?.turns || 0} 回` : game === 'light-maze' ? `轉鏡 ${actions} 次` : game === 'bubble-connect' ? `第 ${Math.max(1,Math.min(round+(['between','finished'].includes(state) ? 0 : 1),3))} 關` : `失誤 ${errors} 次`}`;
     $('best').textContent = window.ClassroomGameScores.dailyBest(game,modeKey()) ?? '—';
   }
   function activate(button, action) {
@@ -62,7 +66,7 @@
   }
   function clearBoard() {
     host.querySelectorAll('.puzzle-board').forEach(board => board._resize?.disconnect());
-    held.clear(); keys.clear(); drag = null; hideAt = 0; wrongButton = null;
+    clearControls(); drag = null; hideAt = 0; wrongButton = null;
     host.replaceChildren();
   }
   function renderMemory() {
@@ -102,11 +106,12 @@
   }
   function buildSpot() {
     const n = Math.min(6,level+2+Math.floor(round/4)), board = grid(n), odd = Math.floor(Math.random()*n*n), kind = round%6;
-    board.classList.add('spot-board'); spot = {odd,n,buttons:[]};
+    board.classList.add('spot-board'); const question = spot = {odd,n,buttons:[]};
     for (let index = 0; index < n*n; index++) {
       const button = cell(`第 ${Math.floor(index/n)+1} 列第 ${index%n+1} 欄圖案`,symbol(kind,index===odd), () => {
+        if (spot !== question) return;
         if (index === spot.odd) { round++; if (round === 10) finish(true); else { clearBoard(); buildSpot(); stats(); announce(`答對了，完成 ${round} 題！`); } }
-        else { errors++; wrongButton?.classList.remove('wrong'); wrongButton = button; wrongAt = elapsed+.3; button.classList.add('wrong'); stats(); announce('再看仔細一點！'); }
+        else { errors++; wrongButton?.classList.remove('wrong'); wrongButton = button; wrongAt = elapsed+.3; button.classList.add('wrong'); stats(); if (errors >= 3) finish(false,'lives'); else announce(`選錯了，剩餘 ${3-errors} 顆生命。再看仔細一點！`); }
       }); board.append(button); spot.buttons.push(button);
     }
   }
@@ -144,7 +149,7 @@
       button.setAttribute('aria-label',`第 ${Math.floor(index/flow.n)+1} 列第 ${index%flow.n+1} 欄，${endpoint >= 0 ? `第 ${endpoint+1} 組泡泡` : pathGroup >= 0 ? `第 ${pathGroup+1} 組路線` : '空格'}`);
     });
     flow.lines.innerHTML = flow.paths.map((path,group) => `<polyline points="${path.map(index => `${(index%flow.n+.5)*100},${(Math.floor(index/flow.n)+.5)*100}`).join(' ')}" fill="none" stroke="${colors[group]}" stroke-width="22" stroke-linecap="round" stroke-linejoin="round"/>`).join('');
-    $('stage-note').textContent = `第 ${round+1} 關 · ${progress.connected}/${flow.ends.length} 組連好 · 已填 ${progress.filled}/${flow.n*flow.n} 格`;
+    $('stage-note').textContent = `第 ${round+1} 關 · ${progress.connected}/${flow.ends.length} 組連好 · 全部連好就過關`;
     stats(); if (progress.success && state === 'running') stageComplete();
   }
   function beginFlow(index) {
@@ -194,21 +199,45 @@
   }
   function control() {
     const pressed = new Set([...held.values(),...keys]);
+    if (tilt) return {x:tilt.x,y:tilt.y,brake:pressed.has('brake')};
     const x = Number(pressed.has('right'))-Number(pressed.has('left')), y = Number(pressed.has('down'))-Number(pressed.has('up')), length = Math.max(1,Math.hypot(x,y));
-    return {x:x/length,y:y/length,brake:pressed.has('brake')};
+    return {x:x/length,y:y/length,brake:pressed.has('brake') || (!x && !y)};
+  }
+  function clearControls() {
+    held.clear(); keys.clear(); tilt = null;
+    host.querySelectorAll('.pressed').forEach(button => button.classList.remove('pressed'));
+    host.querySelectorAll('.tilt-stick').forEach(stick => { stick.hidden = true; });
   }
   function buildBalance() {
     host.replaceChildren(); const course = rules.balanceCourses[round]; ball = {...course.start,vx:0,vy:0};
     const arena = document.createElement('div'); arena.className = 'balance-arena';
+    arena.setAttribute('aria-label','觸控平台，按住並拖曳控制傾斜，放開煞車');
     arena.innerHTML = `<svg id="balance-scene" viewBox="0 0 800 480" role="img" aria-label="平衡平台，避開黑洞，前往右上方旗子"><defs><radialGradient id="ball-fill" cx="30%" cy="25%"><stop stop-color="#fff"/><stop offset="1" stop-color="#65bddc"/></radialGradient></defs><rect x="5" y="5" width="790" height="470" rx="22" fill="#172e32" stroke="#85e9af66" stroke-width="8"/><path d="M50 60H750M50 140H750M50 220H750M50 300H750M50 380H750M140 40V440M260 40V440M380 40V440M500 40V440M620 40V440" stroke="#ffffff08"/>${course.walls.map(wall => `<rect x="${wall.x}" y="${wall.y}" width="${wall.w}" height="${wall.h}" rx="6" fill="#859b9d"/>`).join('')}${course.holes.map(hole => `<circle cx="${hole.x}" cy="${hole.y}" r="${19+level*2}" fill="#060d14" stroke="#ff839977" stroke-width="3"/>`).join('')}<circle cx="${course.goal.x}" cy="${course.goal.y}" r="30" fill="#85e9af22" stroke="#85e9af" stroke-width="3"/><text x="${course.goal.x}" y="${course.goal.y+8}" text-anchor="middle" font-size="25" fill="#85e9af">⚑</text><circle id="balance-ball" cx="${ball.x}" cy="${ball.y}" r="12" fill="url(#ball-fill)" stroke="#fff" stroke-width="2"/></svg>`;
+    const stick = document.createElement('div'); stick.className = 'tilt-stick'; stick.hidden = true; stick.setAttribute('aria-hidden','true');
+    const knob = document.createElement('div'); knob.className = 'tilt-knob'; stick.append(knob); arena.append(stick);
+    const updateTilt = event => {
+      const dx = event.clientX-tilt.startX, dy = event.clientY-tilt.startY, distance = Math.hypot(dx,dy), scale = Math.max(tilt.radius,distance);
+      tilt.x = dx/scale; tilt.y = dy/scale;
+      knob.style.transform = `translate(${tilt.x*32}px,${tilt.y*32}px)`;
+    };
+    arena.addEventListener('pointerdown',event => {
+      if (state !== 'running' || event.button !== 0 || tilt) return;
+      event.preventDefault(); arena.setPointerCapture(event.pointerId);
+      const rect = arena.getBoundingClientRect();
+      tilt = {pointerId:event.pointerId,startX:event.clientX,startY:event.clientY,radius:Math.min(90,rect.width*.16),x:0,y:0};
+      stick.style.left = `${event.clientX-rect.left}px`; stick.style.top = `${event.clientY-rect.top}px`; knob.style.transform = 'translate(0,0)'; stick.hidden = false;
+    });
+    arena.addEventListener('pointermove',event => { if (state === 'running' && tilt?.pointerId === event.pointerId) { event.preventDefault(); updateTilt(event); } });
+    const releaseTilt = event => { if (tilt?.pointerId === event.pointerId) { tilt = null; stick.hidden = true; } };
+    arena.addEventListener('pointerup',releaseTilt); arena.addEventListener('pointercancel',releaseTilt); arena.addEventListener('lostpointercapture',releaseTilt);
     const pad = document.createElement('div'); pad.className = 'balance-pad'; pad.setAttribute('role','group'); pad.setAttribute('aria-label','方向控制，按住傾斜，空白鍵煞車');
     for (const [action,label] of [['left','◀ 左'],['up','▲ 上'],['brake','煞車'],['down','▼ 下'],['right','右 ▶']]) {
       const button = document.createElement('button'); button.type = 'button'; button.className = 'quiet-button'; button.textContent = label;
       button.addEventListener('pointerdown',event => { if (state !== 'running' || event.button !== 0) return; event.preventDefault(); button.setPointerCapture(event.pointerId); held.set(event.pointerId,action); button.classList.add('pressed'); });
       const release = event => { held.delete(event.pointerId); button.classList.remove('pressed'); };
-      button.addEventListener('pointerup',release); button.addEventListener('pointercancel',release); pad.append(button);
+      button.addEventListener('pointerup',release); button.addEventListener('pointercancel',release); button.addEventListener('lostpointercapture',release); pad.append(button);
     }
-    host.append(arena,pad); $('stage-note').textContent = `第 ${round+1} 關 · 避開黑洞 · 旗子是終點`;
+    host.append(arena,pad); $('stage-note').textContent = `第 ${round+1} 關 · 平台上按住拖曳控球 · 放開煞車`;
   }
   function buildRound() {
     clearBoard(); $('stage-note').textContent = '';
@@ -218,26 +247,28 @@
   function dialog(tag,title,description,button) {
     $('dialog-tag').textContent = tag; $('dialog-title').textContent = title; $('dialog-description').textContent = description; $('start').textContent = button;
     host.inert = true; overlay.hidden = false; $('start').focus({preventScroll:true});
+    host.hidden = state === 'between' || state === 'finished'; $('stage-note').hidden = host.hidden;
   }
-  function run() { state = 'running'; host.inert = false; overlay.hidden = true; $('pause').disabled = false; $('pause').textContent = '暫停'; last = performance.now(); frame = requestAnimationFrame(tick); }
+  function run() { state = 'running'; host.inert = false; host.hidden = false; $('stage-note').hidden = false; overlay.hidden = true; $('pause').disabled = false; $('pause').textContent = '暫停'; last = performance.now(); frame = requestAnimationFrame(tick); }
   function start() {
     cancelAnimationFrame(frame); level = Number(document.querySelector('input[name="difficulty"]:checked').value); elapsed = 0; round = 0; errors = 0; actions = 0;
     $('results').hidden = true; $('restart').hidden = true; $('difficulty-options').hidden = true; state = 'ready'; buildRound(); run(); announce('挑戰開始！');
   }
   function stageComplete() {
-    round++; held.clear(); keys.clear(); drag = null;
+    round++; clearControls(); drag = null;
     if (round >= config.total) { finish(true); return; }
     state = 'between'; cancelAnimationFrame(frame); $('pause').disabled = true; $('restart').hidden = false; stats();
     dialog('NICELY DONE',`第 ${round} 關完成！`,'休息一下，再挑戰下一關。','下一關'); announce(`第 ${round} 關完成。`);
   }
-  function finish(success) {
+  function finish(success,reason = 'time') {
     if (state !== 'running') return;
-    state = 'finished'; cancelAnimationFrame(frame); held.clear(); keys.clear(); drag = null;
+    state = 'finished'; cancelAnimationFrame(frame); clearControls(); drag = null;
     const score = Math.max(0,Math.round((game === 'spot-difference' ? round*100 : 1000) - elapsed*2 - errors*35 - (game === 'memory-match' ? Math.max(0,memory.turns-memory.deck.length/2)*10 : 0)));
     window.ClassroomGameScores.record(game,modeKey(),score);
     $('results').textContent = `${score} 分`; $('results').hidden = false; $('difficulty-options').hidden = false; $('restart').hidden = true; $('pause').disabled = true;
-    dialog(success ? 'CHALLENGE COMPLETE' : 'TIME IS UP', success ? '挑戰完成！' : '時間到！',`使用 ${Math.floor(elapsed)} 秒，${game === 'spot-difference' ? `找到 ${round} 題` : game === 'memory-match' ? `翻牌 ${memory.turns} 回` : `完成 ${round} 關`}，失誤 ${errors} 次。`,'再玩一次');
-    stats(); announce(`${success ? '挑戰完成' : '時間到'}，${score} 分。`);
+    const ending = success ? '挑戰完成' : reason === 'lives' ? '生命用完' : '時間到';
+    dialog(success ? 'CHALLENGE COMPLETE' : reason === 'lives' ? 'OUT OF LIVES' : 'TIME IS UP',`${ending}！`,`使用 ${Math.floor(elapsed)} 秒，${game === 'spot-difference' ? `找到 ${round} 題` : game === 'memory-match' ? `翻牌 ${memory.turns} 回` : `完成 ${round} 關`}，失誤 ${errors} 次。`,'再玩一次');
+    stats(); announce(`${ending}，${score} 分。`);
   }
   function advance(now) {
     if (state !== 'running') return;
@@ -257,7 +288,7 @@
   function tick(now) { advance(now); if (state === 'running') frame = requestAnimationFrame(tick); }
   function pause() {
     if (state !== 'running') return; advance(performance.now()); if (state !== 'running') return;
-    state = 'paused'; cancelAnimationFrame(frame); held.clear(); keys.clear(); drag = null;
+    state = 'paused'; cancelAnimationFrame(frame); clearControls(); drag = null;
     $('pause').textContent = '繼續'; $('restart').hidden = false; $('difficulty-options').hidden = true;
     dialog('TAKE A BREATH','休息一下，再繼續。','時間、棋盤與小球都已暫停。','繼續挑戰'); announce('遊戲已暫停。');
   }
@@ -269,7 +300,7 @@
   $('reset-board').addEventListener('click',() => { if (state !== 'running') return; actions++; buildRound(); announce('此關已重置。'); });
   document.querySelectorAll('input[name="difficulty"]').forEach(input => input.addEventListener('change',() => { if (!['ready','finished'].includes(state)) return; level = Number(input.value); stats(); }));
   document.addEventListener('visibilitychange',() => { if (document.hidden) pause(); });
-  window.addEventListener('blur',() => { held.clear(); keys.clear(); });
+  window.addEventListener('blur',clearControls);
   const keyActions = {ArrowLeft:'left',ArrowRight:'right',ArrowUp:'up',ArrowDown:'down',' ':'brake'};
   document.addEventListener('keydown',event => { if (event.key === 'Escape') pause(); if (game === 'balance-ball' && state === 'running' && keyActions[event.key]) { event.preventDefault(); keys.add(keyActions[event.key]); } });
   document.addEventListener('keyup',event => { if (keyActions[event.key]) keys.delete(keyActions[event.key]); });

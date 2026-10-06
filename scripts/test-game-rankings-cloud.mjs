@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 
 const service = fs.readFileSync(new URL('../games/game-rankings.js',import.meta.url),'utf8');
 const adapter = fs.readFileSync(new URL('../games/game-rankings-cloud.js',import.meta.url),'utf8');
-const tick = async () => { for(let i=0;i<30;i++) await Promise.resolve(); };
+const tick = async () => { for(let i=0;i<200;i++) await Promise.resolve(); };
 const data = new Map(), subscriptions = new Set();
 let fail = false, writes = 0, today = Date.parse('2026-10-04T03:00:00Z');
 function publish() {
@@ -109,12 +109,45 @@ assert.equal(JSON.parse(shared.get('classroom-game-ranking-pending-v1')).length,
 assert.equal(b.api.dailyBest('moving-dot',90),6);
 assert.equal(b.api.dailyBest('mole-pop',90),4);
 
-for(const game of ['mole-pop','moving-dot','tic-tac-toe']) {
+const puzzleGames=['spot-difference','memory-match','balance-ball','light-maze','bubble-connect'];
+for(const [index,game] of puzzleGames.entries()) {
+  assert.equal(b.api.dailyBest(game,1),null);
+  a.api.record(game,1,800+index);await tick();
+  assert.equal(b.api.dailyBest(game,'1'),800+index,'New game scores reach a second device');
+  assert.equal(b.api.dailyBest(game,2),null,'Difficulty rankings stay isolated');
+  a.api.record(game,2,600+index);await tick();
+  assert.equal(b.api.dailyBest(game,2),600+index);
+  assert.equal(b.api.dailyBest(game,1),800+index);
+  for(let score=0;score<12;score++){a.api.record(game,3,score);await tick();}
+  assert.equal(b.api.read(game,3).top.length,10,'Every new game limits the shared ranking to ten');
+  assert.equal(b.api.dailyBest(game,3),11);
+}
+fail=true;const puzzlesOffline=new Map(),offlinePuzzles=setup(puzzlesOffline);
+for(const game of puzzleGames)offlinePuzzles.api.record(game,3,950);
+offlinePuzzles.api.record('mole-pop',60,30);await tick();
+assert.equal(JSON.parse(puzzlesOffline.get('classroom-game-ranking-pending-v1')).length,6,'Old and new game queues coexist');
+const reloadedPuzzles=setup(puzzlesOffline);
+for(const game of puzzleGames)assert.equal(reloadedPuzzles.api.dailyBest(game,3),950,'New puzzle scores survive an offline reload');
+await tick();fail=false;reloadedPuzzles.events.online();await tick();
+assert.equal(JSON.parse(puzzlesOffline.get('classroom-game-ranking-pending-v1')).length,0);
+for(const game of puzzleGames)assert.equal(b.api.dailyBest(game,3),950,'Offline puzzle scores sync after reconnect');
+const puzzleSize=data.size;offlinePuzzles.events.online();await tick();assert.equal(data.size,puzzleSize,'Concurrent retries keep new puzzle scores unique');
+const oldPuzzles=new Map(),datedScore={id:'old-puzzle-result',date:'2026-10-03',time:Date.parse('2026-10-03T02:00:00Z'),score:999,label:''};
+oldPuzzles.set('classroom-game-ranking-v1:light-maze:2',JSON.stringify({top:[datedScore],today:[]}));
+const puzzleMigration=setup(oldPuzzles);puzzleMigration.api.dailyBest('light-maze',2);await tick();
+assert(b.api.read('light-maze',2).top.some(row=>row.score===999&&row.date==='2026-10-03'),'Existing dated puzzle scores migrate with their original date');
+const migrationSize=data.size;const migrationReload=setup(oldPuzzles);migrationReload.api.dailyBest('light-maze',2);await tick();assert.equal(data.size,migrationSize,'Puzzle migration occurs once');
+for(const [path,row] of data)if(puzzleGames.some(game=>path.includes(`/gameRankings/${game}-`))){
+  assert(Number.isInteger(row.score)&&row.score>=0&&row.score<=1000);assert.equal(row.participant,'','Puzzle scores use no OX participant metadata');
+}
+
+for(const game of ['mole-pop','moving-dot','tic-tac-toe',...puzzleGames]) {
   const html=fs.readFileSync(new URL(`../games/${game}.html`,import.meta.url),'utf8');
   assert(html.indexOf('firebase-app-compat.js')<html.indexOf('firebase-firestore-compat.js'));
   assert(html.indexOf('firebase-firestore-compat.js')<html.indexOf('src="game-rankings-cloud.js'));
   assert(html.indexOf('src="game-rankings-cloud.js')<html.indexOf('src="game-rankings.js'));
   assert(!html.includes('firebase-auth-compat.js'),'Fun rankings never require or alter teacher login');
+  assert(html.includes('game-rankings.js?v=cloud-3'),'Every game shares the extended queue allowlist');
 }
 const rules=fs.readFileSync(new URL('../firestore.rules',import.meta.url),'utf8');
 assert.match(rules,/match \/gameRankings\/\{bucket\}/);
@@ -122,4 +155,9 @@ assert.match(rules,/allow update: if increasedWins\(scoreId\)/);
 assert.match(rules,/affectedKeys\(\)\.hasOnly\(\['score'\]\)/);
 assert.match(rules,/data\.score is int && data\.score >= -10000 && data\.score <= 100000/);
 assert.match(rules,/allow update: if isTeacher\(\)\s*&& request\.resource\.data\.syncVersion == 2/,'Existing classroom protection stays in place');
-console.log(`Cloud game ranking tests: passed (${writes} writes; cross-device, top ten, modes, Taipei rollover, negative scores, offline backup/reload/retry, status, idempotency, per-device OX wins, in-flight updates, dated migration, shared iframe queue, SDK order, scoped rule guards).`);
+const puzzlePattern=rules.match(/function puzzleBucket\(\)\s*\{\s*return bucket\.matches\('([^']+)'\)/)?.[1];assert(puzzlePattern);
+const puzzleRule=new RegExp(puzzlePattern);
+for(const game of puzzleGames)for(const mode of [1,2,3])assert(puzzleRule.test(`${game}-${mode}`));
+for(const bucket of ['light-maze-30','light-maze-4','memory-match-0','other-1','xspot-difference-1','balance-ball-1-suffix'])assert(!puzzleRule.test(bucket),'Rules reject unapproved games and modes');
+assert.match(rules,/\(!puzzleBucket\(\) \|\| \(data\.score >= 0 && data\.score <= 1000\)\)/,'New score writes are bounded to actual puzzle results');
+console.log(`Cloud game ranking tests: passed (${writes} writes; eight games, 15 puzzle modes, cross-device top ten, offline/reload/retry, local puzzle migration, shared old/new queue, idempotency, Taipei rollover, OX wins, SDK order and scoped rule guards).`);

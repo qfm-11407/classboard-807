@@ -71,7 +71,7 @@
   function flowProgress(paths, ends, n) {
     const connected = paths.filter((path,i) => path.length > 1 && ends[i].includes(path[0]) && ends[i].includes(path.at(-1)) && path[0] !== path.at(-1)).length;
     const filled = new Set(paths.flat()).size;
-    return {connected, filled, success:connected === ends.length && filled === n*n};
+    return {connected, filled, success:ends.length > 0 && connected === ends.length};
   }
   const balanceCourses = [
     { start:{x:65,y:405}, goal:{x:735,y:70}, walls:[{x:200,y:260,w:330,h:22}], holes:[{x:120,y:160},{x:590,y:370},{x:420,y:125}] },

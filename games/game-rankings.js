@@ -21,7 +21,9 @@
     device = `d${Date.now()}_${Math.random().toString(36).slice(2)}`;
     try { localStorage.setItem('classroom-game-ranking-device-v1',device); } catch { /* No persistent storage. */ }
   }
-  const allowedBucket = bucket => /^(mole-pop|moving-dot)-(30|60|90)$/.test(bucket) || bucket === 'tic-tac-toe-wins';
+  const allowedBucket = bucket => /^(mole-pop|moving-dot)-(30|60|90)$/.test(bucket)
+    || /^(spot-difference|memory-match|balance-ball|light-maze|bubble-connect)-(1|2|3)$/.test(bucket)
+    || bucket === 'tic-tac-toe-wins';
   if (!Array.isArray(pending)) pending = [];
   pending = pending.filter(item => item && allowedBucket(item.bucket) && valid(item.row) && typeof item.row.client === 'string');
   const saveQueue = (acknowledged = null) => {
