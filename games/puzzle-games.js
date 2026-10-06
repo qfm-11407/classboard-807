@@ -13,6 +13,7 @@
   const icons = ['🍓','🍋','🍇','🍒','🥝','🍉','🍍','🍊','🦋','🐳','🐢','🐙'];
   const colors = ['#ff8399','#70d9ff','#ffdb72','#b4a0ff','#85e9af'];
   let state = 'ready', level = 1, elapsed = 0, last = 0, frame = 0, round = 0, errors = 0, actions = 0;
+  let celebrationRemaining = 0, pausedCelebration = false;
   let memory, spot, light, flow, ball, tilt = null, hideAt = 0, wrongAt = 0, wrongButton = null, drag = null;
   const held = new Map(), keys = new Set();
   document.body.style.setProperty('--lime',config.accent);
@@ -35,7 +36,7 @@
       $('details').parentElement.querySelector('span').textContent = '剩餘生命';
       const lives = Math.max(0,3-errors);
       $('details').innerHTML = `<span class="life-icons" role="img" aria-label="剩餘 ${lives} 顆生命">${Array.from({length:3},(_,i) => `<span class="life-heart${i >= lives ? ' lost' : ''}" aria-hidden="true">♥</span>`).join('')}</span>`;
-    } else $('details').textContent = `${game === 'memory-match' ? `配錯 ${errors} 次 · 翻牌 ${memory?.turns || 0} 回` : game === 'light-maze' ? `轉鏡 ${actions} 次` : game === 'bubble-connect' ? `第 ${Math.max(1,Math.min(round+(['between','finished'].includes(state) ? 0 : 1),3))} 關` : `失誤 ${errors} 次`}`;
+    } else $('details').textContent = `${game === 'memory-match' ? `配錯 ${errors} 次 · 翻牌 ${memory?.turns || 0} 回` : game === 'light-maze' ? `轉鏡 ${actions} 次` : game === 'bubble-connect' ? `第 ${Math.max(1,Math.min(round+(['celebrating','between','finished'].includes(state) || (state === 'paused' && pausedCelebration) ? 0 : 1),3))} 關` : `失誤 ${errors} 次`}`;
     $('best').textContent = window.ClassroomGameScores.dailyBest(game,modeKey()) ?? '—';
   }
   function activate(button, action) {
@@ -66,6 +67,7 @@
   }
   function clearBoard() {
     host.querySelectorAll('.puzzle-board').forEach(board => board._resize?.disconnect());
+    host.classList.remove('stage-won'); $('stage-note').classList.remove('stage-success');
     clearControls(); drag = null; hideAt = 0; wrongButton = null;
     host.replaceChildren();
   }
@@ -249,19 +251,32 @@
     host.inert = true; overlay.hidden = false; $('start').focus({preventScroll:true});
     host.hidden = state === 'between' || state === 'finished'; $('stage-note').hidden = host.hidden;
   }
-  function run() { state = 'running'; host.inert = false; host.hidden = false; $('stage-note').hidden = false; overlay.hidden = true; $('pause').disabled = false; $('pause').textContent = '暫停'; last = performance.now(); frame = requestAnimationFrame(tick); }
+  function run(nextState = 'running') { state = nextState; pausedCelebration = state === 'celebrating'; host.inert = state !== 'running'; host.hidden = false; $('stage-note').hidden = false; overlay.hidden = true; $('pause').disabled = false; $('pause').textContent = '暫停'; last = performance.now(); frame = requestAnimationFrame(tick); }
   function start() {
-    cancelAnimationFrame(frame); level = Number(document.querySelector('input[name="difficulty"]:checked').value); elapsed = 0; round = 0; errors = 0; actions = 0;
+    cancelAnimationFrame(frame); level = Number(document.querySelector('input[name="difficulty"]:checked').value); elapsed = 0; round = 0; errors = 0; actions = 0; celebrationRemaining = 0; pausedCelebration = false;
     $('results').hidden = true; $('restart').hidden = true; $('difficulty-options').hidden = true; state = 'ready'; buildRound(); run(); announce('挑戰開始！');
   }
   function stageComplete() {
+    if (state !== 'running') return;
     round++; clearControls(); drag = null;
+    if (['light-maze','bubble-connect'].includes(game)) {
+      state = 'celebrating'; celebrationRemaining = 1.5;
+      host.inert = true; host.classList.add('stage-won');
+      $('stage-note').classList.add('stage-success'); $('stage-note').textContent = `✓ 第 ${round} 關完成！欣賞一下你的成果。`;
+      stats(); announce(`第 ${round} 關完成。`);
+      cancelAnimationFrame(frame); last = performance.now(); frame = requestAnimationFrame(tick);
+      return;
+    }
+    showStageResult();
+  }
+  function showStageResult() {
+    celebrationRemaining = 0; host.classList.remove('stage-won'); $('stage-note').classList.remove('stage-success');
     if (round >= config.total) { finish(true); return; }
     state = 'between'; cancelAnimationFrame(frame); $('pause').disabled = true; $('restart').hidden = false; stats();
     dialog('NICELY DONE',`第 ${round} 關完成！`,'休息一下，再挑戰下一關。','下一關'); announce(`第 ${round} 關完成。`);
   }
   function finish(success,reason = 'time') {
-    if (state !== 'running') return;
+    if (!['running','celebrating'].includes(state)) return;
     state = 'finished'; cancelAnimationFrame(frame); clearControls(); drag = null;
     const score = Math.max(0,Math.round((game === 'spot-difference' ? round*100 : 1000) - elapsed*2 - errors*35 - (game === 'memory-match' ? Math.max(0,memory.turns-memory.deck.length/2)*10 : 0)));
     window.ClassroomGameScores.record(game,modeKey(),score);
@@ -271,6 +286,11 @@
     stats(); announce(`${ending}，${score} 分。`);
   }
   function advance(now) {
+    if (state === 'celebrating') {
+      celebrationRemaining -= Math.max(0,(now-last)/1000); last = now;
+      if (celebrationRemaining <= 0) showStageResult();
+      return;
+    }
     if (state !== 'running') return;
     const dt = Math.max(0,(now-last)/1000); last = now; elapsed += dt;
     if (game === 'spot-difference' && elapsed >= 60) { elapsed = 60; finish(false); return; }
@@ -285,17 +305,18 @@
     }
     stats();
   }
-  function tick(now) { advance(now); if (state === 'running') frame = requestAnimationFrame(tick); }
+  function tick(now) { advance(now); if (['running','celebrating'].includes(state)) frame = requestAnimationFrame(tick); }
   function pause() {
-    if (state !== 'running') return; advance(performance.now()); if (state !== 'running') return;
+    if (!['running','celebrating'].includes(state)) return; advance(performance.now()); if (!['running','celebrating'].includes(state)) return;
+    pausedCelebration = state === 'celebrating';
     state = 'paused'; cancelAnimationFrame(frame); clearControls(); drag = null;
     $('pause').textContent = '繼續'; $('restart').hidden = false; $('difficulty-options').hidden = true;
     dialog('TAKE A BREATH','休息一下，再繼續。','時間、棋盤與小球都已暫停。','繼續挑戰'); announce('遊戲已暫停。');
   }
-  function resume() { if (state === 'paused' && !document.hidden) run(); }
-  $('start').addEventListener('click',() => { if (state === 'paused') resume(); else if (state === 'between') { buildRound(); run(); } else start(); });
+  function resume() { if (state === 'paused' && !document.hidden) run(pausedCelebration ? 'celebrating' : 'running'); }
+  $('start').addEventListener('click',() => { if (state === 'paused') resume(); else if (state === 'between') { buildRound(); run(); } else if (['ready','finished'].includes(state)) start(); });
   $('restart').addEventListener('click',start);
-  $('pause').addEventListener('click',() => state === 'running' ? pause() : resume());
+  $('pause').addEventListener('click',() => ['running','celebrating'].includes(state) ? pause() : resume());
   $('reset-board').hidden = !['bubble-connect','balance-ball','light-maze'].includes(game);
   $('reset-board').addEventListener('click',() => { if (state !== 'running') return; actions++; buildRound(); announce('此關已重置。'); });
   document.querySelectorAll('input[name="difficulty"]').forEach(input => input.addEventListener('change',() => { if (!['ready','finished'].includes(state)) return; level = Number(input.value); stats(); }));

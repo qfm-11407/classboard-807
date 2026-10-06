@@ -88,7 +88,7 @@ function createGame(id,difficulty=1){
   const ctx=vm.createContext({document,URLSearchParams,performance:{now:()=>now},requestAnimationFrame:()=>1,cancelAnimationFrame(){},ResizeObserver:class{observe(){}disconnect(){}},Math:Object.assign(Object.create(Math),{random:()=>.7})});
   ctx.window={ClassroomGameScores:scores,parent,location:{search:'?embedded=1',origin:'https://example.test',protocol:'https:'},addEventListener:(n,fn)=>{events[n]=fn;}};
   vm.runInContext(rulesSource,ctx);ctx.window.ClassroomPuzzles=ctx.ClassroomPuzzles;
-  vm.runInContext(engine.replace(/\}\)\(\);\s*$/,'globalThis.api={start,pause,resume,advance,finish,beginFlow,moveFlow,control,snapshot:()=>({state,elapsed,round,errors,level,memory,spot,light,flow,ball,tilt})};\n})();'),ctx);
+  vm.runInContext(engine.replace(/\}\)\(\);\s*$/,'globalThis.api={start,pause,resume,advance,finish,beginFlow,moveFlow,control,snapshot:()=>({state,elapsed,round,errors,level,memory,spot,light,flow,ball,tilt,celebrationRemaining})};\n})();'),ctx);
   return {api:ctx.api,get,back,docEvents,events,parent,posts,scores,document,inputs,advance(seconds){now+=seconds*1000;ctx.api.advance(now);}};
 }
 const tap=button=>button.listeners.pointerdown({button:0,preventDefault(){},stopPropagation(){}});
@@ -136,6 +136,27 @@ for(const id of ['spot-difference','memory-match','balance-ball','light-maze','b
       }else{
         const ball=api.snapshot().ball;Object.assign(ball,R.balanceCourses[round].goal,{vx:0,vy:0});g.advance(.02);
       }
+      if(['light-maze','bubble-connect'].includes(id)){
+        assert.equal(api.snapshot().state,'celebrating','The solved board stays visible before the next-level dialog');
+        assert.equal(g.get('play-area').hidden,false);assert(g.get('play-area').inert);assert(g.get('overlay').hidden);
+        assert(g.get('play-area').classList.contains('stage-won'));assert.match(g.get('stage-note').textContent,/完成/);
+        const solved=api.snapshot(),solvedTime=solved.elapsed,solvedRound=solved.round;
+        const solvedDrawing=id==='light-maze'?g.get('play-area').children[0]:JSON.stringify(solved.flow.paths);
+        if(id==='light-maze')tap(solved.light.buttons[solved.light.layout.mirrors[0][0]]);
+        else solved.flow.board.listeners.pointerdown({button:0,pointerId:2,clientX:50,clientY:50,preventDefault(){}});
+        g.get('reset-board').listeners.click();g.get('start').listeners.click();
+        assert.equal(api.snapshot().round,solvedRound,'Queued taps cannot skip the result');
+        assert.equal(id==='light-maze'?g.get('play-area').children[0]:JSON.stringify(solved.flow.paths),solvedDrawing,'Input cannot redraw the solved board');
+        if(round===2)assert.equal(g.scores.completed.length,0,'The final solved board is shown before score submission');
+        g.advance(1);assert.equal(api.snapshot().state,'celebrating');assert.equal(api.snapshot().elapsed,solvedTime,'The result display does not add playing time');
+        if(round===0){
+          g.document.hidden=true;g.docEvents.visibilitychange();assert.equal(api.snapshot().state,'paused');
+          const remaining=api.snapshot().celebrationRemaining;g.advance(30);assert.equal(api.snapshot().celebrationRemaining,remaining,'Hidden time cannot skip the solved-board display');
+          api.resume();assert.equal(api.snapshot().state,'paused','Cannot resume while hidden');g.document.hidden=false;api.resume();assert.equal(api.snapshot().state,'celebrating');assert(g.get('play-area').inert);
+        }
+        g.advance(.49);assert.equal(api.snapshot().state,'celebrating','The result remains visible for the full 1.5 seconds');
+        g.advance(.02);assert.equal(api.snapshot().elapsed,solvedTime);
+      }
       assert.equal(api.snapshot().state,round===2?'finished':'between');
       if(round<2){assert(g.get('play-area').hidden,'Level completion hides the board behind the controls');g.get('start').listeners.click();assert.equal(g.get('play-area').hidden,false);assert(g.get('overlay').hidden);}
     }
@@ -164,7 +185,8 @@ const shortFlow=createGame('bubble-connect');shortFlow.api.start();
 const f=shortFlow.api.snapshot().flow,shortPaths=f.solution.map((path,i)=>i===1?[path[0],path.at(-1)]:path);
 assert(R.adjacent(shortPaths[1][0],shortPaths[1][1],f.n));
 for(const path of shortPaths)for(const index of path){const event={button:0,pointerId:1,clientX:(index%f.n+.5)*400/f.n,clientY:(Math.floor(index/f.n)+.5)*400/f.n,preventDefault(){}};f.board.listeners.pointerdown(event);f.board.listeners.pointerup(event);}
-assert.equal(shortFlow.api.snapshot().state,'between','All pairs pass through the actual touch handlers without filling the grid');assert(R.flowProgress(f.paths,f.ends,f.n).filled<f.n*f.n);
+assert.equal(shortFlow.api.snapshot().state,'celebrating','All pairs pass through the actual touch handlers without filling the grid');assert(R.flowProgress(f.paths,f.ends,f.n).filled<f.n*f.n);
+shortFlow.advance(1.51);assert.equal(shortFlow.api.snapshot().state,'between');
 const perfectMemory=createGame('memory-match'),wrongMemory=createGame('memory-match');
 for(const g of [perfectMemory,wrongMemory]){
   g.api.start();const m=g.api.snapshot().memory;
@@ -172,4 +194,4 @@ for(const g of [perfectMemory,wrongMemory]){
   for(const value of new Set(m.deck)){const pair=m.deck.map((v,i)=>v===value?i:-1).filter(i=>i>=0);tap(m.buttons[pair[0]]);tap(m.buttons[pair[1]]);}
 }
 assert.equal(perfectMemory.scores.completed[0].score,1000);assert.equal(wrongMemory.scores.completed[0].score,953,'One mismatch deducts 45 points plus elapsed time');
-console.log('Puzzle games tests: passed (15 completions; three lives and stale input; memory scoring; direct touch steering/release/pause; hidden boards during level transitions; complete flow pairs with empty cells; 24 solvable layouts; pause, navigation and physics).');
+console.log('Puzzle games tests: passed (15 completions; solved boards held 1.5 seconds with locked input and frozen score time; visibility pause/resume and final-stage delay; three lives; memory scoring; touch steering; complete flow pairs with empty cells; 24 solvable layouts; navigation and physics).');
