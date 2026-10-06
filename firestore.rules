@@ -105,7 +105,8 @@ service cloud.firestore {
 
       match /tomorrowSubmissions/{submissionId} {
         allow read: if true;
-        allow create: if request.resource.data.keys().hasOnly(['text', 'author', 'subject', 'handwriting', 'createdAt', 'targetDate'])
+        allow create: if request.resource.data.keys().hasAll(['text', 'author', 'subject', 'handwriting', 'createdAt', 'targetDate', 'entryMode'])
+          && request.resource.data.keys().hasOnly(['text', 'author', 'subject', 'handwriting', 'createdAt', 'targetDate', 'entryMode'])
           && request.resource.data.text is string
           && request.resource.data.text.size() > 0
           && request.resource.data.text.size() <= 500
@@ -117,22 +118,40 @@ service cloud.firestore {
           && request.resource.data.handwriting.size() <= 160000
           && request.resource.data.createdAt is string
           && request.resource.data.targetDate is string
-          && request.resource.data.targetDate.matches('^\\d{4}-\\d{2}-\\d{2}$');
-        allow update: if isTeacher() || (exists(/databases/$(database)/documents/classrooms/classboard-807/editRequests/$(submissionId))
-          && get(/databases/$(database)/documents/classrooms/classboard-807/editRequests/$(submissionId)).data.taskId == submissionId
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['text', 'author', 'subject', 'handwriting', 'updatedAt'])
-          && request.resource.data.text is string
-          && request.resource.data.text.size() > 0
-          && request.resource.data.text.size() <= 500
-          && request.resource.data.author is string
-          && request.resource.data.author.size() <= 100
-          && request.resource.data.subject is string
-          && request.resource.data.subject.size() <= 40
-          && request.resource.data.handwriting is string
-          && request.resource.data.handwriting.size() <= 160000
-          && request.resource.data.updatedAt is string);
-        allow delete: if isTeacher() || (exists(/databases/$(database)/documents/classrooms/classboard-807/deleteRequests/$(submissionId))
-          && get(/databases/$(database)/documents/classrooms/classboard-807/deleteRequests/$(submissionId)).data.taskId == submissionId);
+          && request.resource.data.targetDate.matches('^\\d{4}-\\d{2}-\\d{2}$')
+          && request.resource.data.entryMode == 'daily'
+          && request.resource.data.author == '學生'
+          && request.resource.data.subject == '其他'
+          && request.resource.data.handwriting == ''
+          && !exists(/databases/$(database)/documents/classrooms/classboard-807/addTaskRequests/$(submissionId))
+          && getAfter(/databases/$(database)/documents/classrooms/classboard-807/addTaskRequests/$(submissionId)).data.taskId == submissionId
+          && getAfter(/databases/$(database)/documents/classrooms/classboard-807/addTaskRequests/$(submissionId)).data.date == request.resource.data.targetDate
+          && getAfter(/databases/$(database)/documents/classrooms/classboard-807/addTaskRequests/$(submissionId)).data.requestedAt == request.time;
+        allow update, delete: if isTeacher();
+      }
+
+      // Private, single-use authorization; students never read the code back.
+      match /addTaskRequests/{submissionId} {
+        function validConfirmation() {
+          let daily = get(/databases/$(database)/documents/classrooms/classboard-807/teacherPrivate/dailyConfirmation).data;
+          return daily.validUntil is timestamp
+            && request.time < daily.validUntil
+            && request.time >= daily.validUntil - duration.value(24, 'h')
+            && request.resource.data.date == daily.date
+            && request.resource.data.code == daily.code;
+        }
+        allow create: if request.resource.data.keys().hasAll(['taskId', 'code', 'date', 'requestedAt'])
+          && request.resource.data.keys().hasOnly(['taskId', 'code', 'date', 'requestedAt'])
+          && request.resource.data.taskId == submissionId
+          && request.resource.data.code is string
+          && request.resource.data.code.matches('^\\d{4}$')
+          && request.resource.data.date is string
+          && request.resource.data.requestedAt == request.time
+          && validConfirmation()
+          && !exists(/databases/$(database)/documents/classrooms/classboard-807/tomorrowSubmissions/$(submissionId))
+          && getAfter(/databases/$(database)/documents/classrooms/classboard-807/tomorrowSubmissions/$(submissionId)).data.entryMode == 'daily'
+          && getAfter(/databases/$(database)/documents/classrooms/classboard-807/tomorrowSubmissions/$(submissionId)).data.targetDate == request.resource.data.date;
+        allow read, update, delete: if false;
       }
 
       match /stickyMessages/{dayKey}/notes/{slotId} {
@@ -153,30 +172,11 @@ service cloud.firestore {
       }
 
       match /deleteRequests/{submissionId} {
-        allow create: if request.resource.data.keys().hasOnly(['taskId', 'code', 'date', 'requestedAt'])
-          && request.resource.data.taskId == submissionId
-          && request.resource.data.code is string
-          && request.resource.data.code.matches('^\\d{4}$')
-          && request.resource.data.date is string
-          && request.resource.data.requestedAt is string
-          && exists(/databases/$(database)/documents/classrooms/classboard-807/teacherPrivate/dailyConfirmation)
-          && get(/databases/$(database)/documents/classrooms/classboard-807/teacherPrivate/dailyConfirmation).data.date == request.resource.data.date
-          && get(/databases/$(database)/documents/classrooms/classboard-807/teacherPrivate/dailyConfirmation).data.code == request.resource.data.code;
-        allow read, update, delete: if false;
+        allow read, write: if false;
       }
 
       match /editRequests/{submissionId} {
-        allow create: if request.resource.data.keys().hasOnly(['taskId', 'code', 'date', 'requestedAt'])
-          && request.resource.data.taskId == submissionId
-          && request.resource.data.code is string
-          && request.resource.data.code.matches('^\\d{4}$')
-          && request.resource.data.date is string
-          && request.resource.data.requestedAt is string
-          && exists(/databases/$(database)/documents/classrooms/classboard-807/teacherPrivate/dailyConfirmation)
-          && get(/databases/$(database)/documents/classrooms/classboard-807/teacherPrivate/dailyConfirmation).data.date == request.resource.data.date
-          && get(/databases/$(database)/documents/classrooms/classboard-807/teacherPrivate/dailyConfirmation).data.code == request.resource.data.code;
-        allow read, update: if false;
-        allow delete: if true;
+        allow read, write: if false;
       }
     }
   }

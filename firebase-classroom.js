@@ -27,8 +27,7 @@
   const tomorrowRef = classroomRef.collection('tomorrowSubmissions');
   const stickyMessagesRef = classroomRef.collection('stickyMessages');
   const dailyConfirmationRef = classroomRef.collection('teacherPrivate').doc('dailyConfirmation');
-  const deleteRequestRef = classroomRef.collection('deleteRequests');
-  const editRequestRef = classroomRef.collection('editRequests');
+  const addRequestRef = classroomRef.collection('addTaskRequests');
   const restorePointsRef = classroomRef.collection('restorePoints');
   const restoreMetaRef = classroomRef.collection('teacherPrivate').doc('restoreMeta');
   const RESTORE_POINT_LIMIT = 30;
@@ -122,7 +121,7 @@
     const today = taipeiDate();
     const tomorrow = nextSchoolDate(today, data);
     const scheduledTasks = parseJSON(data.scheduledTasks, []);
-    const scheduledIds = new Set((Array.isArray(scheduledTasks) ? scheduledTasks : []).map(item => String(item?.id || '')).filter(Boolean));
+    const scheduledIds = new Set([...(Array.isArray(scheduledTasks) ? scheduledTasks : []).map(item => String(item?.id || '')), ...tomorrowSnapshot.docs.map(document => document.id)].filter(Boolean));
     const isScheduledCopy = id => { const value=String(id || ''); return [...scheduledIds].some(scheduledId => value === scheduledId || value.startsWith(`${scheduledId}::`)); };
     const withoutScheduledCopies = items => (Array.isArray(items) ? items : []).filter(item => !isScheduledCopy(item?.id));
     const todayTasks = withoutScheduledCopies(parseJSON(data.todayTasks, []));
@@ -148,7 +147,7 @@
     if (Array.isArray(scheduledTasks)) scheduledTasks.forEach((item,index) => mergeTask(item, `scheduled-${index}`, false, true));
     tomorrowSnapshot.forEach(document => {
       const item = document.data();
-      mergeTask({ ...item, id: document.id }, document.id, true);
+      mergeTask({ ...item, id: document.id }, document.id, false, item.entryMode === 'daily');
     });
     data.todayTasks = JSON.stringify(todayTasks);
     data.tomorrowTasks = JSON.stringify(tomorrowTasks);
@@ -277,13 +276,19 @@
     return { timestamp };
   }
 
-  async function addTomorrowTask(body) {
-    const text = String(body?.text || '').trim().slice(0, 500);
-    if (!text) throw new Error('請填寫事項內容。');
-    const handwriting = typeof body?.handwriting === 'string' && body.handwriting.startsWith('data:image/png;base64,') && body.handwriting.length <= 160000 ? body.handwriting : '';
-    const createdAt = new Date().toISOString();
-    const data = await coreState();
-    await tomorrowRef.doc(crypto.randomUUID()).set({ text, author: String(body?.author || '').trim().slice(0, 100), subject: String(body?.subject || '其他').trim().slice(0, 40), handwriting, createdAt, targetDate: nextSchoolDate(taipeiDate(), data) });
+  async function addTomorrowTask(body, code) {
+    const text = String(body?.text || '').trim();
+    const confirmationCode = String(code || '').trim();
+    if (!text || text.length > 500) throw new Error('請填寫事項內容，最多 500 字。');
+    if (!/^\d{4}$/.test(confirmationCode)) throw new Error('請輸入今日四位數確認碼。');
+    const today = taipeiDate(), data = await coreState();
+    if (!isSchoolDay(today, data)) throw new Error('假日不能從學生端新增事項。');
+    const id = crypto.randomUUID(), batch = db.batch();
+    // The private authorization and public content commit together. No code is exposed in public records.
+    batch.set(addRequestRef.doc(id), { taskId:id, code:confirmationCode, date:today, requestedAt:firebase.firestore.FieldValue.serverTimestamp() });
+    batch.set(tomorrowRef.doc(id), { text, author:'學生', subject:'其他', handwriting:'', createdAt:new Date().toISOString(), targetDate:today, entryMode:'daily' });
+    await batch.commit();
+    return { id };
   }
 
   async function getStickyMessages(day) {
@@ -320,19 +325,16 @@
     const today = taipeiDate();
     const snapshot = await dailyConfirmationRef.get();
     const saved = snapshot.data();
-    if (snapshot.exists && saved?.date === today && /^\d{4}$/.test(String(saved.code || ''))) return saved.code;
-    const code = randomCode();
-    await dailyConfirmationRef.set({ date: today, code, generatedAt: new Date().toISOString() });
+    const currentCode = snapshot.exists && saved?.date === today && /^\d{4}$/.test(String(saved.code || ''));
+    if (currentCode && saved.validUntil?.toMillis?.() === new Date(`${nextDate(today)}T00:00:00+08:00`).getTime()) return saved.code;
+    const code = currentCode ? saved.code : randomCode();
+    await dailyConfirmationRef.set({ date: today, code, generatedAt: new Date().toISOString(), validUntil:firebase.firestore.Timestamp.fromDate(new Date(`${nextDate(today)}T00:00:00+08:00`)) });
     return code;
   }
 
   async function deleteTomorrowSubmission(id, code) {
-    const submissionId = String(id || '');
-    const confirmationCode = String(code || '').trim();
-    if (!submissionId || !/^\d{4}$/.test(confirmationCode)) throw new Error('請輸入四位數確認碼。');
-    const today = taipeiDate();
-    await deleteRequestRef.doc(submissionId).set({ taskId: submissionId, code: confirmationCode, date: today, requestedAt: new Date().toISOString() });
-    await tomorrowRef.doc(submissionId).delete();
+    requireTeacher();
+    await teacherDeleteTomorrowSubmission(id);
   }
 
   async function teacherDeleteTomorrowSubmission(id) {
@@ -341,18 +343,12 @@
   }
 
   async function editTomorrowSubmission(id, changes, code) {
+    requireTeacher();
     const submissionId = String(id || '');
-    const confirmationCode = String(code || '').trim();
     const text = String(changes?.text || '').trim().slice(0, 500);
-    if (!submissionId || !text || !/^\d{4}$/.test(confirmationCode)) throw new Error('請填寫內容並輸入四位數確認碼。');
+    if (!submissionId || !text) throw new Error('請填寫事項內容。');
     const update = { text, author: String(changes?.author || '').trim().slice(0, 100), subject: String(changes?.subject || '其他').trim().slice(0, 40), handwriting: typeof changes?.handwriting === 'string' && changes.handwriting.startsWith('data:image/png;base64,') && changes.handwriting.length <= 160000 ? changes.handwriting : '', updatedAt: new Date().toISOString() };
-    const today = taipeiDate();
-    const request = editRequestRef.doc(submissionId);
-    await request.set({ taskId: submissionId, code: confirmationCode, date: today, requestedAt: new Date().toISOString() });
-    const batch = db.batch();
-    batch.update(tomorrowRef.doc(submissionId), update);
-    batch.delete(request);
-    await batch.commit();
+    await tomorrowRef.doc(submissionId).update(update);
   }
 
   async function getTomorrowSubmissions() {
@@ -452,6 +448,7 @@
     addStickyMessage,
     onStickyMessagesChanged,
     getDailyDeleteCode,
+    addTomorrowTask,
     deleteTomorrowSubmission,
     teacherDeleteTomorrowSubmission,
     editTomorrowSubmission,

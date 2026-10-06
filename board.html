@@ -347,7 +347,7 @@
     <script src="https://www.gstatic.com/firebasejs/12.17.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/12.17.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/12.17.1/firebase-firestore-compat.js"></script>
-    <script src="firebase-classroom.js?v=restore-points-1"></script>
+    <script src="firebase-classroom.js?v=student-add-only-1"></script>
 </head>
 <body class="cloud-loading">
 
@@ -618,8 +618,7 @@
             </div>
 
             <div id="app-content-tomorrow" class="w-full h-full flex p-10 gap-8 hidden">
-                <div class="w-full flex flex-col min-w-0"><h2 class="text-4xl font-bold text-white tracking-widest mb-3"><i class="fa-solid fa-calendar-plus mr-4 text-[#f6d365]"></i>明日事項 <span id="tomorrow-title-date" class="ml-3 text-2xl font-bold text-white/65"></span></h2><p class="text-white/60 text-xl mb-5">事項目前僅能由教師端安排；明日自動移入「今日任務」，並保留可依日期查詢的紀錄。</p><div id="tomorrow-list" class="flex-1 overflow-y-auto no-scrollbar space-y-3 pr-3"></div><div class="mt-5 pt-4 border-t border-white/20"><label class="text-white text-lg block mb-2" for="task-history-date">查詢過往任務</label><input id="task-history-date" onchange="renderTaskHistory()" type="date" class="bg-black/30 border border-white/30 rounded-xl px-4 py-3 text-white text-xl"><div id="task-history-list" class="mt-3 space-y-2"></div></div></div>
-                <div class="hidden" aria-hidden="true"><h3 id="tomorrow-form-title">新增交辦事項</h3><select id="tomorrow-author"><option value="小老師">小老師</option><option value="老師">老師</option></select><select id="tomorrow-subject"></select><textarea id="tomorrow-text"></textarea><input id="tomorrow-password" type="password"><button id="submit-tomorrow-button" type="button"></button><button id="cancel-tomorrow-edit" type="button"></button><p id="tomorrow-message"></p></div>
+                <div class="w-full flex flex-col min-w-0"><div class="flex flex-wrap items-center gap-4 mb-3"><h2 class="text-4xl font-bold text-white tracking-widest"><i class="fa-solid fa-calendar-plus mr-4 text-[#f6d365]"></i>明日事項 <span id="tomorrow-title-date" class="ml-3 text-2xl font-bold text-white/65"></span></h2><button type="button" onclick="openStudentTaskForm()" class="rounded-xl border border-white/20 bg-white/10 px-5 py-3 text-xl font-bold text-[#f6d365] hover:bg-white/20">新增事務</button></div><p class="text-white/60 text-xl mb-5">輸入教師提供的今日確認碼可追加事務，不能修改或刪除既有內容。下一個上課日會移至今日任務，並保留歷史紀錄。</p><div id="tomorrow-list" class="flex-1 overflow-y-auto no-scrollbar space-y-3 pr-3"></div><div class="mt-5 pt-4 border-t border-white/20"><label class="text-white text-lg block mb-2" for="task-history-date">查詢過往任務</label><input id="task-history-date" onchange="renderTaskHistory()" type="date" class="bg-black/30 border border-white/30 rounded-xl px-4 py-3 text-white text-xl"><div id="task-history-list" class="mt-3 space-y-2"></div></div></div>
             </div>
 
             <div id="app-content-cadres" class="w-full h-full flex flex-col p-10 hidden">
@@ -771,6 +770,21 @@
                 <button onclick="saveNameEditor()" class="px-8 py-3 bg-emerald-500/80 hover:bg-emerald-500 text-white font-bold text-xl rounded-xl transition-colors">儲存名單</button>
             </div>
         </div>
+    </div>
+
+    <div id="student-task-modal" class="absolute inset-0 z-[80] hidden items-center justify-center bg-black/70 p-6 backdrop-blur-md">
+        <form onsubmit="submitTomorrowTask(event)" class="glass-panel relative w-full max-w-3xl rounded-[2rem] p-8 text-white" role="dialog" aria-modal="true" aria-labelledby="tomorrow-form-title">
+            <button type="button" onclick="closeStudentTaskForm()" aria-label="關閉新增事務" class="absolute right-6 top-6 rounded-full bg-white/15 px-4 py-2 text-2xl">×</button>
+            <h3 id="tomorrow-form-title" class="pr-16 text-3xl font-bold">新增每日事務</h3>
+            <p id="student-task-date" class="mt-3 text-xl text-white/65"></p>
+            <p class="mt-3 text-lg text-white/65">僅追加新內容，不會更動原有事項。請每一行輸入一點，最多 500 字。</p>
+            <label for="tomorrow-text" class="mt-5 mb-2 block text-xl">事務內容</label>
+            <textarea id="tomorrow-text" required maxlength="500" rows="6" class="w-full rounded-2xl border border-white/25 bg-black/25 p-4 text-2xl" placeholder="每一行輸入一項事務"></textarea>
+            <label for="tomorrow-password" class="mt-4 mb-2 block text-xl">今日四位數確認碼</label>
+            <input id="tomorrow-password" type="password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" required autocomplete="off" class="w-full rounded-xl border border-white/25 bg-black/25 px-4 py-3 text-2xl tracking-widest" placeholder="請向教師取得確認碼">
+            <button id="submit-tomorrow-button" type="submit" class="mt-5 w-full rounded-xl bg-white/15 px-5 py-4 text-2xl font-bold text-[#f6d365] disabled:opacity-50">新增事務</button>
+            <p id="tomorrow-message" role="status" aria-live="polite" class="mt-4 text-xl text-[#f6d365]"></p>
+        </form>
     </div>
 
     <div id="tomorrow-readonly-modal" class="absolute inset-0 bg-black/80 backdrop-blur-md z-[70] hidden opacity-0 transition-opacity duration-300 flex items-center justify-center">
@@ -929,6 +943,7 @@
             renderDutyWidget();
         } else if (currentActiveApp === 'seating') renderSeatingGrid();
         else if (currentActiveApp === 'lunch') renderLunchMenu();
+        else if (currentActiveApp === 'tomorrow') renderTomorrowTasks();
     }
     const COURSE_SUBJECTS = ['國文','英文','數學','理化','地理','歷史','公民','本土','資科','生科','健康','體育','音樂','表演','美術','童軍','家政','輔導','閱讀'];
     const COURSE_SUBJECT_ICONS = {
@@ -2042,15 +2057,44 @@
     function renderTomorrowTasks() { updateTomorrowDateLabels(); const tasks=readTaskList('tomorrowTasks',[]); document.getElementById('tomorrow-list').innerHTML=tasks.length ? tasks.map(task=>taskItemHTML(task)).join('') : '<div class="text-white/50 text-2xl mt-16 text-center">目前沒有明日事項</div>'; const date=document.getElementById('task-history-date'); if(!date.value) date.value=previousTeachingDay(); renderTaskHistory(); }
     function scheduledTasksForHistory(date) { return readTaskList('scheduledTasks',[]).filter(item=>item&&item.targetDate===date&&String(item.text||'').trim()).flatMap((item,itemIndex)=>String(item.text).split(/\r?\n/).map(line=>line.trim()).filter(Boolean).map((text,lineIndex)=>({id:`${item.id || `scheduled-${itemIndex}`}::${lineIndex}`,text}))); }
     function renderTaskHistory() { const key=document.getElementById('task-history-date').value, history=readTaskObject('taskHistory',{}),base=key===dateKey()?todayTasks:(history[key] || []),scheduled=key===dateKey()?[]:scheduledTasksForHistory(key),known=new Set(base.map(task=>String(task.id||''))),tasks=[...base,...scheduled.filter(task=>!known.has(String(task.id||'')))]; document.getElementById('task-history-list').innerHTML=tasks.length ? tasks.map(taskItemHTML).join('') : '<div class="text-white/45 text-lg">此日期沒有任務紀錄。</div>'; }
-    let editingTomorrowTask=null;
-    function beginTomorrowEdit(id) { const task=readTaskList('tomorrowTasks',[]).find(item=>item.id===id&&item.deletable); if(!task)return; editingTomorrowTask=task;document.getElementById('tomorrow-form-title').textContent='修改交辦事項';document.getElementById('tomorrow-author').value=task.author==='老師'?'老師':'小老師';document.getElementById('tomorrow-subject').value=task.subject||'其他';document.getElementById('tomorrow-text').value=task.text||'';document.getElementById('submit-tomorrow-button').textContent='儲存修改';document.getElementById('cancel-tomorrow-edit').classList.remove('hidden');document.getElementById('tomorrow-message').textContent='儲存時需輸入教師端今日四位數確認碼。'; }
-    function cancelTomorrowEdit() { editingTomorrowTask=null;document.getElementById('tomorrow-form-title').textContent='新增交辦事項';document.getElementById('tomorrow-author').value='小老師';document.getElementById('tomorrow-subject').value='其他';document.getElementById('tomorrow-text').value='';document.getElementById('submit-tomorrow-button').textContent='送出明日事項';document.getElementById('cancel-tomorrow-edit').classList.add('hidden'); }
-    async function submitTomorrowTask() { const author=document.getElementById('tomorrow-author').value.trim(), subject=document.getElementById('tomorrow-subject').value, text=document.getElementById('tomorrow-text').value.trim(), note=document.getElementById('tomorrow-message'); if(!text) { note.textContent='請填寫事項。'; return; } try { if(editingTomorrowTask){const code=window.prompt('請輸入今日四位數修改確認碼');if(code===null)return;await FirebaseClassroom.editTomorrowSubmission(editingTomorrowTask.id,{author,subject,text,handwriting:''},code);note.textContent='已儲存修改，正在同步…';}else{await FirebaseClassroom.addTomorrowTask({author,subject,text,handwriting:''});note.textContent='已送出，正在同步…';}setTimeout(()=>window.location.reload(),500); } catch (error) { note.textContent=error.message === 'Missing or insufficient permissions.' ? '確認碼不正確或已失效。' : (error.message || '送出失敗，請再試一次。'); } }
-    async function deleteTomorrowSubmission(id) { const code=window.prompt('請輸入今日四位數刪除確認碼'); if(code===null)return; const note=document.getElementById('tomorrow-message'); try { await FirebaseClassroom.deleteTomorrowSubmission(id,code); note.textContent='已刪除事項，正在同步…'; setTimeout(()=>window.location.reload(),400); } catch (error) { note.textContent=error.message === 'Missing or insufficient permissions.' ? '確認碼不正確或已失效。' : (error.message || '刪除失敗，請再試一次。'); } }
+    let studentTaskSubmitting = false;
+    function openStudentTaskForm() {
+        const note = document.getElementById('tomorrow-message');
+        document.getElementById('student-task-date').textContent = `登記日期：${dateKey().replaceAll('-','/')}｜下一個上課日列入今日任務`;
+        note.textContent = isTeachingDay(dateKey()) ? '' : '假日不能從學生端新增事項。';
+        document.getElementById('submit-tomorrow-button').disabled = studentTaskSubmitting || !isTeachingDay(dateKey());
+        document.getElementById('student-task-modal').classList.remove('hidden');
+        document.getElementById('student-task-modal').classList.add('flex');
+        document.getElementById('tomorrow-text').focus();
+    }
+    function closeStudentTaskForm() {
+        if (studentTaskSubmitting) return;
+        document.getElementById('student-task-modal').classList.add('hidden');
+        document.getElementById('student-task-modal').classList.remove('flex');
+        document.getElementById('tomorrow-password').value = '';
+    }
+    async function submitTomorrowTask(event) {
+        event?.preventDefault();
+        if (studentTaskSubmitting) return;
+        const text = document.getElementById('tomorrow-text').value.trim(), code = document.getElementById('tomorrow-password').value.trim();
+        const note = document.getElementById('tomorrow-message'), button = document.getElementById('submit-tomorrow-button');
+        if (!text || text.length > 500 || !/^\d{4}$/.test(code)) { note.textContent = '請填寫事務內容（最多 500 字）與今日四位數確認碼。'; return; }
+        studentTaskSubmitting = true; button.disabled = true; button.textContent = '同步中…'; note.textContent = '';
+        try {
+            await FirebaseClassroom.addTomorrowTask({text}, code);
+            document.getElementById('tomorrow-text').value = '';
+            document.getElementById('tomorrow-password').value = '';
+            note.textContent = '已新增並儲存到雲端，原有事項未更動。';
+            await loadCloudData();
+            renderTomorrowTasks(); updateWidgetTomorrow();
+        } catch (error) {
+            note.textContent = error.code === 'permission-denied' || error.message === 'Missing or insufficient permissions.' ? '確認碼不正確或已失效，請向教師確認今日的代碼。' : (error.message || '新增失敗，請再試一次。');
+        } finally {
+            studentTaskSubmitting = false; button.disabled = !isTeachingDay(dateKey()); button.textContent = '新增事務';
+        }
+    }
     document.getElementById('course-submit-password').type='hidden';
     document.getElementById('course-submit-password').required=false;
-    document.getElementById('tomorrow-password').type='hidden';
-    document.getElementById('tomorrow-password').required=false;
     updateWidgetTasks(); updateWidgetTomorrow(); renderDutyWidget(); setInterval(renderDutyWidget, 60000);
 
     const LUNCH_HELPER_SEATS = [14,24];

@@ -16,7 +16,7 @@
   <script src="https://www.gstatic.com/firebasejs/12.17.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/12.17.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/12.17.1/firebase-firestore-compat.js"></script>
-  <script src="firebase-classroom.js?v=restore-points-1"></script>
+  <script src="firebase-classroom.js?v=student-add-only-1"></script>
   <link rel="stylesheet" href="teacher-board-preview.css?v=1">
   <script src="teacher-board-preview.js?v=1" defer></script>
   <style>
@@ -376,7 +376,7 @@
     organizeScheduledPanel();
     $('refresh-delete-code').textContent = '生成今日確認碼';
     const dailyCodeHint = $('scheduled-code-card')?.querySelector('.hint');
-    if (dailyCodeHint) dailyCodeHint.textContent = '此確認碼提供學生端修改或刪除事項使用；教師登入後可直接管理事項。';
+    if (dailyCodeHint) dailyCodeHint.textContent = '此確認碼僅提供學生端新增每日事務，不可修改或刪除既有內容；每日午夜失效。教師登入後可直接管理事項。';
     let scheduledExportItems = [];
     function scheduledExportText() {
       const grouped = new Map();
