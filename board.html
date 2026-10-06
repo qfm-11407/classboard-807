@@ -566,13 +566,18 @@
                 </div>
             </div>
 
-            <div id="app-content-interaction" class="w-full h-full flex flex-col items-center justify-center p-12 hidden">
-                <div class="w-full max-w-5xl text-center mb-8"><h2 class="text-5xl font-black text-white tracking-widest"><i class="fa-solid fa-hand-pointer mr-6 text-[#f6d365]"></i>互動區</h2><p class="mt-3 text-2xl text-white/65">一起留言、動手挑戰</p></div>
-                <div class="grid w-full max-w-6xl grid-cols-2 gap-6">
-                    <button type="button" onclick="openApp('messages')" class="group rounded-[2rem] border border-white/20 bg-white/10 p-8 text-center transition hover:-translate-y-1 hover:bg-white/20"><span class="mx-auto w-20 h-20 squircle bg-pastel-yellow flex items-center justify-center"><i class="fa-solid fa-note-sticky text-4xl text-white/90 drop-shadow-md"></i></span><span class="mt-5 block text-3xl font-black tracking-widest text-white">留言板</span><small class="mt-2 block text-xl font-bold text-white/60">留下今天想分享的一句話</small></button>
-                    <button type="button" onclick="openApp('chase-light')" class="group rounded-[2rem] border border-white/20 bg-white/10 p-8 text-center transition hover:-translate-y-1 hover:bg-white/20"><span class="mx-auto w-20 h-20 squircle bg-pastel-green flex items-center justify-center"><i class="fa-solid fa-bullseye text-4xl text-white/90 drop-shadow-md"></i></span><span class="mt-5 block text-3xl font-black tracking-widest text-white">追光點點</span><small class="mt-2 block text-xl font-bold text-white/60">點中移動光點，挑戰反應力</small></button>
-                    <button type="button" onclick="openApp('mole-pop')" class="group rounded-[2rem] border border-white/20 bg-white/10 p-8 text-center transition hover:-translate-y-1 hover:bg-white/20"><span class="mx-auto w-20 h-20 squircle bg-pastel-orange flex items-center justify-center"><i class="fa-solid fa-paw text-4xl text-white/90 drop-shadow-md"></i></span><span class="mt-5 block text-3xl font-black tracking-widest text-white">地鼠出沒</span><small class="mt-2 block text-xl font-bold text-white/60">三十個洞口，抓住冒出的地鼠</small></button>
-                    <button type="button" onclick="openApp('tic-tac-toe')" class="group rounded-[2rem] border border-white/20 bg-white/10 p-8 text-center transition hover:-translate-y-1 hover:bg-white/20"><span class="mx-auto w-20 h-20 squircle bg-pastel-blue flex items-center justify-center"><i class="fa-solid fa-border-all text-4xl text-white/90 drop-shadow-md"></i></span><span class="mt-5 block text-3xl font-black tracking-widest text-white">圈叉對決</span><small class="mt-2 block text-xl font-bold text-white/60">四桌同時玩，回合互不影響</small></button>
+            <div id="app-content-interaction" class="w-full h-full flex flex-col items-center justify-center p-10 hidden">
+                <div class="w-full max-w-6xl text-center mb-5"><h2 class="text-4xl font-black text-white tracking-widest"><i class="fa-solid fa-hand-pointer mr-5 text-[#f6d365]"></i>互動區</h2><p class="mt-2 text-xl text-white/65">九格選擇，一起動手</p></div>
+                <div class="grid w-full max-w-6xl grid-cols-3 gap-4" aria-label="3 欄 3 列，九個互動單元">
+                    <button type="button" onclick="openApp('chase-light')" class="group rounded-[1.5rem] border border-white/20 bg-white/10 p-5 text-center transition hover:-translate-y-1 hover:bg-white/20"><span class="mx-auto w-14 h-14 squircle flex items-center justify-center" style="background:#d5ff7555"><i class="fa-solid fa-bullseye text-3xl text-white/90 drop-shadow-md"></i></span><span class="mt-3 block text-2xl font-black tracking-widest text-white">追光點點</span><small class="mt-2 block text-base font-bold text-white/60">追上移動圓點，越點越快、越小。</small></button>
+                    <button type="button" onclick="openApp('mole-pop')" class="group rounded-[1.5rem] border border-white/20 bg-white/10 p-5 text-center transition hover:-translate-y-1 hover:bg-white/20"><span class="mx-auto w-14 h-14 squircle flex items-center justify-center" style="background:#ffce8355"><i class="fa-solid fa-paw text-3xl text-white/90 drop-shadow-md"></i></span><span class="mt-3 block text-2xl font-black tracking-widest text-white">地鼠出沒</span><small class="mt-2 block text-base font-bold text-white/60">棕色可打，紅色避開，負分立即結束。</small></button>
+                    <button type="button" onclick="openApp('spot-difference')" class="group rounded-[1.5rem] border border-white/20 bg-white/10 p-5 text-center transition hover:-translate-y-1 hover:bg-white/20"><span class="mx-auto w-14 h-14 squircle flex items-center justify-center" style="background:#ffce8355"><i class="fa-solid fa-eye text-3xl text-white/90 drop-shadow-md"></i></span><span class="mt-3 block text-2xl font-black tracking-widest text-white">眼明手快</span><small class="mt-2 block text-base font-bold text-white/60">觀察細節，找出唯一不同的圖案。</small></button>
+                    <button type="button" onclick="openApp('memory-match')" class="group rounded-[1.5rem] border border-white/20 bg-white/10 p-5 text-center transition hover:-translate-y-1 hover:bg-white/20"><span class="mx-auto w-14 h-14 squircle flex items-center justify-center" style="background:#cfb4ff55"><i class="fa-solid fa-clone text-3xl text-white/90 drop-shadow-md"></i></span><span class="mt-3 block text-2xl font-black tracking-widest text-white">記憶翻牌</span><small class="mt-2 block text-base font-bold text-white/60">翻開卡片，記住位置並找出相同圖案。</small></button>
+                    <button type="button" onclick="openApp('balance-ball')" class="group rounded-[1.5rem] border border-white/20 bg-white/10 p-5 text-center transition hover:-translate-y-1 hover:bg-white/20"><span class="mx-auto w-14 h-14 squircle flex items-center justify-center" style="background:#a8e5bd55"><i class="fa-solid fa-scale-balanced text-3xl text-white/90 drop-shadow-md"></i></span><span class="mt-3 block text-2xl font-black tracking-widest text-white">平衡高手</span><small class="mt-2 block text-base font-bold text-white/60">按住方向傾斜平台，避洞並抵達旗子。</small></button>
+                    <button type="button" onclick="openApp('light-maze')" class="group rounded-[1.5rem] border border-white/20 bg-white/10 p-5 text-center transition hover:-translate-y-1 hover:bg-white/20"><span class="mx-auto w-14 h-14 squircle flex items-center justify-center" style="background:#9ad9ff55"><i class="fa-solid fa-lightbulb text-3xl text-white/90 drop-shadow-md"></i></span><span class="mt-3 block text-2xl font-black tracking-widest text-white">光線解謎</span><small class="mt-2 block text-base font-bold text-white/60">轉動鏡面，引導光線點亮星星。</small></button>
+                    <button type="button" onclick="openApp('bubble-connect')" class="group rounded-[1.5rem] border border-white/20 bg-white/10 p-5 text-center transition hover:-translate-y-1 hover:bg-white/20"><span class="mx-auto w-14 h-14 squircle flex items-center justify-center" style="background:#ffadcc55"><i class="fa-solid fa-bezier-curve text-3xl text-white/90 drop-shadow-md"></i></span><span class="mt-3 block text-2xl font-black tracking-widest text-white">泡泡連線</span><small class="mt-2 block text-base font-bold text-white/60">連接同色泡泡，路線不交叉並填滿棋盤。</small></button>
+                    <button type="button" onclick="openApp('tic-tac-toe')" class="group rounded-[1.5rem] border border-white/20 bg-white/10 p-5 text-center transition hover:-translate-y-1 hover:bg-white/20"><span class="mx-auto w-14 h-14 squircle flex items-center justify-center" style="background:#9ad9ff55"><i class="fa-solid fa-border-all text-3xl text-white/90 drop-shadow-md"></i></span><span class="mt-3 block text-2xl font-black tracking-widest text-white">圈叉對決</span><small class="mt-2 block text-base font-bold text-white/60">四桌同時玩，回合互不影響。</small></button>
+                    <button type="button" onclick="openApp('messages')" class="group rounded-[1.5rem] border border-white/20 bg-white/10 p-5 text-center transition hover:-translate-y-1 hover:bg-white/20"><span class="mx-auto w-14 h-14 squircle flex items-center justify-center" style="background:#f6d36555"><i class="fa-solid fa-note-sticky text-3xl text-white/90 drop-shadow-md"></i></span><span class="mt-3 block text-2xl font-black tracking-widest text-white">留言板</span><small class="mt-2 block text-base font-bold text-white/60">留下今天想分享的一句話。</small></button>
                 </div>
             </div>
 
@@ -590,6 +595,26 @@
 
             <div id="app-content-tic-tac-toe" class="w-full h-full hidden">
                 <iframe id="tic-tac-toe-frame" title="圈叉對決" data-src="games/tic-tac-toe.html?embedded=1" allow="fullscreen" allowfullscreen class="h-full w-full border-0"></iframe>
+            </div>
+
+            <div id="app-content-spot-difference" class="w-full h-full hidden">
+                <iframe id="spot-difference-frame" title="眼明手快" data-src="games/spot-difference.html?embedded=1" allow="fullscreen" allowfullscreen class="h-full w-full border-0"></iframe>
+            </div>
+
+            <div id="app-content-memory-match" class="w-full h-full hidden">
+                <iframe id="memory-match-frame" title="記憶翻牌" data-src="games/memory-match.html?embedded=1" allow="fullscreen" allowfullscreen class="h-full w-full border-0"></iframe>
+            </div>
+
+            <div id="app-content-balance-ball" class="w-full h-full hidden">
+                <iframe id="balance-ball-frame" title="平衡高手" data-src="games/balance-ball.html?embedded=1" allow="fullscreen" allowfullscreen class="h-full w-full border-0"></iframe>
+            </div>
+
+            <div id="app-content-light-maze" class="w-full h-full hidden">
+                <iframe id="light-maze-frame" title="光線解謎" data-src="games/light-maze.html?embedded=1" allow="fullscreen" allowfullscreen class="h-full w-full border-0"></iframe>
+            </div>
+
+            <div id="app-content-bubble-connect" class="w-full h-full hidden">
+                <iframe id="bubble-connect-frame" title="泡泡連線" data-src="games/bubble-connect.html?embedded=1" allow="fullscreen" allowfullscreen class="h-full w-full border-0"></iframe>
             </div>
 
             <div id="app-content-tomorrow" class="w-full h-full flex p-10 gap-8 hidden">
@@ -931,13 +956,13 @@
     }
 
     function pauseInteractionGame() {
-        for (const id of ['chase-light-frame', 'mole-pop-frame']) {
+        for (const id of ['chase-light-frame', 'mole-pop-frame', 'spot-difference-frame', 'memory-match-frame', 'balance-ball-frame', 'light-maze-frame', 'bubble-connect-frame']) {
             const frame = document.getElementById(id);
             if (frame?.getAttribute('src')) frame.contentWindow?.postMessage({type:'classroom-game-pause'}, window.location.protocol === 'file:' ? '*' : window.location.origin);
         }
     }
     function handleInteractionMessage(event) {
-        if (!['chase-light', 'mole-pop', 'tic-tac-toe'].includes(currentActiveApp)) return;
+        if (!['chase-light', 'mole-pop', 'tic-tac-toe', 'spot-difference', 'memory-match', 'balance-ball', 'light-maze', 'bubble-connect'].includes(currentActiveApp)) return;
         const frame = document.getElementById(`${currentActiveApp}-frame`);
         if (event.source !== frame?.contentWindow || event.origin !== window.location.origin) return;
         if (event.data?.type === 'classroom-interaction-back') openApp('interaction');
@@ -945,7 +970,7 @@
     window.addEventListener('message', handleInteractionMessage);
 
     function openApp(type, subject = "") {
-        if (['chase-light', 'mole-pop'].includes(currentActiveApp) && type !== currentActiveApp) pauseInteractionGame();
+        if (['chase-light', 'mole-pop', 'spot-difference', 'memory-match', 'balance-ball', 'light-maze', 'bubble-connect'].includes(currentActiveApp) && type !== currentActiveApp) pauseInteractionGame();
         document.getElementById('app-modal').classList.remove('hidden');
         setTimeout(() => {
             document.getElementById('app-modal').classList.remove('opacity-0');
@@ -986,7 +1011,7 @@
             document.getElementById('app-content-interaction').classList.remove('hidden');
         } else if (type === 'messages') {
             document.getElementById('app-content-messages').classList.remove('hidden');
-        } else if (['chase-light', 'mole-pop', 'tic-tac-toe'].includes(type)) {
+        } else if (['chase-light', 'mole-pop', 'tic-tac-toe', 'spot-difference', 'memory-match', 'balance-ball', 'light-maze', 'bubble-connect'].includes(type)) {
             document.getElementById(`app-content-${type}`).classList.remove('hidden');
             const frame = document.getElementById(`${type}-frame`);
             if (!frame.getAttribute('src')) frame.src = frame.dataset.src;
@@ -1036,7 +1061,7 @@
 
     function closeApp() {
         // 互動區的單元先回選單；離開遊戲時暫停，不讓隱藏的回合繼續倒數。
-        if (['messages', 'chase-light', 'mole-pop', 'tic-tac-toe'].includes(currentActiveApp)) {
+        if (['messages', 'chase-light', 'mole-pop', 'tic-tac-toe', 'spot-difference', 'memory-match', 'balance-ball', 'light-maze', 'bubble-connect'].includes(currentActiveApp)) {
             openApp('interaction');
             return;
         }

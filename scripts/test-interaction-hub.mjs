@@ -28,7 +28,9 @@ const moleFrame=get('mole-pop-frame');moleFrame.dataset.src='games/mole-pop.html
 moleFrame.contentWindow={postMessage:(data,origin)=>posts.push({data,origin,frame:'mole-pop'})};
 const oxFrame=get('tic-tac-toe-frame');oxFrame.dataset.src='games/tic-tac-toe.html?embedded=1';
 oxFrame.contentWindow={postMessage:(data,origin)=>posts.push({data,origin,frame:'tic-tac-toe'})};
-const panels=['interaction','messages','chase-light','mole-pop','tic-tac-toe'].map(type=>get(`app-content-${type}`));
+const newGames=['spot-difference','memory-match','balance-ball','light-maze','bubble-connect'];
+for(const id of newGames){const f=get(`${id}-frame`);f.dataset.src=`games/${id}.html?embedded=1`;f.contentWindow={postMessage:(data,origin)=>posts.push({data,origin,frame:id})};}
+const panels=['interaction','messages','chase-light','mole-pop','tic-tac-toe',...newGames].map(type=>get(`app-content-${type}`));
 const context={document:{getElementById:get,querySelectorAll:()=>panels},window:{location:{origin:'https://example.test',protocol:'https:'}},
   setTimeout:callback=>callback(),stopExamTracker(){},updateWidgetTasks(){},returnToCourseFolders(){}};
 const api=vm.runInNewContext(`let currentActiveApp=null;${['pauseInteractionGame','handleInteractionMessage','openApp','closeApp'].map(name=>extract(board,name)).join('\n')}\n({openApp,closeApp,handleInteractionMessage,active:()=>currentActiveApp})`,context);
@@ -65,6 +67,17 @@ api.handleInteractionMessage({source:oxFrame.contentWindow,origin:'https://examp
 assert.equal(api.active(),'interaction');
 api.openApp('tic-tac-toe');api.closeApp();assert.equal(api.active(),'interaction');
 assert.equal(oxFrame.src,oxFrame.dataset.src,'Returning to a game preserves its loaded document');
+for(const id of newGames){
+  const f=get(`${id}-frame`);api.openApp(id);assert.equal(f.src,f.dataset.src,'New games lazy-load');assert.equal(api.active(),id);
+  api.handleInteractionMessage({source:frame.contentWindow,origin:'https://example.test',data:{type:'classroom-interaction-back'}});assert.equal(api.active(),id);
+  api.handleInteractionMessage({source:f.contentWindow,origin:'https://other.test',data:{type:'classroom-interaction-back'}});assert.equal(api.active(),id);
+  api.handleInteractionMessage({source:f.contentWindow,origin:'https://example.test',data:{type:'classroom-interaction-back'}});assert.equal(api.active(),'interaction');
+  assert(posts.some(post=>post.frame===id&&post.data.type==='classroom-game-pause'));
+  api.openApp(id);api.closeApp();assert.equal(api.active(),'interaction');
+}
+const hubMarkup=board.slice(board.indexOf('id="app-content-interaction"'),board.indexOf('id="app-content-messages"'));
+assert(hubMarkup.includes('grid-cols-3'));
+assert.equal((hubMarkup.match(/onclick="openApp\('/g)||[]).length,9,'The hub has exactly nine cards');
 
 const gameSource=fs.readFileSync(new URL('../games/moving-dot.js',import.meta.url),'utf8');
 const gameElements=new Map(),events={},parentPosts=[];

@@ -1,0 +1,7 @@
+<!DOCTYPE html>
+<html lang="zh-Hant"><meta charset="UTF-8"><title>遊戲窄螢幕驗證</title>
+<body style="margin:0;background:#263447"><iframe id="preview" title="390 × 844 遊戲預覽" width="390" height="844" style="display:block;border:0" src="../games/bubble-connect.html"></iframe>
+<script>
+const game = new URLSearchParams(location.search).get('game');
+if (['memory-match','balance-ball','light-maze','spot-difference','bubble-connect'].includes(game)) document.getElementById('preview').src = '../games/' + game + '.html';
+</script></body></html>

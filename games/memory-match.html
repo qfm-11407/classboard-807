@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#111827">
+  <title>記憶翻牌｜互動遊戲室</title>
+  <link rel="stylesheet" href="games.css?v=puzzles-1">
+  <link rel="stylesheet" href="game-rankings.css?v=1">
+  <link rel="stylesheet" href="puzzle-games.css?v=1">
+  <script src="game-rankings.js?v=cloud-2" defer></script>
+  <script src="puzzle-rules.js?v=1" defer></script>
+  <script src="puzzle-games.js?v=1" defer></script>
+</head>
+<body class="game-page puzzle-page" data-game="memory-match" style="--lime:#cfb4ff">
+  <main id="game" class="game-shell">
+    <header class="game-header">
+      <div class="game-heading"><a class="back-link" href="./">← 遊戲室</a><h1><span id="title" style="font:inherit;color:inherit;margin:0">記憶翻牌</span> <span id="subtitle">記憶力</span></h1></div>
+      <div class="toolbar"><button type="button" id="reset-board" class="quiet-button" hidden>重置此關</button><button type="button" id="pause" class="quiet-button" disabled>暫停</button><button type="button" id="fullscreen" class="quiet-button">全螢幕</button></div>
+    </header>
+    <section class="scoreboard" aria-label="遊戲狀態">
+      <div><span id="progress-label">完成題數</span><strong id="progress">0 / 3</strong></div>
+      <div><span id="time-label">使用時間</span><strong><span id="time">0</span><small> 秒</small></strong></div>
+      <div><span>操作紀錄</span><strong id="details" class="puzzle-details">準備開始</strong></div>
+      <button type="button" id="open-score-rank" class="score-rank-trigger" aria-label="今日最佳，查看前十名排行榜"><span>今日最佳 <small>排行 ›</small></span><strong id="best">—</strong></button>
+    </section>
+    <section class="puzzle-stage" aria-label="記憶翻牌遊戲區">
+      <p id="stage-note" class="stage-note"></p>
+      <div id="play-area" class="play-area" inert></div>
+      <div id="overlay" class="overlay">
+        <div class="dialog">
+          <div id="dialog-tag" class="eyebrow">PLAY · THINK · DISCOVER</div>
+          <h2 id="dialog-title">記憶翻牌</h2>
+          <p id="dialog-description"></p>
+          <div id="results" class="results" hidden></div>
+          <fieldset id="difficulty-options" class="duration-options difficulty-options"><legend>選擇難度</legend><label><input type="radio" name="difficulty" value="1" checked><span>簡易</span></label><label><input type="radio" name="difficulty" value="2"><span>正常</span></label><label><input type="radio" name="difficulty" value="3"><span>挑戰</span></label></fieldset>
+          <button type="button" id="start" class="primary-button">開始挑戰 ↗</button>
+          <button type="button" id="restart" class="text-button" hidden>重新開始</button>
+          <p class="dialog-note">完成後記錄本機成績 · 可暫停與多人合作</p>
+        </div>
+      </div>
+    </section>
+    <footer class="game-footer"><span id="help"></span><span>觸控 · 滑鼠 · 鍵盤</span></footer>
+    <div id="announcement" class="sr-only" role="status" aria-live="polite"></div>
+  </main>
+</body>
+</html>
