@@ -18,15 +18,23 @@ memory.open=[];memory.locked=false;
 assert.equal(R.memoryTurn(memory,0),'first');assert.equal(R.memoryTurn(memory,2),'match');
 assert.equal(R.memoryTurn(memory,0),'ignored');
 R.memoryTurn(memory,1);assert.equal(R.memoryTurn(memory,3),'complete');
-for (const layout of R.lightLayouts) {
+assert.equal(R.lightLayouts.length,9,'Three distinct rounds for each light difficulty');
+assert.equal(new Set(R.lightLayouts.map(layout=>JSON.stringify(layout))).size,9);
+for (const [index,layout] of R.lightLayouts.entries()) {
+  assert.equal(layout.n,6+Math.floor(index/3));assert.equal(layout.mirrors.length,4+Math.floor(index/3));
+  assert.equal(new Set(layout.mirrors.map(([cell])=>cell)).size,layout.mirrors.length);
+  for(const [cell] of layout.mirrors){assert(cell>=0&&cell<layout.n**2);assert(![layout.source,layout.goal].includes(cell));}
   const mirrors = Object.fromEntries(layout.mirrors);
   assert(R.traceLight(layout,mirrors).success,'Every light layout has a known solution');
-  mirrors[layout.mirrors[0][0]] = mirrors[layout.mirrors[0][0]] === '/' ? '\\' : '/';
-  assert(!R.traceLight(layout,mirrors).success,'The first wrong reflection misses the goal');
-  assert(R.traceLight(layout,mirrors).points.length <= layout.n**2*4+1);
+  for(const [cell,orientation] of layout.mirrors){
+    mirrors[cell] = orientation === '/' ? '\\' : '/';
+    assert(!R.traceLight(layout,mirrors).success,'Every added mirror must be oriented correctly to reach the goal');
+    assert(R.traceLight(layout,mirrors).points.length <= layout.n**2*4+1);mirrors[cell]=orientation;
+  }
 }
-for (const n of [4,5,6]) for (let variant=0;variant<8;variant++) {
+for (const n of [5,6,7]) for (let variant=0;variant<8;variant++) {
   const puzzle=R.flowPuzzle(n,variant),paths=puzzle.ends.map(()=>[]);
+  assert.equal(puzzle.ends.length,n-1,'Larger grids add a pair at every difficulty');
   assert.equal(new Set(puzzle.solution.flat()).size,n*n);
   puzzle.solution.forEach((solution,group)=>{
     paths[group]=[solution[0]];
@@ -126,9 +134,11 @@ for(const id of ['spot-difference','memory-match','balance-ball','light-maze','b
   }else{
     for(let round=0;round<3;round++){
       if(id==='light-maze'){
-        const l=api.snapshot().light;for(const [index,orientation]of l.layout.mirrors)if(l.mirrors[index]!==orientation)tap(l.buttons[index]);
+        const l=api.snapshot().light;assert.equal(l.layout.n,difficulty+5,'Every round keeps the selected light difficulty');assert.equal(l.layout.mirrors.length,difficulty+3);
+        for(const [index,orientation]of l.layout.mirrors)if(l.mirrors[index]!==orientation)tap(l.buttons[index]);
       }else if(id==='bubble-connect'){
         const f=api.snapshot().flow;
+        assert.equal(f.n,difficulty+4);assert.equal(f.ends.length,difficulty+3);
         for(const path of f.solution)for(const index of path){
           const event={button:0,pointerId:1,clientX:(index%f.n+.5)*400/f.n,clientY:(Math.floor(index/f.n)+.5)*400/f.n,preventDefault(){}};
           f.board.listeners.pointerdown(event);f.board.listeners.pointerup(event);
@@ -182,8 +192,8 @@ for(const difficulty of [1,2,3]){
 }
 const stale=createGame('spot-difference');stale.api.start();const oldQuestion=stale.api.snapshot().spot;tap(oldQuestion.buttons[oldQuestion.odd]);tap(oldQuestion.buttons[oldQuestion.odd]);assert.equal(stale.api.snapshot().round,1,'Queued input from an old question cannot score twice');
 const shortFlow=createGame('bubble-connect');shortFlow.api.start();
-const f=shortFlow.api.snapshot().flow,shortPaths=f.solution.map((path,i)=>i===1?[path[0],path.at(-1)]:path);
-assert(R.adjacent(shortPaths[1][0],shortPaths[1][1],f.n));
+const f=shortFlow.api.snapshot().flow,shortPaths=f.solution.map((path,i)=>i===1?[path[0],path[1],path.at(-1)]:path);
+assert(R.adjacent(shortPaths[1][0],shortPaths[1][1],f.n));assert(R.adjacent(shortPaths[1][1],shortPaths[1][2],f.n));
 for(const path of shortPaths)for(const index of path){const event={button:0,pointerId:1,clientX:(index%f.n+.5)*400/f.n,clientY:(Math.floor(index/f.n)+.5)*400/f.n,preventDefault(){}};f.board.listeners.pointerdown(event);f.board.listeners.pointerup(event);}
 assert.equal(shortFlow.api.snapshot().state,'celebrating','All pairs pass through the actual touch handlers without filling the grid');assert(R.flowProgress(f.paths,f.ends,f.n).filled<f.n*f.n);
 shortFlow.advance(1.51);assert.equal(shortFlow.api.snapshot().state,'between');
@@ -194,4 +204,4 @@ for(const g of [perfectMemory,wrongMemory]){
   for(const value of new Set(m.deck)){const pair=m.deck.map((v,i)=>v===value?i:-1).filter(i=>i>=0);tap(m.buttons[pair[0]]);tap(m.buttons[pair[1]]);}
 }
 assert.equal(perfectMemory.scores.completed[0].score,1000);assert.equal(wrongMemory.scores.completed[0].score,953,'One mismatch deducts 45 points plus elapsed time');
-console.log('Puzzle games tests: passed (15 completions; solved boards held 1.5 seconds with locked input and frozen score time; visibility pause/resume and final-stage delay; three lives; memory scoring; touch steering; complete flow pairs with empty cells; 24 solvable layouts; navigation and physics).');
+console.log('Puzzle games tests: passed (15 completions; nine light layouts with essential mirrors; upgraded 5/6/7 flow grids and 24 solvable variants; solved boards held 1.5 seconds; frozen score time; pause/resume; three lives; memory scoring; touch steering; navigation and physics).');

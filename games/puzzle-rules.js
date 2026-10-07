@@ -21,9 +21,15 @@
     return 'mismatch';
   }
   const lightLayouts = [
-    { n:5, source:10, goal:24, mirrors:[[12,'/'],[2,'/'],[4,'\\']] },
     { n:6, source:24, goal:35, mirrors:[[26,'/'],[8,'/'],[10,'\\'],[34,'\\']] },
+    { n:6, source:6, goal:5, mirrors:[[8,'\\'],[26,'\\'],[28,'/'],[4,'/']] },
+    { n:6, source:18, goal:11, mirrors:[[19,'\\'],[31,'\\'],[34,'/'],[10,'/']] },
     { n:7, source:35, goal:3, mirrors:[[37,'/'],[9,'/'],[12,'\\'],[33,'/'],[31,'\\']] },
+    { n:7, source:7, goal:45, mirrors:[[9,'\\'],[37,'\\'],[40,'/'],[19,'\\'],[17,'/']] },
+    { n:7, source:7, goal:48, mirrors:[[10,'\\'],[38,'\\'],[40,'/'],[19,'/'],[20,'\\']] },
+    { n:8, source:48, goal:23, mirrors:[[50,'/'],[10,'/'],[14,'\\'],[38,'/'],[35,'\\'],[19,'/']] },
+    { n:8, source:8, goal:47, mirrors:[[10,'\\'],[50,'\\'],[54,'/'],[30,'\\'],[27,'/'],[43,'\\']] },
+    { n:8, source:16, goal:39, mirrors:[[20,'\\'],[52,'/'],[49,'\\'],[9,'/'],[13,'\\'],[37,'\\']] },
   ];
   function traceLight(layout, mirrors) {
     const {n, source, goal} = layout;
@@ -51,7 +57,8 @@
       if (variant >= 4) x = n - 1 - x;
       snake.push(row * n + x);
     }
-    const lengths = n === 4 ? [5,6,5] : n === 5 ? [6,7,6,6] : [7,6,9,7,7];
+    const lengths = {4:[5,6,5],5:[6,7,6,6],6:[7,6,9,7,7],7:[8,9,7,8,9,8]}[n];
+    if (!lengths) throw new RangeError('Unsupported bubble grid size');
     let cursor = 0;
     const solution = lengths.map(length => { const path = snake.slice(cursor,cursor + length); cursor += length; return path; });
     return { n, ends:solution.map(path => [path[0],path.at(-1)]), solution };

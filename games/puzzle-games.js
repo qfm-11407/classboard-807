@@ -5,13 +5,13 @@
     'spot-difference': { title:'眼明手快', accent:'#ffce83', subtitle:'觀察細節 · 找出不同', intro:'找出唯一不同的圖案。60 秒挑戰 10 題，只有 3 顆生命；選錯 3 次就結束！', help:'點選不同的圖案；選錯失去一顆生命，三顆用完即結束。', total:10 },
     'memory-match': { title:'記憶翻牌', accent:'#cfb4ff', subtitle:'翻開卡片 · 找到夥伴', intro:'每次翻開兩張卡片，找到相同圖案。起始 1000 分，每次配錯扣 45 分，每秒扣 2 分，完成後結算。', help:'相同即配對，不同稍後蓋回。結算：1000 分 − 每次配錯 45 分 − 每秒 2 分，最低 0 分。', total:1 },
     'balance-ball': { title:'平衡高手', accent:'#a8e5bd', subtitle:'觸控傾斜 · 穩穩前進', intro:'在平台上按住並拖曳，往哪個方向拖，小球就往那個方向滾。拖得越遠，傾斜越大；放開即煞車。避開黑洞，到旗子過關！', help:'平台上按住拖曳控球，放開即煞車；也可按方向按鈕或鍵盤。掉洞回起點，共 3 關。', total:3 },
-    'light-maze': { title:'光線解謎', accent:'#9ad9ff', subtitle:'轉動鏡面 · 點亮星星', intro:'點擊鏡子切換斜面，觀察光線反射。讓光線從箭頭出發，照到星星！', help:'只有鏡子可以旋轉。光線碰到邊界就停止，照到星星即可過關，共 3 關。', total:3 },
-    'bubble-connect': { title:'泡泡連線', accent:'#ffadcc', subtitle:'連起同色 · 完成配對', intro:'從有數字的泡泡出發，連到相同顏色與數字的泡泡。路線不能交叉，全部配對連好就過關！', help:'拖曳或逐格點選連線，全部配對連好即過關。點起點可重畫，走回原路可退回，共 3 關。', total:3 },
+    'light-maze': { title:'光線解謎', accent:'#9ad9ff', subtitle:'轉動鏡面 · 點亮星星', intro:'點擊鏡子切換斜面，讓光線從箭頭照到星星！簡易 4 面、正常 5 面、挑戰 6 面鏡子，各有三關。', help:'只有鏡子可以旋轉。光線碰到邊界就停止，照到星星即可過關，共 3 關。', total:3 },
+    'bubble-connect': { title:'泡泡連線', accent:'#ffadcc', subtitle:'連起同色 · 完成配對', intro:'連起相同顏色與數字的泡泡，路線不能交叉，全部配對連好就過關！簡易 4 組、正常 5 組、挑戰 6 組。', help:'拖曳或逐格點選連線，全部配對連好即過關。點起點可重畫，走回原路可退回，共 3 關。', total:3 },
   };
   const config = configs[game];
   if (!config) return;
   const icons = ['🍓','🍋','🍇','🍒','🥝','🍉','🍍','🍊','🦋','🐳','🐢','🐙'];
-  const colors = ['#ff8399','#70d9ff','#ffdb72','#b4a0ff','#85e9af'];
+  const colors = ['#ff8399','#70d9ff','#ffdb72','#b4a0ff','#85e9af','#ffad71'];
   let state = 'ready', level = 1, elapsed = 0, last = 0, frame = 0, round = 0, errors = 0, actions = 0;
   let celebrationRemaining = 0, pausedCelebration = false;
   let memory, spot, light, flow, ball, tilt = null, hideAt = 0, wrongAt = 0, wrongButton = null, drag = null;
@@ -27,7 +27,7 @@
   function announce(message) { $('announcement').textContent = message; }
   function stats() {
     const completed = game === 'memory-match' ? (memory?.matched.size || 0)/2 : game === 'bubble-connect' ? rules.flowProgress(flow?.paths || [],flow?.ends || [],flow?.n || 1).connected : round;
-    const total = game === 'memory-match' ? (memory?.deck.length || [12,16,24][level-1])/2 : game === 'bubble-connect' ? flow?.ends.length || level+2 : config.total;
+    const total = game === 'memory-match' ? (memory?.deck.length || [12,16,24][level-1])/2 : game === 'bubble-connect' ? flow?.ends.length || level+3 : config.total;
     $('progress').textContent = `${completed} / ${total}`;
     $('progress-label').textContent = ['memory-match','bubble-connect'].includes(game) ? '完成配對' : '完成題數';
     $('time').textContent = game === 'spot-difference' ? Math.max(0,Math.ceil(60-elapsed)) : Math.floor(elapsed);
@@ -118,7 +118,7 @@
     }
   }
   function buildLight() {
-    const layout = rules.lightLayouts[(round+level-1)%3], board = grid(layout.n); board.classList.add('light-board');
+    const layout = rules.lightLayouts[(level-1)*3+round], board = grid(layout.n); board.classList.add('light-board');
     const mirrors = Object.fromEntries(layout.mirrors.map(([index]) => [index,Math.random()<.5 ? '/' : '\\']));
     if (rules.traceLight(layout,mirrors).success) mirrors[layout.mirrors[0][0]] = mirrors[layout.mirrors[0][0]] === '/' ? '\\' : '/';
     light = {layout,mirrors,buttons:[],board};
@@ -180,7 +180,7 @@
     else beginFlow(index);
   }
   function buildFlow() {
-    const puzzle = rules.flowPuzzle(level+3,(round*2+Math.floor(Math.random()*2))%8), board = grid(puzzle.n); board.classList.add('flow-board');
+    const puzzle = rules.flowPuzzle(level+4,(round*2+Math.floor(Math.random()*2))%8), board = grid(puzzle.n); board.classList.add('flow-board');
     flow = {...puzzle,paths:puzzle.ends.map(() => []),group:-1,board,buttons:[]};
     const indexAt = event => {
       const rect = board.getBoundingClientRect(), x = Math.floor((event.clientX-rect.left)/rect.width*flow.n), y = Math.floor((event.clientY-rect.top)/rect.height*flow.n);

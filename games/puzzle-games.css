@@ -62,6 +62,9 @@
   .puzzle-page .game-header { flex-wrap:wrap; }
   .puzzle-page .toolbar { gap:6px; }
   .puzzle-page .quiet-button { min-height:40px; padding:8px 10px; }
+  .puzzle-page .difficulty-options label { flex:1; min-width:0; }
+  .puzzle-page .difficulty-options span { padding:10px 6px; }
+  .puzzle-page .difficulty-options small { font-size:10px; white-space:nowrap; }
   .puzzle-board { gap:5px; }
   .puzzle-cell { border-radius:9px; padding:3px; }
   .light-board,.flow-board { gap:0; }
