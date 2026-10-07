@@ -74,6 +74,17 @@ service cloud.firestore {
         allow delete: if false;
       }
 
+      // Transferred students and their historical records are teacher-private.
+      match /archivedStudents/{archiveId} {
+        allow read: if isTeacher();
+        allow create, update: if isTeacher()
+          && archiveId.matches('^[a-zA-Z0-9_-]{1,80}$')
+          && request.resource.data.student is map
+          && request.resource.data.records is map
+          && request.resource.data.status in ['archived', 'restored'];
+        allow delete: if false;
+      }
+
       match /teacherPrivate/restoreMeta {
         allow read, create, update: if isTeacher();
         allow delete: if false;

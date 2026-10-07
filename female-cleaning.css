@@ -1,0 +1,36 @@
+/* Female restroom: unchanged fixtures, one shared crew below the plan. */
+.female-communal .communal-fixture { display:flex!important; flex-direction:column; justify-content:center; align-items:stretch; gap:8px; padding:10px!important; min-width:0; }
+.female-communal .communal-fixture > small { position:static!important; grid-area:auto!important; display:block; text-align:center; }
+.female-communal .communal-fixture > .female-toilet-pair,.female-communal .communal-fixture > .teacher-toilet-pair { width:100%; margin:0!important; display:grid!important; grid-template-rows:repeat(2,minmax(0,1fr))!important; grid-auto-rows:auto!important; gap:4px; height:64px!important; }
+.female-communal .communal-fixture i { min-height:0!important; }
+.female-common-crew { margin-top:14px; padding:16px; border:1px solid #a3c5b4; border-radius:16px; background:#f1faf5; color:#174d36; }
+.female-common-crew h4 { margin:0 0 10px; font-size:1.12rem; }
+.female-common-description { white-space:pre-line; line-height:1.45; margin:8px 0 12px; }
+.female-common-names { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }
+.female-common-names .cleaning-assignment-chip { width:100%; min-width:0; font-size:1rem; padding:10px 4px; white-space:nowrap; }
+.teacher-restroom-map.female-communal { width:min(100%,1000px); }
+.female-communal .teacher-restroom-plan.pair-layout { grid-template-rows:repeat(3,112px) 72px!important; }
+.female-communal .teacher-restroom-core { grid-row:1 / 4; }
+.female-communal .teacher-restroom-pairs { grid-template-rows:repeat(3,minmax(0,1fr))!important; height:auto!important; min-height:0!important; }
+.female-communal .teacher-restroom-slot.wash,.female-communal .teacher-restroom-slot.floor { min-height:0!important; grid-template-columns:1fr!important; }
+.cleaning-map-full .female-communal { display:flex; flex-direction:column; width:min(100%,1480px); margin:0 auto; padding:18px; }
+.cleaning-map-full .female-communal .student-female-restroom-plan { flex:none; grid-template-rows:repeat(3,112px) 64px!important; min-height:0!important; }
+.cleaning-map-full .female-communal .student-female-restroom-pairs { grid-template-rows:repeat(3,minmax(0,1fr))!important; height:auto!important; min-height:0!important; }
+.cleaning-map-full .student-female-restroom-map.female-communal:not(.male) .communal-fixture { min-height:0!important; height:100%!important; }
+.cleaning-map-full .student-female-restroom-map.female-communal:not(.male) .communal-fixture > small { grid-column:auto!important; grid-row:auto!important; transform:none!important; font-size:22px!important; line-height:1.15; }
+.cleaning-map-full .student-female-restroom-map.female-communal:not(.male) .communal-fixture > .student-female-restroom-fixtures { grid-column:auto!important; grid-row:auto!important; height:60px!important; min-height:0!important; grid-template-rows:repeat(2,minmax(0,1fr))!important; }
+.cleaning-map-full .female-communal .student-female-restroom-plan > :nth-last-child(2),.cleaning-map-full .female-communal .student-female-restroom-plan > :last-child { min-height:0!important; }
+.cleaning-map-full .female-communal .student-female-restroom-slot { grid-template-columns:1fr!important; grid-template-rows:auto!important; min-height:0; }
+.cleaning-map-full .student-female-restroom-map.female-communal:not(.male) .student-female-restroom-slot.floor { grid-template-columns:1fr!important; }
+.cleaning-map-full .female-communal .female-restroom-core { grid-row:1 / 4; padding-top:30px; }
+.cleaning-map-full .female-communal .female-common-crew { margin-top:14px; padding:16px 20px; background:#ffffff0c; color:#dceaff; border-color:#a1c4fd66; }
+.cleaning-map-full .female-communal .female-common-crew h4 { font-size:28px; margin:0 0 8px; }
+.cleaning-map-full .female-communal .female-common-description { font-size:23px; margin:0 0 12px; white-space:normal; }
+.cleaning-map-full .female-communal .female-common-names { grid-template-columns:repeat(5,minmax(0,1fr)); gap:10px; }
+.female-common-name { display:flex; align-items:center; justify-content:center; gap:8px; padding:8px; border:1px solid #ffffff26; border-radius:12px; background:#a1c4fd26; font-size:30px; line-height:1.2; color:#fff; font-weight:900; white-space:nowrap; }
+.female-common-name small { font-size:.72em; opacity:.78; }
+@media(max-width:700px) {
+  .female-common-names { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .female-communal .teacher-restroom-plan.pair-layout { grid-template-rows:repeat(3,94px) 58px!important; }
+  .female-common-crew { padding:12px; }
+}

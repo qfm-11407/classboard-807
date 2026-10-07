@@ -96,7 +96,7 @@ assert(board.includes('onclick="openStudentTaskForm()"'));assert(board.includes(
 const ui=board.split('let studentTaskSubmitting = false;')[1].split("document.getElementById('course-submit-password')")[0];
 assert(!ui.includes('reload(')&&!ui.includes('editTomorrowSubmission')&&!ui.includes('deleteTomorrowSubmission'));
 assert(ui.includes('if (studentTaskSubmitting) return;')&&ui.includes('await loadCloudData()'));
-for(const html of ['board.html','teacher.html','book.html','doodle.html'])assert(fs.readFileSync(new URL(`../${html}`,import.meta.url),'utf8').includes('firebase-classroom.js?v=student-add-only-1'));
+for(const html of ['board.html','teacher.html','book.html','doodle.html'])assert(fs.readFileSync(new URL(`../${html}`,import.meta.url),'utf8').includes('firebase-classroom.js?v=student-archive-1'));
 // Parse inline scripts so removed legacy form references cannot hide a syntax regression.
 for(const html of ['board.html','teacher.html'])for(const match of fs.readFileSync(new URL(`../${html}`,import.meta.url),'utf8').matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/g))new vm.Script(match[1]);
 console.log('Student task tests: passed (append-only atomic writes, private code, date/holiday limits, teacher content preserved, line splitting, rollover/history, duplicate protection, student edit/delete blocked, midnight expiry, legacy code upgrade, teacher management, scoped rule guards and UI syntax).');

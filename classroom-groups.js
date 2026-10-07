@@ -55,5 +55,17 @@
     if(target)target.seats.push(seat);
     return next;
   }
-  root.ClassroomGroups={capacity,helperSeats,lunchGroups,unassignedSeats,dutySeats,resizeLunchGroup,moveLunchSeat};
+  const femaleCleaningDescription='整理垃圾\n馬桶清潔\n洗手台清潔\n地板掃拖';
+  function femaleCleaning(tasks,assignments,roster) {
+    const female=tasks.filter(task=>/女[廁厠厕]/.test(String(task.name))),ids=new Set(female.map(task=>task.id));
+    if(!female.length)return {tasks,assignments,task:null};
+    const valid=new Set(rosterSeats(roster)),seats=[...new Set(female.flatMap(task=>Array.isArray(assignments[task.id])?assignments[task.id]:[]).map(Number))].filter(seat=>valid.has(seat)).map(seat=>String(seat).padStart(2,'0'));
+    const existing=female.find(task=>task.kind==='female-communal'),base=existing||female[0];
+    const task={...base,name:existing?base.name:'(女廁) 女廁共同清潔',kind:'female-communal',limit:Math.max(seats.length,Math.min(60,female.reduce((sum,item)=>sum+capacity(item.limit,1),0))),description:existing&&typeof base.description==='string'?base.description:femaleCleaningDescription};
+    const nextTasks=[];let inserted=false;
+    tasks.forEach(item=>{if(ids.has(item.id)){if(!inserted){nextTasks.push(task);inserted=true;}}else nextTasks.push(item);});
+    const nextAssignments=Object.fromEntries(Object.entries(assignments).filter(([id])=>!ids.has(id)));nextAssignments[task.id]=seats;
+    return {tasks:nextTasks,assignments:nextAssignments,task};
+  }
+  root.ClassroomGroups={capacity,helperSeats,lunchGroups,unassignedSeats,dutySeats,resizeLunchGroup,moveLunchSeat,femaleCleaning,femaleCleaningDescription};
 }(typeof window==='undefined'?globalThis:window));

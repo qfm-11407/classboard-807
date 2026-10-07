@@ -1,0 +1,15 @@
+.archived-student-row { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:14px 0; border-bottom:1px solid var(--line); }
+.archived-student-row strong,.archived-student-row small { display:block; }
+.archived-student-row small { margin-top:5px; color:#587264; }
+.archived-student-row .row { flex:none; }
+.archived-record-month { margin:12px 0; padding:12px; border:1px solid var(--line); border-radius:12px; background:#f5faf6; }
+.archived-record-month summary { cursor:pointer; font-weight:800; color:#245b44; }
+.archived-leave-row { display:flex; justify-content:space-between; align-items:center; gap:12px; }
+.archived-leave-row strong { white-space:nowrap; }
+.student-archive-modal input { max-width:100%; min-width:0; }
+@media(max-width:700px) {
+  .archived-student-row { align-items:stretch; flex-direction:column; }
+  .archived-student-row .row .btn { flex:1; }
+  .student-archive-modal { padding:14px; }
+  .archived-leave-row { font-size:.9rem; gap:6px; }
+}
