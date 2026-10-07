@@ -100,7 +100,7 @@ assert.deepEqual(plain(ui.lunchWeeklyGroups()),plain(boardContext.lunchWeeklyGro
 assert.deepEqual(plain(boardContext.dutySeatsForDate()),[1,4]);
 writeJSON('dutyAssignments',[1,4,6]);assert.deepEqual(plain(boardContext.dutySeatsForDate()),[1,4,6],'Student view reads numeric dutyCount, not array-only parser');
 for(const html of [teacher,board]){
-  assert(html.includes('classroom-groups.js?v=2'));
+  assert(html.includes('classroom-groups.js?v=3'));
   const keys=html.match(/const CLOUD_KEYS = (\[[^;]+\])/)[1];
   for(const key of ['dutyCount','lunchHelperSeats','lunchWeeklyGroups'])assert(keys.includes(`'${key}'`));
   assert(!html.includes('const LUNCH_HELPER_SEATS'));

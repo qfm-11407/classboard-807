@@ -58,14 +58,26 @@
   const femaleCleaningDescription='整理垃圾\n馬桶清潔\n洗手台清潔\n地板掃拖';
   function femaleCleaning(tasks,assignments,roster) {
     const female=tasks.filter(task=>/女[廁厠厕]/.test(String(task.name))),ids=new Set(female.map(task=>task.id));
-    if(!female.length)return {tasks,assignments,task:null};
-    const valid=new Set(rosterSeats(roster)),seats=[...new Set(female.flatMap(task=>Array.isArray(assignments[task.id])?assignments[task.id]:[]).map(Number))].filter(seat=>valid.has(seat)).map(seat=>String(seat).padStart(2,'0'));
-    const existing=female.find(task=>task.kind==='female-communal'),base=existing||female[0];
-    const task={...base,name:existing?base.name:'(女廁) 女廁共同清潔',kind:'female-communal',limit:Math.max(seats.length,Math.min(60,female.reduce((sum,item)=>sum+capacity(item.limit,1),0))),description:existing&&typeof base.description==='string'?base.description:femaleCleaningDescription};
+    const result=(nextTasks,nextAssignments)=>{
+      const work=nextTasks.filter(task=>/女[廁厠厕]/.test(String(task.name))),groups=work.filter(task=>task.kind==='female-group').sort((a,b)=>a.groupIndex-b.groupIndex);
+      return {tasks:nextTasks,assignments:nextAssignments,groups,wash:work.find(task=>task.kind==='female-wash')||null,floor:work.find(task=>task.kind==='female-floor')||null,task:groups[0]||null};
+    };
+    if(!female.length)return result(tasks,assignments);
+    // Versioned roles prevent subsequent renders from merging or rebalancing edited groups.
+    if(female.some(task=>['female-group','female-wash','female-floor'].includes(task.kind)))return result(tasks,assignments);
+    const valid=new Set(rosterSeats(roster)),used=new Set(),codes=task=>(Array.isArray(assignments[task?.id])?assignments[task.id]:[]).map(Number).filter(seat=>valid.has(seat)&&!used.has(seat)).map(seat=>{used.add(seat);return String(seat).padStart(2,'0');});
+    const oldWash=female.find(task=>task.kind!=='female-communal'&&/洗手台/.test(task.name)),oldFloor=female.find(task=>task.kind!=='female-communal'&&/地板/.test(task.name));
+    const washCodes=oldWash?codes(oldWash):[],floorCodes=oldFloor?codes(oldFloor):[];
+    const other=female.filter(task=>task!==oldWash&&task!==oldFloor),seats=other.flatMap(codes),base=other[0]||female[0],existing=female.find(task=>task.kind==='female-communal');
+    const reservedIds=new Set(tasks.map(task=>String(task.id))),newId=role=>{let id=`${base.id}-female-${role}`;while(reservedIds.has(id))id+='-copy';reservedIds.add(id);return id;};
+    const total=Math.max(seats.length,Math.min(180,other.reduce((sum,task)=>sum+capacity(task.limit,1),0))),groups=Array.from({length:3},(_,index)=>({id:index===0&&other.length?base.id:newId(`group-${index+1}`),name:`(女廁) 共同清潔第 ${index+1} 組`,kind:'female-group',groupIndex:index+1,limit:Math.floor(total/3)+(index<total%3?1:0),description:existing?.description&&existing.description!==femaleCleaningDescription?existing.description:'整理垃圾\n馬桶清潔'}));
+    const wash={...(oldWash||{}),id:oldWash?.id||newId('wash'),name:oldWash?.name||'(女廁) 洗手台',kind:'female-wash',limit:oldWash?Math.max(capacity(oldWash.limit,1),washCodes.length):0};
+    const floor={...(oldFloor||{}),id:oldFloor?.id||newId('floor'),name:oldFloor?.name||'(女廁) 地板',kind:'female-floor',limit:oldFloor?Math.max(capacity(oldFloor.limit,1),floorCodes.length):0};
+    const replacement=[...groups,wash,floor],nextAssignments=Object.fromEntries(Object.entries(assignments).filter(([id])=>!ids.has(id)));
+    let cursor=0;groups.forEach(group=>{nextAssignments[group.id]=seats.slice(cursor,cursor+group.limit);cursor+=group.limit;});nextAssignments[wash.id]=washCodes;nextAssignments[floor.id]=floorCodes;
     const nextTasks=[];let inserted=false;
-    tasks.forEach(item=>{if(ids.has(item.id)){if(!inserted){nextTasks.push(task);inserted=true;}}else nextTasks.push(item);});
-    const nextAssignments=Object.fromEntries(Object.entries(assignments).filter(([id])=>!ids.has(id)));nextAssignments[task.id]=seats;
-    return {tasks:nextTasks,assignments:nextAssignments,task};
+    tasks.forEach(item=>{if(ids.has(item.id)){if(!inserted){nextTasks.push(...replacement);inserted=true;}}else nextTasks.push(item);});
+    return result(nextTasks,nextAssignments);
   }
   root.ClassroomGroups={capacity,helperSeats,lunchGroups,unassignedSeats,dutySeats,resizeLunchGroup,moveLunchSeat,femaleCleaning,femaleCleaningDescription};
 }(typeof window==='undefined'?globalThis:window));

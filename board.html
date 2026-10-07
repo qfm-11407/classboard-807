@@ -348,8 +348,8 @@
     <script src="https://www.gstatic.com/firebasejs/12.17.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/12.17.1/firebase-firestore-compat.js"></script>
     <script src="firebase-classroom.js?v=student-archive-1"></script>
-    <script src="classroom-groups.js?v=2"></script>
-    <link rel="stylesheet" href="female-cleaning.css?v=1">
+    <script src="classroom-groups.js?v=3"></script>
+    <link rel="stylesheet" href="female-cleaning.css?v=2">
 </head>
 <body class="cloud-loading">
 
@@ -2001,16 +2001,18 @@
     const cleanFemaleTaskLabel=value=>String(value||'').replace(/[（()）\s]/g,'').replace(/間/g,'');
     function setStudentRestroomName(element,task,student,code) { element.replaceChildren();if(!task){element.textContent='尚未建立工作';return;}if(!student){element.textContent='待分配';return;}const seat=document.createElement('b'),name=document.createElement('span'),characters=Array.from(student.name),first=document.createElement('span'),rest=document.createElement('span');seat.textContent=code;name.className='restroom-name-vertical';first.textContent=characters.slice(0,1).join('');rest.textContent=characters.slice(1).join('');name.append(first,rest);element.append(seat,name); }
     function createFemaleRestroomPlan(tasks,assignments) {
-        const normalized=ClassroomGroups.femaleCleaning(tasks,assignments,studentRoster),task=normalized.task,codes=task?(normalized.assignments[task.id]||[]):[];
-        const map=document.createElement('section'),plan=document.createElement('div'),left=document.createElement('div'),right=document.createElement('div'),core=document.createElement('div'),wash=document.createElement('div'),floor=document.createElement('div');
-        map.className='female-restroom-map student-female-restroom-map female-communal';plan.className='female-restroom-plan pair-layout student-female-restroom-plan';left.className='female-restroom-pairs student-female-restroom-pairs left';right.className='female-restroom-pairs student-female-restroom-pairs right';
-        const makeSlot=slot=>{const box=document.createElement('div'),caption=document.createElement('small');box.className=`female-restroom-slot student-female-restroom-slot communal-fixture ${slot.kind}`;caption.textContent=slot.kind==='toilet'?`${slot.label}（2 間）`:slot.label;box.append(caption);if(slot.kind==='toilet'){const pair=document.createElement('div');pair.className='female-toilet-pair student-female-restroom-fixtures fixture-2';pair.append(document.createElement('i'),document.createElement('i'));box.append(pair);}return box;};
+        const normalized=ClassroomGroups.femaleCleaning(tasks,assignments,studentRoster),map=document.createElement('section'),plan=document.createElement('div'),left=document.createElement('div'),right=document.createElement('div'),core=document.createElement('div'),wash=document.createElement('div'),floor=document.createElement('div');
+        map.className='female-restroom-map student-female-restroom-map female-communal female-split-crews';plan.className='female-restroom-plan pair-layout student-female-restroom-plan';left.className='female-restroom-pairs student-female-restroom-pairs left';right.className='female-restroom-pairs student-female-restroom-pairs right';
+        const crewPanel=(task,label,kind='group')=>{
+            const panel=document.createElement('section'),heading=document.createElement('h4'),names=document.createElement('div'),codes=task?(normalized.assignments[task.id]||[]):[];panel.className=`female-crew-panel ${kind}`;heading.textContent=`${task?cleaningTaskMeta(task.name).label:label}（${codes.length}／${task?.limit||0} 人）`;names.className='female-common-names';panel.append(heading);
+            if(task?.description&&kind==='group'){const description=document.createElement('p');description.className='female-common-description';description.textContent=task.description.split(/\r?\n/).filter(Boolean).join('・');panel.append(description);}
+            codes.forEach(code=>{const student=studentRoster.find(student=>student.seat===Number(code));if(!student)return;const tag=document.createElement('span'),number=document.createElement('small'),name=document.createElement('span');tag.className='female-common-name';number.textContent=code;name.textContent=student.name;tag.append(number,name);names.append(tag);});
+            if(!codes.length){const empty=document.createElement('p');empty.textContent=task?.limit?'尚未分配':'尚未設定人數';names.append(empty);}panel.append(names);return panel;
+        };
+        const makeSlot=slot=>{const box=document.createElement('div'),caption=document.createElement('small'),pair=document.createElement('div');box.className='female-restroom-slot student-female-restroom-slot communal-fixture toilet';caption.textContent=`${slot.label}（2 間）`;pair.className='female-toilet-pair student-female-restroom-fixtures fixture-2';pair.append(document.createElement('i'),document.createElement('i'));box.append(caption,pair);return box;};
         ['toilet-1','toilet-2','toilet-3'].forEach(id=>left.append(makeSlot(femaleRestroomSlots.find(slot=>slot.slot===id))));['toilet-4','toilet-5','toilet-6'].forEach(id=>right.append(makeSlot(femaleRestroomSlots.find(slot=>slot.slot===id))));
-        core.className='female-restroom-core';core.innerHTML='<strong>女廁</strong><span>整區共同清潔</span>';wash.append(makeSlot(femaleRestroomSlots.find(slot=>slot.slot==='wash')));floor.append(makeSlot(femaleRestroomSlots.find(slot=>slot.slot==='floor')));plan.append(left,core,right,wash,floor);map.append(plan);
-        const crew=document.createElement('section'),heading=document.createElement('h4'),description=document.createElement('p'),names=document.createElement('div');crew.className='female-common-crew';heading.textContent=`共同負責同學（${codes.length}／${task?.limit||0} 人）`;description.className='female-common-description';description.textContent=(task?.description||ClassroomGroups.femaleCleaningDescription).split(/\r?\n/).filter(Boolean).join('・');names.className='female-common-names';
-        codes.forEach(code=>{const student=studentRoster.find(student=>student.seat===Number(code));if(!student)return;const tag=document.createElement('span'),number=document.createElement('small'),name=document.createElement('span');tag.className='female-common-name';number.textContent=code;name.textContent=student.name;tag.append(number,name);names.append(tag);});
-        if(!codes.length){const empty=document.createElement('p');empty.textContent='尚未分配';names.append(empty);}
-        crew.append(heading,description,names);map.append(crew);return map;
+        core.className='female-restroom-core';core.innerHTML='<strong>女廁</strong><span>三組共同清潔</span>';wash.append(crewPanel(normalized.wash,'洗手台','wash'));floor.append(crewPanel(normalized.floor,'地板','floor'));plan.append(left,core,right,wash,floor);map.append(plan);
+        const crew=document.createElement('section');crew.className='female-common-crew female-crew-groups';for(let index=1;index<=3;index++)crew.append(crewPanel(normalized.groups.find(task=>task.groupIndex===index),`共同清潔第 ${index} 組`));map.append(crew);return map;
     }
     const maleRestroomSlots=[{slot:'toilet-1',label:'馬桶組 1',match:'馬桶組1',kind:'toilet'},{slot:'toilet-2',label:'馬桶組 2',match:'馬桶組2',kind:'toilet'},{slot:'urinal-1',label:'小便斗組 1',match:'小便斗組1',kind:'urinal'},{slot:'urinal-2',label:'小便斗組 2',match:'小便斗組2',kind:'urinal'},{slot:'wash',label:'洗手台',match:'洗手台',kind:'wash'},{slot:'floor',label:'地板',match:'地板',kind:'floor'}];
     function createMaleRestroomPlan(tasks,assignments) {
