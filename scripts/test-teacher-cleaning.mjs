@@ -15,6 +15,9 @@ class Element {
   set innerHTML(value){this.html=value;this.children=[];}
   get innerHTML(){return this.html||'';}
   addEventListener(event,handler){this.listeners[event]=handler;}
+  setAttribute(name,value){this[name]=value;}
+  set id(value){this._id=value;elements.set(value,this);}
+  get id(){return this._id;}
   remove(){this.removed=true;}
 }
 const students=Array.from({length:25},(_,index)=>({seat:index+1,name:'學生'+(index+1)}));
@@ -29,7 +32,7 @@ const $=id=>{if(!elements.has(id))elements.set(id,new Element('div'));return ele
 let writes=0;
 const context={console,$,document:{createElement:tag=>new Element(tag)},roster:()=>students,seatOrderedStudents:()=>students,
   readJSON:(key,fallback)=>data[key]??fallback,writeJSON:(key,value)=>{writes++;data[key]=value;},
-  activeCleaningTask:'',cleaningAssignmentMode:false,selectedCleaningSeat:'',openCleaningTaskMenu(){},ensureFemaleRestroomTasks(){},ensureMaleRestroomTasks(){}};
+  activeCleaningTask:'',cleaningAssignmentMode:false,selectedCleaningSeat:'',message(){},openCleaningTaskMenu(){},ensureFemaleRestroomTasks(){},ensureMaleRestroomTasks(){}};
 vm.createContext(context);vm.runInContext(read('classroom-groups.js'),context);
 for(const name of ['CLEANING_AREAS','femaleRestroomSlots','maleRestroomSlots']){
   const match=teacher.match(new RegExp('    const '+name+'=[^\\r\\n]+'));
@@ -43,6 +46,7 @@ for(const name of ['cleaningConfig','cleaningTaskMeta','cleaningTaskGroups','cle
   if(name==='cleanFemaleTaskLabel')vm.runInContext(teacher.match(/    const cleanFemaleTaskLabel=[^\r\n]+/)[0],context);
   else vm.runInContext(extract(name),context);
 }
+for(const name of ['bindCleaningStudentCard','updateCleaningSelectionStatus','selectCleaningStudent','moveCleaningStudent'])vm.runInContext(extract(name),context);
 assert.doesNotThrow(()=>context.renderDaily(),'Opening the full teacher cleaning page must not stop before rendering work buttons');
 const walk=element=>[element,...element.children.flatMap(walk)];
 const headings=$('cleaning-task-buttons').children.map(group=>group.children[0].textContent);
@@ -63,6 +67,49 @@ context.renderDaily();
 assert.equal(writes,0,'Viewing current-version work must not rewrite assignments');
 assert.equal(JSON.stringify(data),JSON.stringify({cleaningTaskConfig:tasks,cleaningAssignments:assignments}));
 assert.equal(JSON.stringify({tasks,assignments}),initial);
+// Click a precise target in a multi-person job: it must not swap the first person.
+const clone=value=>JSON.parse(JSON.stringify(value));
+const baseline=clone(data),assignmentWrites=[];
+context.writeJSON=(key,value)=>{assignmentWrites.push(key);data[key]=clone(value);};
+context.selectCleaningStudent('01');assert.equal(assignmentWrites.length,0);
+assert.equal($('cancel-cleaning-selection').hidden,false);
+context.selectCleaningStudent('14');
+assert.deepEqual(data.cleaningAssignments.class,['14']);
+assert.deepEqual(data.cleaningAssignments.floor,['13','01']);
+assert.deepEqual(assignmentWrites,['cleaningAssignments']);
+assert.equal(context.selectedCleaningSeat,'');
+Object.assign(data,clone(baseline));assignmentWrites.length=0;
+context.moveCleaningStudent('01','floor');
+assert.equal(assignmentWrites.length,0,'Dropping onto a full work panel must not pick a random occupant');
+assert.equal(context.selectedCleaningSeat,'01');
+const floorCard=walk($('cleaning-grid')).find(node=>node.className?.startsWith('cleaning-assignment-chip')&&node.textContent==='14 學生14');
+assert(floorCard);floorCard.onclick({stopPropagation(){}});
+assert.deepEqual(data.cleaningAssignments.floor,['13','01']);
+Object.assign(data,clone(baseline));assignmentWrites.length=0;context.selectedCleaningSeat='';
+context.selectCleaningStudent('01');context.selectCleaningStudent('25');
+assert.deepEqual(data.cleaningAssignments.class,['25'],'An unassigned student can replace the selected worker');
+assert(!Object.values(data.cleaningAssignments).flat().includes('01'));
+Object.assign(data,clone(baseline));assignmentWrites.length=0;context.selectedCleaningSeat='';
+context.selectCleaningStudent('01');context.selectCleaningStudent('01');assert.equal(assignmentWrites.length,0,'Selecting the same card cancels');
+context.selectCleaningStudent('13');context.selectCleaningStudent('14');assert.equal(assignmentWrites.length,0,'Selecting within one job only changes the selection');
+context.moveCleaningStudent('14','female-1');assert.deepEqual(data.cleaningAssignments['female-1'],['14']);
+assert.deepEqual(data.cleaningAssignments.floor,['13']);
+context.moveCleaningStudent('14',null);assert.deepEqual(data.cleaningAssignments['female-1'],[]);
+Object.assign(data,clone(baseline));assignmentWrites.length=0;context.selectedCleaningSeat='';
+data.cleaningTaskConfig.find(task=>task.id==='female-1').limit=0;
+context.moveCleaningStudent('01','female-1');assert.equal(assignmentWrites.length,0,'Zero capacity is protected');
+Object.assign(data,clone(baseline));context.selectedCleaningSeat='';
+// Every floor-plan label uses the same precise click/drop binding as the list.
+for(const [className,source,target] of [['teacher-area-person','02','14'],['teacher-restroom-name','03','14'],['cleaning-assignment-chip','10','14']]){
+  Object.assign(data,clone(baseline));assignmentWrites.length=0;context.selectedCleaningSeat='';context.renderDaily();
+  const first=walk($('cleaning-grid')).find(node=>node.className?.split(' ').includes(className)&&node.textContent.startsWith(source+' '));
+  assert(first,`Missing ${className} ${source}`);first.onclick({stopPropagation(){}});
+  const second=walk($('cleaning-grid')).find(node=>node.className?.split(' ').includes('cleaning-assignment-chip')&&node.textContent.startsWith(target+' '));
+  second.listeners.drop({preventDefault(){},stopPropagation(){},dataTransfer:{getData:()=>source}});
+  assert.deepEqual(data.cleaningAssignments.floor,['13',source]);
+  assert.deepEqual(assignmentWrites,['cleaningAssignments']);
+}
+Object.assign(data,clone(baseline));context.selectedCleaningSeat='';
 const slotLiteral=html=>html.match(/const maleRestroomSlots=(\[[^\r\n]+?\]);/)[1];
 const teacherSlots=JSON.parse(JSON.stringify(vm.runInNewContext(slotLiteral(teacher))));
 const boardSlots=JSON.parse(JSON.stringify(vm.runInNewContext(slotLiteral(board))));

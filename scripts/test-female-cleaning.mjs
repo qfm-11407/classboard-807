@@ -23,11 +23,12 @@ class Element {
   constructor(tag){this.tag=tag;this.children=[];this.listeners={};this.textContent='';this.style={};this.classList={add(){},remove(){}};}
   append(...children){this.children.push(...children);}
   addEventListener(event,fn){this.listeners[event]=fn;}
+  setAttribute(name,value){this[name]=value;}
 }
 const extract=(html,name)=>{const start=html.indexOf('    function '+name+'(');assert(start>=0);const tail=html.slice(start),end=tail.slice(1).search(/\n    (?:function |const |let |\$\()/);return end<0?tail:tail.slice(0,end+1);};
 const slots=[...Array.from({length:6},(_,i)=>({slot:'toilet-'+(i+1),label:'馬桶組 '+(i+1),kind:'toilet'})),{slot:'wash',label:'洗手台',kind:'wash'},{slot:'floor',label:'地板',kind:'floor'}];
 const ui={ClassroomGroups:G,document:{createElement:tag=>new Element(tag)},roster:()=>roster,studentRoster:roster,femaleRestroomSlots:slots,selectedCleaningSeat:'',renderDaily(){},moveCleaningStudent(){},openCleaningTaskMenu(){},ensureFemaleRestroomTasks(){}};vm.createContext(ui);
-for(const [html,name] of [[teacher,'cleaningTaskMeta'],[teacher,'createTeacherFemaleRestroomPlan'],[board,'createFemaleRestroomPlan']])vm.runInContext(extract(html,name),ui);
+for(const [html,name] of [[teacher,'cleaningTaskMeta'],[teacher,'bindCleaningStudentCard'],[teacher,'createTeacherFemaleRestroomPlan'],[board,'createFemaleRestroomPlan']])vm.runInContext(extract(html,name),ui);
 const walk=element=>[element,...element.children.flatMap(walk)],isName=node=>node.className==='female-common-name'||node.className?.startsWith('cleaning-assignment-chip');
 for(const plan of [ui.createTeacherFemaleRestroomPlan(tasks,assignments),ui.createFemaleRestroomPlan(tasks,assignments)]){
   const nodes=walk(plan),fixturePlan=plan.children[0],crews=plan.children[1];
