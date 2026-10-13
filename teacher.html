@@ -18,6 +18,7 @@
   <script src="https://www.gstatic.com/firebasejs/12.17.1/firebase-firestore-compat.js"></script>
   <script src="firebase-classroom.js?v=student-archive-1"></script>
   <script src="classroom-groups.js?v=3"></script>
+  <script src="exam-calendar.js?v=1"></script>
   <link rel="stylesheet" href="teacher-board-preview.css?v=1">
   <script src="teacher-board-preview.js?v=1" defer></script>
   <script src="teacher-student-archive.js?v=1" defer></script>
@@ -190,6 +191,10 @@
     .cleaning-assignment-workspace > .assignment-selection-bar { grid-column:1 / -1; }
     .assignment-selection-bar .row { margin:0; flex-wrap:wrap; gap:7px; }
     .assignment-selection-bar .btn { flex:none; white-space:nowrap; }
+    .exam-date-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; margin:12px 0; }
+    .exam-date-grid label { min-width:0; padding:12px; border:1px solid var(--line); border-radius:13px; background:#f3f9f5; }
+    .exam-date-grid input { width:100%; min-width:0; max-width:100%; box-sizing:border-box; margin-top:8px; }
+    @media(max-width:700px) { .exam-date-grid { grid-template-columns:1fr; } }
     .assignment-selection-bar [hidden] { display:none!important; }
     .student.exchange-selected,.cleaning-assignment-chip.selected,.teacher-area-person.selected,.teacher-restroom-name.selected { outline:3px solid #d7a735; outline-offset:2px; box-shadow:0 0 0 5px #f7e8bb; }
     @media (max-width:700px) { .assignment-selection-bar { top:4px; padding:10px; gap:8px; }.assignment-selection-bar .btn { min-height:40px; padding:8px 12px; }.assignment-selection-bar .hint { flex-basis:100%; } }
@@ -240,7 +245,14 @@
 
     <section class="panel" id="panel-timetable"><h2>每週課表</h2><p class="hint">修改節次時間與星期一至星期五的科目後按下儲存。</p><div class="table-wrap"><table><thead><tr><th>節次／時間</th><th>星期一</th><th>星期二</th><th>星期三</th><th>星期四</th><th>星期五</th></tr></thead><tbody id="timetable-body"></tbody></table></div><div class="card" style="margin-top:18px;max-width:680px"><h3 style="margin-top:0">科目與教師</h3><p class="hint">課表中的科目會自動列在此處；每個科目只需填寫一次教師名稱，學生端會自動顯示。可用上下按鈕調整此表順序。</p><div class="table-wrap"><table class="subject-teacher-table"><thead><tr><th>科目</th><th>教師名稱</th><th>順序</th></tr></thead><tbody id="subject-teacher-body"></tbody></table></div></div><p class="notice" id="timetable-message"></p><div class="row"><button class="btn light" id="print-timetable" type="button">列印白底版本</button><button class="btn" id="save-timetable" type="button">儲存課表與教師對照</button></div></section>
 
-    <section class="panel" id="panel-exam"><h2>段考考程表</h2><p class="hint">可切換兩日或三日考程；每一天設定完整七節，學生端會依上午／下午自動顯示相關時段。</p><div class="row" style="margin-bottom:14px"><label for="exam-day-count" style="margin:0">考試天數</label><select id="exam-day-count" style="width:auto"><option value="2">兩日</option><option value="3">三日</option></select><label for="exam-day-select" style="margin:0">設定日期</label><select id="exam-day-select" style="width:auto"></select></div><div class="table-wrap"><table><thead><tr><th>開始</th><th>結束</th><th>項目／科目</th><th>類型</th><th>操作</th></tr></thead><tbody id="exam-body"></tbody></table></div><div class="row" style="margin-top:14px"><button class="btn light" id="add-exam-row" type="button">新增時段</button><button class="btn" id="save-exam" type="button">儲存段考考程</button></div><p class="notice" id="exam-message"></p></section>
+    <section class="panel" id="panel-exam">
+      <h2>段考考程表</h2><p class="hint">設定各天實際日期後，學生端會依臺灣日期自動顯示當天考程，並切換上午／下午；非考試日不顯示其他天的考程。原有七節課內容會保留。</p>
+      <div class="row"><label for="exam-day-count" style="margin:0">考試天數</label><select id="exam-day-count" style="width:auto"><option value="2">兩日</option><option value="3">三日</option></select></div>
+      <div id="exam-dates" class="exam-date-grid"></div><button class="btn light" id="save-exam-dates" type="button">儲存考程日期</button><p id="exam-date-status" class="hint" style="margin:10px 0 18px" aria-live="polite"></p>
+      <div class="row" style="margin-bottom:14px"><label for="exam-day-select" style="margin:0">編輯考程</label><select id="exam-day-select" style="width:auto"></select></div>
+      <div class="table-wrap"><table><thead><tr><th>開始</th><th>結束</th><th>項目／科目</th><th>類型</th><th>操作</th></tr></thead><tbody id="exam-body"></tbody></table></div>
+      <div class="row" style="margin-top:14px"><button class="btn light" id="add-exam-row" type="button">新增時段</button><button class="btn" id="save-exam" type="button">儲存段考考程</button></div><p class="notice" id="exam-message"></p>
+    </section>
 
     <section class="panel" id="panel-tasks"><h2>課程任務與繳交紀錄</h2><p class="hint">設定的任務與完成情況會顯示在班級看板的各學科資料夾。</p><div class="row" style="margin-bottom:15px"><label for="subject-select" style="margin:0">科目</label><select id="subject-select" style="width:auto"><option>國文</option><option>英文</option><option>數學</option><option>理化</option><option>地理</option><option>歷史</option><option>公民</option><option>本土</option><option>資科</option><option>生科</option><option>健康</option><option>體育</option><option>音樂</option><option>表演</option><option>美術</option><option>童軍</option><option>家政</option><option>輔導</option><option>閱讀</option></select><button class="btn light" id="new-task">新增任務</button></div><div class="two-cols"><div id="task-list" class="task-list"></div><div class="card"><div class="row" style="justify-content:space-between"><label for="task-name" style="margin:0">任務名稱</label><button class="btn danger" id="delete-task">刪除任務</button></div><input id="task-name" type="text" style="margin:8px 0 14px"><p class="hint" style="margin-bottom:10px">點選學生方塊切換「已交」。</p><div id="task-students" class="student-grid"></div><p class="notice" id="task-message"></p><button class="btn" id="save-task">儲存任務</button></div></div></section>
 
@@ -289,6 +301,7 @@
     const escapeHTML = value => String(value ?? '').replace(/[&<>'"]/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]));
     const CLOUD_ENDPOINT = '/api/classroom';
     const CLOUD_KEYS = ['classroomTotalStudents','classroomStudentNames','classroomStudentRoster','classSeating','classSeatingSession','classroomSeatingLayout','seatingVersions','classTimetable','classTimeSlots','subjectTeachers','subjectTeacherOrder','examSchedule','examScheduleDays','examDayCount','examActiveDay','subjectData','dailyTasks','todayTasks','tomorrowTasks','taskHistory','taskDate','scheduledTasks','nonSchoolDays','cleaningTasks','cleaningTaskConfig','cleaningAssignments','femaleRestroomLayout','dutyCount','dutyAssignments','dutyRotationStartDate','classCadres','classCadreConfig','leaveRecords','leaveHalfDayRecords','leaveSettlements','lunchAssignments','lunchCategoryLimits','lunchWeeklyGroup','lunchWeeklyGroups','lunchHelperSeats','lunchRotationStartDate','lunchRotationVersion','monthlyMenus','notebookCheckins'];
+    CLOUD_KEYS.push('examDates');
     const PUBLIC_MENU_URL = 'https://raw.githubusercontent.com/qfm-11407/classboard-807/main/data/monthly-menu.json';
     let publicMonthlyMenus = {};
     let publicMenuLoadStarted = false;
@@ -311,7 +324,7 @@
     function cloudData() { return Object.fromEntries(CLOUD_KEYS.map(key => [key, localStorage.getItem(key)]).filter(([, value]) => value !== null)); }
     function normalizeTimeSlots(value) { const slots=Array.isArray(value)?[...value]:[...defaultSlots]; if (slots[2] === '10:10 - 11:00') slots[2]='10:15 - 11:00'; return slots; }
     function repairThirdTimeSlot() { const saved=readJSON('classTimeSlots', null); if (!Array.isArray(saved)) return; const corrected=normalizeTimeSlots(saved); if (JSON.stringify(saved)!==JSON.stringify(corrected)) writeJSON('classTimeSlots', corrected); }
-    function restoreCloudData(data) { CLOUD_KEYS.forEach(key => { if (Object.hasOwn(data, key)) localStorage.setItem(key, data[key]); else localStorage.removeItem(key); }); repairThirdTimeSlot();migrateLunchRotationSchedule(); }
+    function restoreCloudData(data) { CLOUD_KEYS.forEach(key => { if (Object.hasOwn(data, key)) localStorage.setItem(key, data[key]); else localStorage.removeItem(key); }); examSettingsLoaded=false;repairThirdTimeSlot();migrateLunchRotationSchedule(); }
     async function saveCloudSnapshot() { while(cloudSyncPromise)await cloudSyncPromise;window.TeacherRestoreUI?.syncStatus('busy','同步中…');const requested=cloudData(),operation=FirebaseClassroom.saveState(requested,{managedKeys:CLOUD_KEYS});cloudSyncPromise=operation;try{await operation;window.TeacherRestoreUI?.syncStatus('success','已同步到雲端，儲存前資料已自動備份。');}catch(error){window.TeacherRestoreUI?.retainDraft(requested);window.TeacherRestoreUI?.syncStatus('error',error.code==='permission-denied'?'請重新開啟最新版教師頁再儲存。':error.message||'同步失敗，本機修改仍保留。');throw error;}finally{if(cloudSyncPromise===operation)cloudSyncPromise=null;} }
     async function syncCloud() { if (!cloudAuthorization || cloudSyncInFlight) return;cloudSyncQueued=false;cloudSyncInFlight=true;try{await saveCloudSnapshot();}catch(_){}finally{cloudSyncInFlight=false;if(cloudSyncQueued){clearTimeout(cloudSyncTimer);cloudSyncTimer=setTimeout(syncCloud,0);}} }
     async function syncCloudNow() { if (!cloudAuthorization) throw new Error('請先登入教師帳號。');clearTimeout(cloudSyncTimer);cloudSyncQueued=false;await saveCloudSnapshot(); }
@@ -673,16 +686,40 @@
     }
     $('print-timetable').addEventListener('click', printTimetableWhite);
 
-    let examDraft = [];
+    let examDraft = [], examDateDraft = {}, examSettingsLoaded = false;
+    function renderExamDates() {
+      const container=$('exam-dates');container.innerHTML='';
+      ExamCalendar.dayIds($('exam-day-count').value).forEach((id,index)=>{const label=document.createElement('label'),input=document.createElement('input');label.textContent=`第 ${index+1} 天日期`;input.type='date';input.id=`exam-date-${id}`;input.value=examDateDraft[id]||'';input.setAttribute('aria-label',`第 ${index+1} 天考程日期`);input.oninput=()=>{examDateDraft[id]=input.value;refreshExamDayOptions();};label.append(input);container.append(label);});
+      const saved=readJSON('examDates',{}),selected=ExamCalendar.selection({dates:saved,count:readJSON('examDayCount',2),today:taipeiDay()});
+      $('exam-date-status').textContent=selected.dated?(selected.day?`今日自動顯示第 ${Number(selected.day.slice(3))} 天考程。`:'今日沒有段考考程。'):'尚未設定考程日期；暫時保留舊版手動顯示，請填妥日期並儲存以啟用自動切換。';
+    }
+    async function saveExamDates() {
+      let dates;try{dates=ExamCalendar.validateDates(examDateDraft,$('exam-day-count').value,true);}catch(error){return message('exam-message',error.message);}
+      writeJSON('examDates',{...readJSON('examDates',{}),...dates});writeJSON('examDayCount',Number($('exam-day-count').value));
+      const button=$('save-exam-dates');button.disabled=true;button.textContent='同步中…';
+      try{await syncCloudNow();renderExamDates();refreshExamDayOptions();message('exam-message','考程日期已同步，學生端將依日期自動切換。');}catch(error){message('exam-message',error.message||'日期尚未同步成功，請重試。');}finally{button.disabled=false;button.textContent='儲存考程日期';}
+    }
     function normalExamSchedule(value) { return Array.isArray(value) ? value.map(item => ({subject:String(item?.subject || '').trim(),start:String(item?.start || ''),end:String(item?.end || ''),type:item?.type === 'break' ? 'break' : 'exam'})).filter(item => item.subject || item.start || item.end) : []; }
-    function refreshExamDayOptions() { const count=Number($('exam-day-count').value)||2, select=$('exam-day-select'), previous=select.value; select.innerHTML=Array.from({length:count},(_,index)=>`<option value="day${index+1}">第 ${index+1} 天</option>`).join(''); select.value=previous && [...select.options].some(option=>option.value===previous) ? previous : 'day1'; }
-    function loadExamDraft() { refreshExamDayOptions(); const days=readJSON('examScheduleDays',{}), selectedDay=$('exam-day-select').value, saved=normalExamSchedule(days[selectedDay] || (selectedDay==='day1' ? readJSON('examSchedule', []) : [])); examDraft=(saved.length ? saved : defaultExamSchedule).map(item => ({...item})); while(examDraft.filter(item=>item.type!=='break').length<7) examDraft.push({subject:'',start:'',end:'',type:'exam'}); }
+    function refreshExamDayOptions() { const select=$('exam-day-select'), previous=select.value;select.innerHTML=ExamCalendar.dayIds($('exam-day-count').value).map((id,index)=>`<option value="${id}">第 ${index+1} 天${ExamCalendar.validDate(examDateDraft[id])?'（'+examDateDraft[id]+'）':''}</option>`).join('');select.value=previous&&[...select.options].some(option=>option.value===previous)?previous:'day1'; }
+    function loadExamDraft() { if(!examSettingsLoaded){$('exam-day-count').value=Number(readJSON('examDayCount',2))===3?'3':'2';examDateDraft={...readJSON('examDates',{})};examSettingsLoaded=true;renderExamDates();}refreshExamDayOptions(); const days=readJSON('examScheduleDays',{}), selectedDay=$('exam-day-select').value, saved=normalExamSchedule(days[selectedDay] || (selectedDay==='day1' ? readJSON('examSchedule', []) : [])); examDraft=(saved.length ? saved : defaultExamSchedule).map(item => ({...item})); while(examDraft.filter(item=>item.type!=='break').length<7) examDraft.push({subject:'',start:'',end:'',type:'exam'}); }
     function renderExamEditor() { loadExamDraft(); const body=$('exam-body'); body.innerHTML=''; examDraft.forEach((item,index)=>{ const tr=document.createElement('tr'); const start=document.createElement('input'); start.type='time'; start.value=item.start; start.oninput=()=>{examDraft[index].start=start.value;}; const end=document.createElement('input'); end.type='time'; end.value=item.end; end.oninput=()=>{examDraft[index].end=end.value;}; const subject=document.createElement('input'); subject.type='text'; subject.value=item.subject; subject.placeholder='例如：國文（01）'; subject.oninput=()=>{examDraft[index].subject=subject.value;}; const type=document.createElement('select'); type.innerHTML='<option value="exam">考試／活動</option><option value="break">休息</option>'; type.value=item.type; type.onchange=()=>{examDraft[index].type=type.value;}; const remove=document.createElement('button'); remove.type='button'; remove.className='btn danger'; remove.textContent='移除'; remove.onclick=()=>{examDraft.splice(index,1); renderExamEditorFromDraft();}; [start,end,subject,type,remove].forEach(element=>{const td=document.createElement('td');td.append(element);tr.append(td);}); body.append(tr); }); }
     function renderExamEditorFromDraft() { const body=$('exam-body'); body.innerHTML=''; examDraft.forEach((item,index)=>{ const tr=document.createElement('tr'); const start=document.createElement('input'); start.type='time'; start.value=item.start; start.oninput=()=>{examDraft[index].start=start.value;}; const end=document.createElement('input'); end.type='time'; end.value=item.end; end.oninput=()=>{examDraft[index].end=end.value;}; const subject=document.createElement('input'); subject.type='text'; subject.value=item.subject; subject.placeholder='例如：國文（01）'; subject.oninput=()=>{examDraft[index].subject=subject.value;}; const type=document.createElement('select'); type.innerHTML='<option value="exam">考試／活動</option><option value="break">休息</option>'; type.value=item.type; type.onchange=()=>{examDraft[index].type=type.value;}; const remove=document.createElement('button'); remove.type='button'; remove.className='btn danger'; remove.textContent='移除'; remove.onclick=()=>{examDraft.splice(index,1); renderExamEditorFromDraft();}; [start,end,subject,type,remove].forEach(element=>{const td=document.createElement('td');td.append(element);tr.append(td);}); body.append(tr); }); }
     $('add-exam-row').addEventListener('click',()=>{examDraft.push({subject:'',start:'',end:'',type:'exam'});renderExamEditorFromDraft();});
-    $('exam-day-count').addEventListener('change',()=>{refreshExamDayOptions();renderExamEditor();});
+    $('save-exam-dates').addEventListener('click',saveExamDates);
+    $('exam-day-count').addEventListener('change',()=>{renderExamDates();refreshExamDayOptions();renderExamEditor();});
     $('exam-day-select').addEventListener('change',renderExamEditor);
-    $('save-exam').addEventListener('click',()=>{ const data=normalExamSchedule(examDraft), examCount=data.filter(item=>item.type!=='break').length; if(examCount!==7) return message('exam-message',`每一天請設定完整七節考試／活動（目前 ${examCount} 節）。`); for(const item of data) { if(!/^\d{2}:\d{2}$/.test(item.start) || !/^\d{2}:\d{2}$/.test(item.end) || !item.subject) return message('exam-message','請完整填寫每個時段的時間與項目。'); if(item.start >= item.end) return message('exam-message','結束時間必須晚於開始時間。'); } const days=readJSON('examScheduleDays',{});days[$('exam-day-select').value]=data;writeJSON('examScheduleDays',days);writeJSON('examDayCount',Number($('exam-day-count').value));writeJSON('examActiveDay',$('exam-day-select').value);writeJSON('examSchedule',days.day1 || data); message('exam-message','段考考程已儲存。'); });
+    async function saveExamSchedule() {
+      let dates;try{dates=ExamCalendar.validateDates(examDateDraft,$('exam-day-count').value,Object.keys(readJSON('examDates',{})).length>0);}catch(error){return message('exam-message',error.message);}
+      const data=normalExamSchedule(examDraft),examCount=data.filter(item=>item.type!=='break').length;
+      if(examCount!==7)return message('exam-message',`每一天請設定完整七節考試／活動（目前 ${examCount} 節）。`);
+      for(const item of data){if(!/^\d{2}:\d{2}$/.test(item.start)||!/^\d{2}:\d{2}$/.test(item.end)||!item.subject)return message('exam-message','請完整填寫每個時段的時間與項目。');if(item.start>=item.end)return message('exam-message','結束時間必須晚於開始時間。');}
+      const days=readJSON('examScheduleDays',{});days[$('exam-day-select').value]=data;
+      writeJSON('examScheduleDays',days);writeJSON('examDayCount',Number($('exam-day-count').value));writeJSON('examActiveDay',$('exam-day-select').value);writeJSON('examSchedule',days.day1||data);
+      if(Object.keys(dates).length)writeJSON('examDates',{...readJSON('examDates',{}),...dates});
+      const button=$('save-exam');button.disabled=true;button.textContent='同步中…';
+      try{await syncCloudNow();renderExamDates();message('exam-message','段考考程已同步到雲端。');}catch(error){message('exam-message',error.message||'考程尚未同步成功，請重試。');}finally{button.disabled=false;button.textContent='儲存段考考程';}
+    }
+    $('save-exam').addEventListener('click',saveExamSchedule);
 
     let activeTaskId = null;
     function currentSubject() { return $('subject-select').value; }

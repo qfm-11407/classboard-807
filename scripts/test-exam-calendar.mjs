@@ -1,0 +1,77 @@
+import fs from 'node:fs';
+import vm from 'node:vm';
+import assert from 'node:assert/strict';
+const read=file=>fs.readFileSync(new URL('../'+file,import.meta.url),'utf8');
+const teacher=read('teacher.html'),board=read('board.html'),context={Intl,Date};
+vm.createContext(context);vm.runInContext(read('exam-calendar.js'),context);
+const calendar=context.ExamCalendar,dates={day1:'2026-10-13',day2:'2026-10-14',day3:'2026-10-16'};
+const plain=value=>JSON.parse(JSON.stringify(value));
+assert.deepEqual(plain(calendar.validateDates(dates,2,true)),{day1:dates.day1,day2:dates.day2});
+assert.deepEqual(plain(calendar.validateDates(dates,3,true)),dates);
+for(const invalid of [{day1:'2026-02-30',day2:dates.day2},{day1:dates.day1,day2:dates.day1},{day1:dates.day2,day2:dates.day1},{day1:dates.day1}])assert.throws(()=>calendar.validateDates(invalid,2,true));
+assert.deepEqual(plain(calendar.validateDates({},2)),{});
+assert.throws(()=>calendar.validateDates({},2,true));
+assert.equal(calendar.selection({dates,count:3,activeDay:'day2',today:dates.day1}).day,'day1');
+assert.equal(calendar.selection({dates,count:3,activeDay:'day1',today:dates.day2}).day,'day2');
+assert.equal(calendar.selection({dates,count:3,today:dates.day3}).day,'day3');
+assert.equal(calendar.selection({dates,count:2,today:dates.day3}).day,null,'Disabled third day is not shown');
+assert.equal(calendar.selection({dates,count:3,today:'2026-10-15'}).day,null,'Gap dates do not borrow another day');
+assert.equal(calendar.selection({dates,count:3,today:'2026-10-12'}).day,null);
+assert.equal(calendar.selection({dates,count:3,today:'2026-10-17'}).day,null);
+assert.equal(calendar.selection({dates:{},activeDay:'day2',today:dates.day1}).day,'day2','Legacy settings still work before dates are assigned');
+assert.equal(calendar.taipeiClock(new Date('2026-10-13T16:01:00Z')).today,'2026-10-14');
+assert.equal(calendar.taipeiClock(new Date('2026-10-13T03:59:00Z')).minutes,719);
+assert.equal(calendar.taipeiClock(new Date('2026-10-13T04:00:00Z')).minutes,720);
+const extract=(html,name)=>{const start=html.lastIndexOf('    function '+name+'(')>=0?html.lastIndexOf('    function '+name+'('):html.lastIndexOf('    async function '+name+'(');assert(start>=0,name);const tail=html.slice(start),end=tail.slice(1).search(/\n    (?:function |async function |const |let |\$\()/);return end<0?tail:tail.slice(0,end+1);};
+const schedule=subject=>[{subject,start:'08:20',end:'09:05',type:'exam'}];
+const stored={examDates:dates,examDayCount:3,examActiveDay:'day2',examScheduleDays:{day1:schedule('第一日國文'),day2:schedule('第二日英文'),day3:schedule('第三日數學')},examSchedule:schedule('旧版')};
+let clock={today:dates.day1,minutes:500};
+Object.assign(context,{localStorage:{getItem:key=>stored[key]===undefined?null:JSON.stringify(stored[key])},defaultExamData:schedule('預設'),ExamCalendar:{...calendar,taipeiClock:()=>clock}});
+for(const name of ['getExamSelection','getExamData'])vm.runInContext(extract(board,name),context);
+assert.equal(context.getExamData()[0].subject,'第一日國文');
+clock.today=dates.day2;assert.equal(context.getExamData()[0].subject,'第二日英文');
+clock.today=dates.day3;assert.equal(context.getExamData()[0].subject,'第三日數學');
+clock.today='2026-10-15';assert.deepEqual(plain(context.getExamData()),[]);
+delete stored.examScheduleDays.day2;clock.today=dates.day2;assert.deepEqual(plain(context.getExamData()),[],'Missing matching-day content cannot fall back to first day');
+stored.examDates={};assert.equal(context.getExamData()[0].subject,'第一日國文');
+// Verify rendered empty state, current day label, and Taiwan AM/PM filtering.
+const nodes=new Map(),$=id=>{if(!nodes.has(id))nodes.set(id,{textContent:'',innerHTML:'',value:'',children:[],append(...children){this.children.push(...children);}});return nodes.get(id);};
+Object.assign(context,{document:{getElementById:$},renderExamAttendance(){}});
+for(const name of ['timeToMinutes','renderExamSchedule'])vm.runInContext(extract(board,name),context);
+stored.examDates=dates;clock={today:'2026-10-15',minutes:500};context.renderExamSchedule();assert($('exam-schedule-container').innerHTML.includes('今日沒有段考考程'));
+stored.examScheduleDays.day1=[...schedule('上午國文'),{subject:'下課',start:'09:05',end:'09:15',type:'break'},{subject:'午休',start:'11:55',end:'13:20',type:'break'},{subject:'下午英文',start:'13:20',end:'14:05',type:'exam'}];
+clock={today:dates.day1,minutes:500};context.renderExamSchedule();assert($('exam-schedule-title').textContent.includes('上午考程｜第 1 天'));assert($('exam-schedule-container').innerHTML.includes('下課'));assert(!$('exam-schedule-container').innerHTML.includes('下午英文'));
+clock.minutes=800;context.renderExamSchedule();assert($('exam-schedule-title').textContent.includes('下午'));assert($('exam-schedule-container').innerHTML.includes('下午英文'));assert(!$('exam-schedule-container').innerHTML.includes('午休'));
+// Date-only saves preserve every day's subject rows and use the existing cloud sync.
+const writes=[];let synced=0,notice='';
+Object.assign(context,{$,examDateDraft:dates,examSettingsLoaded:true,examDraft:[],readJSON:(key,fallback)=>stored[key]??fallback,writeJSON:(key,value)=>{writes.push(key);stored[key]=plain(value);},syncCloudNow:async()=>{synced++;},message:(id,text)=>{notice=text;},renderExamDates(){},refreshExamDayOptions(){}});
+$('exam-day-count').value='3';
+vm.runInContext(extract(teacher,'saveExamDates'),context);
+const before=JSON.stringify(stored.examScheduleDays);await context.saveExamDates();assert.equal(JSON.stringify(stored.examScheduleDays),before);assert.equal(synced,1);assert.deepEqual(writes,['examDates','examDayCount']);assert(notice.includes('已同步'));
+context.examDateDraft={day1:dates.day1,day2:dates.day1};$('exam-day-count').value='2';writes.length=0;await context.saveExamDates();assert.equal(writes.length,0);assert(notice.includes('重複'));
+context.examDateDraft=dates;$('exam-day-count').value='3';context.syncCloudNow=async()=>{throw Error('測試離線');};await context.saveExamDates();assert.equal(notice,'測試離線');assert.equal($('save-exam-dates').disabled,false);
+// Saving day 2 preserves day 1/day 3 and retains the real dates, not the editor selection.
+context.syncCloudNow=async()=>{synced++;};context.examDraft=Array.from({length:7},(_,i)=>({subject:'第二日第'+(i+1)+'節',start:'08:20',end:'09:05',type:'exam'}));$('exam-day-select').value='day2';
+vm.runInContext(extract(teacher,'normalExamSchedule'),context);vm.runInContext(extract(teacher,'saveExamSchedule'),context);
+const first=JSON.stringify(stored.examScheduleDays.day1),third=JSON.stringify(stored.examScheduleDays.day3);await context.saveExamSchedule();
+assert.equal(JSON.stringify(stored.examScheduleDays.day1),first);assert.equal(JSON.stringify(stored.examScheduleDays.day3),third);assert.equal(stored.examDates.day1,dates.day1);
+clock={today:dates.day1,minutes:500};assert.equal(context.getExamData()[0].subject,'上午國文');
+// Date key is managed by both pages; changing restore points invalidates stale editor data.
+assert(teacher.includes("CLOUD_KEYS.push('examDates')"));assert(board.includes("CLOUD_KEYS.push('examDates')"));
+assert(extract(teacher,'restoreCloudData').includes('examSettingsLoaded=false'));
+// Opening the actual date editor loads saved three-day settings and keeps draft dates on switching.
+const makeElement=()=>({children:[],value:'',setAttribute(){},append(...children){this.children.push(...children);}});
+context.document.createElement=makeElement;context.taipeiDay=()=>dates.day1;
+Object.defineProperty($('exam-dates'),'innerHTML',{set(){this.children=[];},configurable:true});
+Object.defineProperty($('exam-day-select'),'innerHTML',{set(value){this.options=[...value.matchAll(/<option value="([^"]+)"/g)].map(match=>({value:match[1]}));},configurable:true});
+for(const name of ['renderExamDates','refreshExamDayOptions','loadExamDraft'])vm.runInContext(extract(teacher,name),context);
+context.examSettingsLoaded=false;stored.examDayCount=3;stored.examDates=dates;writes.length=0;context.loadExamDraft();
+assert.equal($('exam-day-count').value,'3');assert.equal($('exam-dates').children.length,3);assert.equal(writes.length,0);
+assert.equal($('exam-dates').children[0].children[0].value,dates.day1);
+const thirdDate=$('exam-dates').children[2].children[0];thirdDate.value='2026-10-17';thirdDate.oninput();
+$('exam-day-select').value='day2';context.loadExamDraft();assert.equal(context.examDateDraft.day3,'2026-10-17');
+$('exam-day-count').value='2';context.renderExamDates();assert.equal($('exam-dates').children.length,2);
+$('exam-day-count').value='3';context.renderExamDates();assert.equal($('exam-dates').children[2].children[0].value,'2026-10-17');
+assert.equal(writes.length,0,'Editing dates and viewing existing schedules do not write until saved');
+for(const html of [teacher,board]){assert(html.includes('exam-calendar.js?v=1'));for(const match of html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g))if(match[1].trim())new vm.Script(match[1]);}
+console.log('Exam calendar: passed (2/3 dates, validation, Taiwan rollover, matching day independent of last save, disabled/gap dates, no incorrect fallback, legacy preservation, AM/PM, date-only cloud sync, offline feedback and seven-period save preservation).');
