@@ -14,7 +14,7 @@ export function parseTemperature(html) {
   const sourceClock=field(html,'customTime');
   return {school:SCHOOL,temperatureC:temperatures[0],sourceClock:/^\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2}$/.test(sourceClock)?sourceClock:null,reloadComplete:field(html,'reflashFlag')==='false'};
 }
-export async function fetchTemperature({fetchImpl=fetch,now=()=>new Date(),maxRequests=4}={}) {
+export async function fetchTemperature({fetchImpl=fetch,now=()=>new Date(),maxRequests=4,onAttempt=()=>{}}={}) {
   const cookies=new Map();let lastError=new Error('看板未回傳溫度');
   for(let attempt=0;attempt<maxRequests;attempt++){
     try{
@@ -24,19 +24,19 @@ export async function fetchTemperature({fetchImpl=fetch,now=()=>new Date(),maxRe
       const parsed=parseTemperature(await response.text());
       if(!parsed.reloadComplete)throw new Error('等待看板完成重新載入');
       return {version:1,status:'ok',school:parsed.school,temperatureC:parsed.temperatureC,fetchedAt:now().toISOString(),sourceClock:parsed.sourceClock,sourceUrl:SOURCE_URL};
-    }catch(error){lastError=error;}
+    }catch(error){lastError=error;onAttempt({attempt:attempt+1,message:error.message,code:error.cause?.code||error.name});}
   }
   throw lastError;
 }
-export async function captureTemperature(output,{fetchImpl=fetch,now=()=>new Date()}={}) {
+export async function captureTemperature(output,{fetchImpl=fetch,now=()=>new Date(),onAttempt=()=>{}}={}) {
   let snapshot;
-  try{snapshot=await fetchTemperature({fetchImpl,now});}catch(_){snapshot={version:1,status:'unavailable',school:SCHOOL,temperatureC:null,fetchedAt:null,checkedAt:now().toISOString(),sourceUrl:SOURCE_URL};}
+  try{snapshot=await fetchTemperature({fetchImpl,now,onAttempt});}catch(_){snapshot={version:1,status:'unavailable',school:SCHOOL,temperatureC:null,fetchedAt:null,checkedAt:now().toISOString(),sourceUrl:SOURCE_URL};}
   await mkdir(dirname(output),{recursive:true});await writeFile(output,JSON.stringify(snapshot,null,2)+'\n');
   return snapshot;
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).href){
   const output=process.argv[2];if(!output)throw new Error('請指定溫度資料輸出路徑');
-  const snapshot=await captureTemperature(resolve(output));
+  const snapshot=await captureTemperature(resolve(output),{onAttempt:result=>console.log(`讀取 ${result.attempt}：${result.code} ${result.message}`)});
   if(snapshot.status!=='ok'){console.error('無法擷取有效校園溫度，已輸出無資料狀態。');process.exitCode=1;}
   else console.log(`${snapshot.school} ${snapshot.temperatureC.toFixed(1)}°C；擷取 ${snapshot.fetchedAt}（看板頁面時間 ${snapshot.sourceClock||'未提供'}，非量測時間）`);
 }
