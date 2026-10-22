@@ -30,7 +30,7 @@ export async function fetchTemperature({fetchImpl=fetch,now=()=>new Date(),maxRe
 }
 export async function captureTemperature(output,{fetchImpl=fetch,now=()=>new Date(),onAttempt=()=>{}}={}) {
   let snapshot;
-  try{snapshot=await fetchTemperature({fetchImpl,now,onAttempt});}catch(_){snapshot={version:1,status:'unavailable',school:SCHOOL,temperatureC:null,fetchedAt:null,checkedAt:now().toISOString(),sourceUrl:SOURCE_URL};}
+  try{snapshot=await fetchTemperature({fetchImpl,now,onAttempt});}catch(error){const code=String(error.cause?.code||error.name||'SOURCE_UNAVAILABLE');snapshot={version:1,status:'unavailable',school:SCHOOL,temperatureC:null,fetchedAt:null,checkedAt:now().toISOString(),sourceUrl:SOURCE_URL,errorCode:/^[A-Za-z0-9_]{1,50}$/.test(code)?code:'SOURCE_UNAVAILABLE'};}
   await mkdir(dirname(output),{recursive:true});await writeFile(output,JSON.stringify(snapshot,null,2)+'\n');
   return snapshot;
 }
