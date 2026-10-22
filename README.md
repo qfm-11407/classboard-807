@@ -74,9 +74,11 @@
 
 時間卡片的日期下方顯示學校能源看板溫度與「擷取時間」，不代表教室室內實測或感測器量測時間。來源：學校首頁公開嵌入的校園能源資訊看板。
 
-GitHub Actions「更新校園溫度」約每 10 分鐘建立公開工作階段、依看板流程重新載入，再擷取溫度。可在 Actions 手動 Run workflow 備用。資料只發布至 `codex/campus-temperature-data` 分支的 `campus-temperature.json`，不更動 main、班級 Firebase 資料或重新部署網站；不使用學校登入資訊、API 金鑰或 Firebase 服務帳號。
+擷取程式會建立公開工作階段、依看板流程重新載入，再讀取溫度。本機已驗證成功；但 GitHub Hosted Linux、Windows 連線來源 8443 埠均逾時（`UND_ERR_CONNECT_TIMEOUT`），因此目前未啟用自動排程，避免反覆錯誤。GitHub Actions「更新校園溫度」僅保留手動 Run workflow，待來源可供雲端連線後再啟用。尚未在使用者電腦建立任何排程或常駐服務。
 
-學生端每 2 分鐘讀取 JSON，30 分鐘未取得新資料就隱藏舊數值並標示逾時；失敗、校名不符、空值或無效數字都不顯示為有效溫度。更新不會觸發整頁重新整理，也不會關閉已開啟的 APP。GitHub 排程可能延遲；若長期沒有執行，請檢查 Actions 是否遭停用。
+資料只發布至 `codex/campus-temperature-data` 分支的 `campus-temperature.json`，不更動 main、班級 Firebase 資料或重新部署網站；不使用學校登入資訊、API 金鑰或 Firebase 服務帳號。需在可連線的電腦執行 `node scripts/fetch-campus-temperature.mjs <輸出路徑>`，再用 `node scripts/publish-campus-temperature.mjs <相同輸出路徑>` 發布；發佈使用 Git 原有登入流程，不提取或公開憑證。
+
+學生端每 2 分鐘讀取 JSON，30 分鐘未取得新資料就隱藏舊數值並標示逾時；失敗、校名不符、空值或無效數字都不顯示為有效溫度。更新不會觸發整頁重新整理，也不會關閉已開啟的 APP。自動更新的後續方式需選定校內電腦排程或其他可用資料來源後再實作。
 
 測試：`node scripts/test-campus-temperature.mjs`；含獨立 Git 分支發佈驗證：`node scripts/test-campus-temperature.mjs --publish-git`。
 

@@ -51,7 +51,7 @@ try{
   assert.equal(git(['rev-parse','HEAD']),main);assert.equal(git(['status','--porcelain']),'');assert.equal(git(['symbolic-ref','--short','HEAD']),'main');
   git(['fetch','origin','refs/heads/codex/campus-temperature-data']);assert.equal(git(['ls-tree','--name-only','FETCH_HEAD']),'campus-temperature.json');assert.equal(JSON.parse(git(['show','FETCH_HEAD:campus-temperature.json'])).temperatureC,29.6);
   }
-  const workflow=fs.readFileSync(new URL('../.github/workflows/campus-temperature.yml',import.meta.url),'utf8');assert(workflow.includes("cron: '7,17,27,37,47,57 * * * *'"));assert(workflow.includes('contents: write'));assert(workflow.includes('workflow_dispatch'));assert(!workflow.includes('firebase'));assert(workflow.includes('steps.capture.outcome'));
+  const workflow=fs.readFileSync(new URL('../.github/workflows/campus-temperature.yml',import.meta.url),'utf8');assert(!/^\s{2}schedule:/m.test(workflow),'Do not schedule repeated failures while hosted runners cannot reach the source');assert(workflow.includes('contents: write'));assert(workflow.includes('workflow_dispatch'));assert(!workflow.includes('firebase'));assert(workflow.includes('steps.capture.outcome'));
 }finally{
   const target=await fsp.realpath(tempRoot),parent=await fsp.realpath(os.tmpdir());if(path.dirname(target).toLowerCase()!==parent.toLowerCase()||!path.basename(target).startsWith('campus-temperature-test-'))throw Error('Unsafe test cleanup path');await fsp.rm(target,{recursive:true,force:true});
 }
