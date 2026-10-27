@@ -1,0 +1,14 @@
+<!doctype html><html><head><meta charset="utf-8"><title>OneWord bridge</title></head><body><script>
+'use strict';
+const boot = <?!= boot ?>;
+function failReply(event,id,message){event.source.postMessage({type:'oneword:response',channel:boot.channel,id,reply:{ok:false,status:403,error:message}},event.origin);}
+window.addEventListener('message',function(event){
+  const message=event.data;
+  if(!message||message.type!=='oneword:request'||message.channel!==boot.channel)return;
+  if(event.source!==window.top||!boot.origins.includes(event.origin)){failReply(event,message.id,'這個網站尚未加入 GAS 的 ALLOWED_ORIGINS');return;}
+  const reply=value=>event.source.postMessage({type:'oneword:response',channel:boot.channel,id:message.id,reply:value},event.origin);
+  google.script.run.withSuccessHandler(reply).withFailureHandler(()=>reply({ok:false,status:503,error:'GAS 執行未完成，請稍後重試',retryable:true})).rpc(message.action,message.data||{},message.auth||'');
+});
+// HTML Service is nested in a Google wrapper; the hosting page is window.top.
+window.top.postMessage({type:'oneword:ready',channel:boot.channel,version:boot.version},'*');
+</script></body></html>
