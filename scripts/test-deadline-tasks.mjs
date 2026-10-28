@@ -166,7 +166,7 @@ assert(scoped.includes("['name','deadline','hidden','version','updatedAt']"));
 for(const file of ['board.html','teacher.html']) {
   const html=fs.readFileSync(new URL(`../${file}`,import.meta.url),'utf8');
   for(const match of html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/g))new vm.Script(match[1]);
-  for(const asset of ['deadline-tasks.js?v=2','deadline-tasks-ui.js?v=3','deadline-tasks.css?v=3'])assert(html.includes(asset));
+  for(const asset of ['deadline-tasks.js?v=2','deadline-tasks-ui.js?v=4','deadline-tasks.css?v=4'])assert(html.includes(asset));
 }
 const ui=fs.readFileSync(new URL('../deadline-tasks-ui.js',import.meta.url),'utf8');
 assert(!/location\.(reload|href)|subjectData.*setItem/.test(ui));

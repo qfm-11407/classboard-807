@@ -52,10 +52,8 @@ button.deadline-student { cursor:pointer; }
 .deadline-subject-intro > strong { display:block;font-size:1.35em;margin-bottom:6px; }
 .deadline-page-range { margin:4px 0 10px;font-weight:700; }
 .deadline-page-range-form { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px; }
-.deadline-progress-badge { display:flex;align-items:center;justify-content:center;gap:7px;font-weight:900;font-size:.9em; }
-.deadline-progress-ring { display:inline-flex;position:relative;align-items:center;justify-content:center;flex-shrink:0;width:1.6em;height:1.6em;border-radius:50%;background:conic-gradient(var(--dt-accent) var(--progress),var(--dt-line) 0);color:var(--dt-accent); }
-.deadline-progress-ring::before { content:'';position:absolute;inset:3px;border-radius:50%;background:#f3f9f5; }
-.deadline-progress-ring > span { position:relative;z-index:1;font-size:.7em;line-height:1; }
+.deadline-progress-badge { display:flex;align-items:center;justify-content:center;gap:.22em;font-weight:900;font-size:1.2em;line-height:1.15;font-variant-numeric:tabular-nums; }
+.deadline-completion-icon { color:var(--dt-accent);font-size:.72em;flex-shrink:0; }
 .deadline-progress-preview { text-align:center;padding:18px;border-radius:18px;background:var(--dt-active); }
 .deadline-progress-preview p { margin:12px 0 0;font-size:.9em; }
 .deadline-progress-badge.large { font-size:2em;gap:14px; }
@@ -75,7 +73,6 @@ button.deadline-student { cursor:pointer; }
 .deadline-board .deadline-student { min-height:clamp(72px,9vh,190px); }
 .deadline-board .deadline-student strong { font-size:1.4em; }
 .deadline-board .deadline-student.done { border-color:#8ae2bf;background:#53998b66; }
-.deadline-board .deadline-progress-ring::before { background:#203b40; }
 .deadline-board.deadline-page-dialog { width:min(850px,94vw); }
 /* The entire card is the progress vessel; text and touch targets stay above the fill. */
 .deadline-page-student { position:relative;isolation:isolate;overflow:hidden; }
@@ -91,10 +88,10 @@ button.deadline-student { cursor:pointer; }
 .deadline-board .deadline-page-student .deadline-card-fill::before { background:hsl(var(--fill-hue) 70% 70% / .7); }
 .deadline-button:focus-visible,.deadline-student:focus-visible,.deadline-task-card:focus-visible,.deadline-category-tabs button:focus-visible { outline:3px solid var(--dt-accent);outline-offset:3px; }
 @media(max-height:800px) {
-  .deadline-board.deadline-dialog .deadline-student { min-height:0;line-height:1.1;gap:3px;padding:5px; }
+  .deadline-board.deadline-dialog .deadline-student { min-height:0;line-height:1.1;gap:2px;padding:4px; }
+  .deadline-board.deadline-dialog .deadline-seat-grid { row-gap:6px; }
   .deadline-board.deadline-dialog .deadline-summary { padding:8px 12px; }
   .deadline-board.deadline-dialog .deadline-front { padding:4px; }
-  .deadline-board.deadline-dialog .deadline-page-student .deadline-progress-ring { width:1.2em;height:1.2em; }
 }
 @media(max-width:600px) {
   .deadline-dialog-shell { padding:16px; }
@@ -105,8 +102,7 @@ button.deadline-student { cursor:pointer; }
   .deadline-student { min-height:70px;padding:7px 1px;gap:3px; }
   .deadline-student strong { font-size:clamp(9px,2.65vw,15px); }
   .deadline-student small { font-size:10px; }
-  .deadline-page-student .deadline-progress-badge { gap:2px;font-size:clamp(8px,2.5vw,10px); }
-  .deadline-page-student .deadline-progress-ring { width:14px;height:14px; }
+  .deadline-page-student .deadline-progress-badge { gap:2px;font-size:clamp(10px,3.1vw,14px); }
   .deadline-category-tabs { width:100%;box-sizing:border-box; }
   .deadline-category-tabs button { flex:1;padding:10px; }
   .deadline-form input[type="datetime-local"] { appearance:none;min-height:48px; }

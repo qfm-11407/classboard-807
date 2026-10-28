@@ -187,10 +187,11 @@
   }
   const timeLabel = value => Number.isFinite(D.millis(value)) ? new Intl.DateTimeFormat('zh-TW', { timeZone: 'Asia/Taipei', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date(D.millis(value))) : '同步中';
   function progressBadge(progress, large = false) {
-    const row = node('div', `deadline-progress-badge${large ? ' large' : ''}`), ring = node('span', 'deadline-progress-ring');
-    ring.append(node('span', '', progress.icon));
-    ring.style.setProperty('--progress', `${progress.percent}%`); ring.setAttribute('aria-hidden', 'true');
-    row.append(ring, node('span', 'deadline-percent', `${progress.percent}%`));
+    const row = node('div', `deadline-progress-badge${large ? ' large' : ''}`);
+    if (progress.finished) {
+      const check = node('span', 'deadline-completion-icon', '✓'); check.setAttribute('aria-hidden', 'true'); row.append(check);
+    }
+    row.append(node('span', 'deadline-percent', `${progress.percent}%`));
     row.setAttribute('aria-label', `完成 ${progress.completed}／${progress.total} 頁，${progress.percent}%`);
     return row;
   }

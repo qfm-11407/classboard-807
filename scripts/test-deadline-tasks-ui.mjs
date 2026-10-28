@@ -90,9 +90,11 @@ try {
     // Page progress uses a nested editor, percentage preview, and the unchanged actual seating positions.
     await page.locator('[data-task-id="pages"]').click();
     assert.equal(await modal.locator('.deadline-percent').first().textContent(),'50%');
-    assert.equal(await modal.locator('.deadline-progress-ring').count(),26);
+    assert.equal(await modal.locator('.deadline-progress-ring').count(),0,'Card fill replaces the redundant progress circles');
     assert.equal(await modal.locator('.deadline-percent').nth(1).textContent(),'100%');
-    assert.equal(await modal.locator('.deadline-progress-ring').nth(1).textContent(),'✓');
+    assert.equal(await modal.locator('.deadline-completion-icon').first().textContent(),'✓');
+    const percentSize=await modal.locator('.deadline-percent').first().evaluate(element=>parseFloat(getComputedStyle(element).fontSize));
+    assert(percentSize >= (size.width < 600 ? 12 : teacher ? 19 : 21),'Percentage text is enlarged');
     for(const [index,percent] of [50,100,25,75,0].entries()) {
       const card=modal.locator('.deadline-page-student').nth(index);
       const fill=await card.evaluate(element=>{const surface=element.querySelector('.deadline-card-fill'),rect=surface.getBoundingClientRect(),cardRect=element.getBoundingClientRect(),style=getComputedStyle(element);return {percent:element.style.getPropertyValue('--card-progress'),ratio:rect.height/(element.clientHeight*(cardRect.height/element.offsetHeight)),bottom:rect.bottom,cardBottom:cardRect.bottom,border:parseFloat(style.borderBottomWidth),pointer:getComputedStyle(surface).pointerEvents,hidden:surface.getAttribute('aria-hidden'),hue:element.style.getPropertyValue('--fill-hue')};});
