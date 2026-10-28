@@ -90,6 +90,54 @@ service cloud.firestore {
         allow delete: if false;
       }
 
+      // Deadline tasks never overwrite subjectData. Expiry is enforced using server time.
+      match /deadlineTasks/{taskId} {
+        function validDeadlineTask() {
+          let data = request.resource.data;
+          return data.keys().hasAll(['name','deadline','participants','hidden','version','createdAt','updatedAt'])
+            && data.keys().hasOnly(['name','deadline','participants','hidden','version','createdAt','updatedAt'])
+            && data.name is string && data.name.size() > 0 && data.name.size() <= 200
+            && data.deadline is timestamp
+            && data.participants is map && data.participants.size() > 0 && data.participants.size() <= 60
+            && data.hidden is bool && data.version is int
+            && data.createdAt is timestamp && data.updatedAt == request.time;
+        }
+        allow read: if true;
+        allow create: if isTeacher() && validDeadlineTask()
+          && request.resource.data.deadline > request.time
+          && request.resource.data.version == 1
+          && request.resource.data.createdAt == request.time;
+        allow update: if isTeacher() && validDeadlineTask()
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name','deadline','hidden','version','updatedAt'])
+          && request.resource.data.version == resource.data.version + 1
+          && (request.resource.data.deadline == resource.data.deadline || request.resource.data.deadline > request.time);
+        // Hiding replaces deletion so completed and incomplete history remains available.
+        allow delete: if false;
+
+        match /records/{seatId} {
+          function acceptingRecords() {
+            let task = get(/databases/$(database)/documents/classrooms/classboard-807/deadlineTasks/$(taskId)).data;
+            return task.hidden == false && task.deadline is timestamp
+              && request.time < task.deadline && seatId in task.participants;
+          }
+          function assignedIdentity() {
+            return get(/databases/$(database)/documents/classrooms/classboard-807/deadlineTasks/$(taskId)).data.participants[seatId].identity;
+          }
+          allow read: if true;
+          allow create: if acceptingRecords()
+            && request.resource.data.keys().hasAll(['seat','identity','completedAt'])
+            && request.resource.data.keys().hasOnly(['seat','identity','completedAt'])
+            && request.resource.data.seat is int
+            && request.resource.data.seat >= 1 && request.resource.data.seat <= 60
+            && seatId == string(request.resource.data.seat)
+            && request.resource.data.identity is string
+            && request.resource.data.identity == assignedIdentity()
+            && request.resource.data.completedAt == request.time;
+          allow update: if false;
+          allow delete: if acceptingRecords() && resource.data.identity == assignedIdentity();
+        }
+      }
+
       match /courseCompletions/{completionId} {
         allow read: if true;
         allow create: if request.resource.data.keys().hasOnly(['subject', 'taskId', 'seat', 'createdAt'])

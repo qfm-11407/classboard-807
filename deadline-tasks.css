@@ -1,0 +1,81 @@
+.deadline-ui { --dt-ink:#183b2e;--dt-muted:#607b6d;--dt-line:#d5e7dd;--dt-surface:#f3f9f5;--dt-accent:#2d7654;--dt-active:#e0f0e6;color:var(--dt-ink);min-width:0; }
+.deadline-category-tabs { display:flex;gap:6px;padding:5px;border-radius:18px;background:var(--dt-surface);margin:4px 0 20px;align-self:flex-start; }
+.deadline-category-tabs button { border:0;border-radius:14px;padding:11px 24px;background:transparent;color:var(--dt-muted);font:inherit;font-weight:800;cursor:pointer; }
+.deadline-category-tabs button[aria-selected="true"] { background:var(--dt-accent);color:#fff;box-shadow:0 3px 10px #173f2720; }
+.deadline-panel { min-width:0;min-height:0; }
+.deadline-panel[hidden],.deadline-ui [hidden] { display:none!important; }
+.deadline-toolbar { display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px; }
+.deadline-toolbar p { margin:0;color:var(--dt-muted); }
+.deadline-button { border:1px solid var(--dt-line);border-radius:14px;background:var(--dt-surface);color:var(--dt-ink);font:inherit;font-weight:800;min-height:44px;padding:10px 16px;cursor:pointer; }
+.deadline-button.primary { background:var(--dt-accent);border-color:transparent;color:white; }
+.deadline-button:disabled { opacity:.5;cursor:not-allowed; }
+.deadline-filters { display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px; }
+.deadline-filters button { border:0;border-radius:11px;background:transparent;color:var(--dt-muted);font:inherit;padding:8px 14px;cursor:pointer; }
+.deadline-filters button[aria-pressed="true"] { background:var(--dt-active);color:var(--dt-ink);font-weight:800; }
+.deadline-task-list { display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;align-content:start; }
+.deadline-task-card { min-width:0;text-align:left;border:1px solid var(--dt-line);border-radius:20px;padding:18px;background:var(--dt-surface);color:var(--dt-ink);font:inherit;cursor:pointer; }
+.deadline-task-card strong { display:block;font-size:1.15em;overflow-wrap:anywhere;margin:12px 0; }
+.deadline-task-card small { display:block;color:var(--dt-muted); }
+.deadline-status { display:inline-flex;align-items:center;gap:7px;font-size:.85em;font-weight:800;color:var(--dt-accent); }
+.deadline-status::before { content:'';width:7px;height:7px;background:currentColor;border-radius:50%; }
+.deadline-status.closed { color:var(--dt-muted); }
+.deadline-empty { padding:36px 12px;text-align:center;color:var(--dt-muted); }
+.deadline-message { min-height:24px;margin:12px 0 0;color:var(--dt-muted);overflow-wrap:anywhere; }
+.deadline-message.error { color:#b94a54; }
+.deadline-dialog { padding:0;border:1px solid var(--dt-line);border-radius:25px;background:#fbfdfb;color:var(--dt-ink);width:min(1100px,94vw);max-height:92dvh;box-shadow:0 20px 80px #04140e55; }
+.deadline-dialog::backdrop { background:#0a201bb3;backdrop-filter:blur(12px); }
+.deadline-dialog-shell { padding:26px; }
+.deadline-dialog-head { display:flex;gap:16px;align-items:flex-start;justify-content:space-between;margin-bottom:16px; }
+.deadline-dialog h2 { margin:0;font-size:1.6em;overflow-wrap:anywhere; }
+.deadline-dialog-head small { display:block;color:var(--dt-muted);margin:5px 0; }
+.deadline-dialog-head > button { flex-shrink:0;white-space:nowrap; }
+.deadline-summary { display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 16px;border-radius:15px;background:var(--dt-active);margin-bottom:16px; }
+.deadline-summary p { margin:0; }
+.deadline-front { text-align:center;border-radius:10px;padding:7px;background:var(--dt-active);color:var(--dt-muted);font-weight:800;margin-bottom:10px; }
+.deadline-seat-grid { display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px; }
+.deadline-student { display:flex;flex-direction:column;justify-content:center;align-items:center;gap:5px;min-width:0;min-height:88px;border:1px solid var(--dt-line);border-radius:13px;background:var(--dt-surface);color:var(--dt-ink);font:inherit;padding:8px 3px; }
+button.deadline-student { cursor:pointer; }
+.deadline-student strong { font-size:1.1em;white-space:nowrap; }
+.deadline-student small { font-size:.75em;color:var(--dt-muted); }
+.deadline-student.done { background:var(--dt-active);border-color:var(--dt-accent); }
+.deadline-student.empty { border-style:dashed;opacity:.35; }
+.deadline-student:disabled { cursor:default; }
+.deadline-record-list { display:flex;gap:8px;flex-wrap:wrap;margin-top:16px; }
+.deadline-record-list span { border:1px solid var(--dt-line);border-radius:12px;padding:9px 12px;font-size:.9em; }
+.deadline-record-list small { display:block;color:var(--dt-muted);margin-top:3px; }
+.deadline-dialog .deadline-toolbar:empty,.deadline-dialog .deadline-record-list:empty,.deadline-dialog .deadline-message:empty { display:none;margin:0; }
+.deadline-form { display:grid;gap:16px; }
+.deadline-form label { display:grid;gap:7px;font-weight:700;min-width:0; }
+.deadline-form input { display:block;box-sizing:border-box;min-width:0;width:100%;max-width:100%;border:1px solid var(--dt-line);border-radius:13px;background:var(--dt-surface);color:var(--dt-ink);padding:12px;font:inherit; }
+.deadline-form .deadline-form-actions { display:flex;gap:10px;justify-content:flex-end;margin-top:4px; }
+.deadline-form-dialog { width:min(540px,94vw); }
+.deadline-board { --dt-ink:#f4f8ff;--dt-muted:#c0ced9;--dt-line:#ffffff30;--dt-surface:#ffffff0e;--dt-accent:#77b6c9;--dt-active:#77b6c931;font-size:22px; }
+.deadline-board .deadline-category-tabs { flex-shrink:0; }
+.deadline-board .deadline-panel { flex:1;overflow-y:auto;padding-right:6px; }
+.deadline-board .deadline-task-list { grid-template-columns:repeat(3,minmax(0,1fr));gap:18px; }
+.deadline-board .deadline-task-card { padding:24px;border-radius:26px; }
+.deadline-board .deadline-task-card strong { font-size:1.35em; }
+.deadline-board.deadline-dialog { background:#182d31;max-height:95vh;width:90vw;max-width:none;font-size:clamp(18px,1.15vw,44px); }
+.deadline-board.deadline-dialog .deadline-dialog-shell { padding:clamp(16px,1.4vw,52px); }
+.deadline-board .deadline-student { min-height:clamp(72px,9vh,190px); }
+.deadline-board .deadline-student strong { font-size:1.4em; }
+.deadline-board .deadline-student.done { border-color:#8ae2bf;background:#53998b66; }
+.deadline-button:focus-visible,.deadline-student:focus-visible,.deadline-task-card:focus-visible,.deadline-category-tabs button:focus-visible { outline:3px solid var(--dt-accent);outline-offset:3px; }
+@media(max-height:800px) {
+  .deadline-board.deadline-dialog .deadline-student { min-height:0;line-height:1.1;gap:3px;padding:5px; }
+  .deadline-board.deadline-dialog .deadline-summary { padding:8px 12px; }
+  .deadline-board.deadline-dialog .deadline-front { padding:4px; }
+}
+@media(max-width:600px) {
+  .deadline-dialog-shell { padding:16px; }
+  .deadline-dialog { max-height:94dvh; }
+  .deadline-dialog h2 { font-size:1.25em; }
+  .deadline-task-list { grid-template-columns:1fr; }
+  .deadline-seat-grid { gap:4px; }
+  .deadline-student { min-height:70px;padding:7px 1px;gap:3px; }
+  .deadline-student strong { font-size:clamp(9px,2.65vw,15px); }
+  .deadline-student small { font-size:10px; }
+  .deadline-category-tabs { width:100%;box-sizing:border-box; }
+  .deadline-category-tabs button { flex:1;padding:10px; }
+  .deadline-form input[type="datetime-local"] { appearance:none;min-height:48px; }
+}
