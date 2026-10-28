@@ -10,6 +10,8 @@
     <link rel="icon" type="image/png" href="appslogo.png">
     <link rel="apple-touch-icon" href="appslogo.png">
     <script src="pwa-init.js"></script>
+    <link rel="stylesheet" href="noise-cat.css?v=20261028-3d">
+    <script type="module" src="noise-cat.js?v=20261028-3d"></script>
     <title>807 班級看版</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -491,11 +493,12 @@
                 <div class="w-full max-w-6xl flex items-center justify-between mb-5">
                     <div>
                         <h2 class="text-5xl font-bold text-white tracking-widest"><i class="fa-solid fa-toolbox mr-5 text-[#f6d365]"></i>課堂工具</h2>
-                        <p class="text-white/60 text-xl mt-2">抽籤與計時，都在這裡使用。</p>
+                        <p class="text-white/60 text-xl mt-2">抽籤、計時與小貓音量偵測，都在這裡使用。</p>
                     </div>
                     <div class="flex rounded-2xl border border-white/20 bg-black/20 p-1.5">
                         <button id="class-tool-wheel-tab" type="button" onclick="switchClassTool('wheel')" class="rounded-xl px-6 py-3 text-xl font-black transition-colors">幸運轉盤</button>
                         <button id="class-tool-stopwatch-tab" type="button" onclick="switchClassTool('stopwatch')" class="rounded-xl px-6 py-3 text-xl font-black transition-colors">計時碼表</button>
+                        <button id="class-tool-noise-cat-tab" type="button" onclick="switchClassTool('noise-cat')" class="rounded-xl px-6 py-3 text-xl font-black transition-colors">🐱 小貓音量偵測</button>
                     </div>
                 </div>
                 <div id="class-tool-wheel-panel" class="w-full max-w-6xl flex flex-1 flex-col min-h-0">
@@ -538,6 +541,7 @@
                         </div>
                     </section>
                 </div>
+                <div id="class-tool-noise-cat-panel" class="hidden w-full flex-1 min-h-0"></div>
             </div>
 
             <div id="app-content-course-compare" class="w-full h-full flex flex-col hidden p-8">
@@ -992,6 +996,7 @@
     window.addEventListener('message', handleInteractionMessage);
 
     function openApp(type, subject = "") {
+        if (type !== 'wheel') window.ClassroomNoiseCat?.stop();
         if (['chase-light', 'mole-pop', 'spot-difference', 'memory-match', 'balance-ball', 'light-maze', 'bubble-connect'].includes(currentActiveApp) && type !== currentActiveApp) pauseInteractionGame();
         document.getElementById('app-modal').classList.remove('hidden');
         setTimeout(() => {
@@ -1082,6 +1087,7 @@
     }
 
     function closeApp() {
+        window.ClassroomNoiseCat?.stop();
         // 互動區的單元先回選單；離開遊戲時暫停，不讓隱藏的回合繼續倒數。
         if (['messages', 'chase-light', 'mole-pop', 'tic-tac-toe', 'spot-difference', 'memory-match', 'balance-ball', 'light-maze', 'bubble-connect'].includes(currentActiveApp)) {
             openApp('interaction');
@@ -1328,20 +1334,21 @@
     }
 
     function switchClassTool(mode) {
-        classToolMode = mode === 'stopwatch' ? 'stopwatch' : 'wheel';
-        const wheelPanel = document.getElementById('class-tool-wheel-panel');
-        const stopwatchPanel = document.getElementById('class-tool-stopwatch-panel');
-        const wheelTab = document.getElementById('class-tool-wheel-tab');
-        const stopwatchTab = document.getElementById('class-tool-stopwatch-tab');
-        if (!wheelPanel || !stopwatchPanel || !wheelTab || !stopwatchTab) return;
-        const wheelActive = classToolMode === 'wheel';
-        wheelPanel.classList.toggle('hidden', !wheelActive);
-        stopwatchPanel.classList.toggle('hidden', wheelActive);
-        stopwatchPanel.classList.toggle('flex', !wheelActive);
-        wheelTab.className = `rounded-xl px-6 py-3 text-xl font-black transition-colors ${wheelActive ? 'bg-[#f6d365] text-[#2b2415] shadow-lg' : 'text-white/65 hover:bg-white/10 hover:text-white'}`;
-        stopwatchTab.className = `rounded-xl px-6 py-3 text-xl font-black transition-colors ${!wheelActive ? 'bg-[#8fd3f4] text-[#17372a] shadow-lg' : 'text-white/65 hover:bg-white/10 hover:text-white'}`;
-        if (wheelActive) renderLuckyWheel();
-        else renderStopwatch();
+        classToolMode = ['wheel', 'stopwatch', 'noise-cat'].includes(mode) ? mode : 'wheel';
+        if (classToolMode !== 'noise-cat') window.ClassroomNoiseCat?.stop();
+        for (const tool of ['wheel', 'stopwatch', 'noise-cat']) {
+            const panel = document.getElementById(`class-tool-${tool}-panel`);
+            const tab = document.getElementById(`class-tool-${tool}-tab`);
+            const active = classToolMode === tool;
+            panel?.classList.toggle('hidden', !active);
+            if (tool === 'stopwatch') panel?.classList.toggle('flex', active);
+            if (tab) {
+                tab.className = `rounded-xl px-6 py-3 text-xl font-black transition-colors ${active ? 'bg-[#f6d365] text-[#2b2415] shadow-lg' : 'text-white/65 hover:bg-white/10 hover:text-white'}`;
+                tab.setAttribute('aria-pressed', String(active));
+            }
+        }
+        if (classToolMode === 'wheel') renderLuckyWheel();
+        else if (classToolMode === 'stopwatch') renderStopwatch();
     }
 
     let luckySelectedSeats = [];
