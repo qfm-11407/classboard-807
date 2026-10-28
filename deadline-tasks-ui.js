@@ -158,7 +158,13 @@
       card.append(node('small', '', `${String(seat).padStart(2, '0')} 號`), node('strong', '', participant.name));
       if (pages) {
         card.classList.add('deadline-page-student');
-        card.append(progressBadge(progress(seat)));
+        const studentProgress = progress(seat), fill = node('span', 'deadline-card-fill');
+        fill.setAttribute('aria-hidden', 'true');
+        card.style.setProperty('--card-progress', `${studentProgress.percent}%`);
+        card.style.setProperty('--fill-hue', String(210 - Math.round(studentProgress.percent * .65)));
+        card.dataset.progressState = studentProgress.finished ? 'complete' : studentProgress.completed ? 'progressing' : 'empty';
+        card.prepend(fill);
+        card.append(progressBadge(studentProgress));
         card.type = 'button'; card.setAttribute('aria-label', `${participant.name}，${progress(seat).percent}%，${progress(seat).completed ? `完成到第 ${progress(seat).lastPage} 頁` : '尚未開始'}`);
         card.disabled = busy || offline;
         card.onclick = () => openPageProgress(task, seat, teacherPage || locked || !current.has(seat));

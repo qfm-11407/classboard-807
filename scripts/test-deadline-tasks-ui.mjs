@@ -28,7 +28,7 @@ const mockService = `
 ;(()=>{
 const stamp=value=>({toMillis:()=>value}), participants=DeadlineTasks.participantsFromRoster(${JSON.stringify(roster)});
 let tasks=[{id:'open',name:'星期五中午前交作業',deadline:stamp(Date.now()+86400000*2),createdAt:stamp(Date.now()),version:1,hidden:false,participants},{id:'closed',name:'上週限時任務',deadline:stamp(Date.now()-86400000),createdAt:stamp(Date.now()-86400000*2),version:1,hidden:false,participants},{id:'pages',name:'成語典頁數測試',...DeadlineTasks.pageFields(179,182),deadline:stamp(Date.now()+86400000*2),createdAt:stamp(Date.now()),version:1,hidden:false,participants}];
-let taskWatch,recordWatch;const records={open:{},closed:{'28':{seat:28,identity:'',completedAt:stamp(Date.now()-86400001)}},pages:{'28':{seat:28,identity:'',lastPage:180,updatedAt:stamp(Date.now()),completedAt:null},'27':{seat:27,identity:'',lastPage:182,updatedAt:stamp(Date.now()),completedAt:stamp(Date.now())}}};
+let taskWatch,recordWatch;const records={open:{},closed:{'28':{seat:28,identity:'',completedAt:stamp(Date.now()-86400001)}},pages:{'28':{seat:28,identity:'',lastPage:180,updatedAt:stamp(Date.now()),completedAt:null},'27':{seat:27,identity:'',lastPage:182,updatedAt:stamp(Date.now()),completedAt:stamp(Date.now())},'26':{seat:26,identity:'',lastPage:179,updatedAt:stamp(Date.now()),completedAt:null},'25':{seat:25,identity:'',lastPage:181,updatedAt:stamp(Date.now()),completedAt:null}}};
 const emit=()=>taskWatch?.([...tasks],true);let calls=0;
 window.__deadlineFixture={get calls(){return calls;},expire(id='open'){tasks.find(task=>task.id===id).deadline=stamp(Date.now());},remote(){tasks=[...tasks];emit();},offline(){taskWatch?.([...tasks],false);},records};
 DeadlineTasks.createService=()=>({isTeacher:()=>__teacher,watchTasks(next){taskWatch=next;emit();return()=>{};},watchRecords(id,next){recordWatch={id,next};next({...records[id]},true);return()=>{recordWatch=null;};},async toggle(id,seat,identity){calls++;await new Promise(resolve=>setTimeout(resolve,120));if(DeadlineTasks.closed(tasks.find(task=>task.id===id)))throw new Error('已截止');if(records[id][seat])delete records[id][seat];else records[id][seat]={seat,identity,completedAt:stamp(Date.now())};if(recordWatch?.id===id)recordWatch.next({...records[id]},true);},async savePageProgress(id,seat,lastPage,identity){calls++;await new Promise(resolve=>setTimeout(resolve,120));const task=tasks.find(task=>task.id===id);if(DeadlineTasks.closed(task))throw new Error('已截止');const page=lastPage===''?task.startPage-1:Number(lastPage);records[id][seat]={seat,identity,lastPage:page,updatedAt:stamp(Date.now()),completedAt:page===task.endPage?stamp(Date.now()):null};recordWatch?.next({...records[id]},true);},async create(name,date,pages){tasks.push({id:'created',name,...pages,deadline:stamp(+DeadlineTasks.parseDeadline(date)),createdAt:stamp(Date.now()+1),version:1,hidden:false,participants});records.created={};emit();return'created';},async update(task,changes){const value=tasks.find(item=>item.id===task.id);if(changes.name)value.name=changes.name;if(changes.deadlineInput)value.deadline=stamp(+DeadlineTasks.parseDeadline(changes.deadlineInput));if('hidden'in changes)value.hidden=changes.hidden;value.version++;emit();}});
@@ -67,6 +67,7 @@ try {
     await page.locator('[data-task-id="open"]').click();
     const modal=page.locator('#deadline-task-dialog');await modal.waitFor({state:'visible'});
     assert.equal(await modal.locator('.deadline-student').count(),30);
+    assert.equal(await modal.locator('.deadline-card-fill').count(),0,'Legacy completion-only tasks keep their original cards');
     assert.equal(await modal.locator('.deadline-student strong').first().textContent(),'學生28','Uses the real reversed seating layout, not seat-number order');
     assert.equal(await modal.locator('button.deadline-student').count(),teacher?0:26);
     if(!teacher) {
@@ -92,6 +93,13 @@ try {
     assert.equal(await modal.locator('.deadline-progress-ring').count(),26);
     assert.equal(await modal.locator('.deadline-percent').nth(1).textContent(),'100%');
     assert.equal(await modal.locator('.deadline-progress-ring').nth(1).textContent(),'✓');
+    for(const [index,percent] of [50,100,25,75,0].entries()) {
+      const card=modal.locator('.deadline-page-student').nth(index);
+      const fill=await card.evaluate(element=>{const surface=element.querySelector('.deadline-card-fill'),rect=surface.getBoundingClientRect(),cardRect=element.getBoundingClientRect(),style=getComputedStyle(element);return {percent:element.style.getPropertyValue('--card-progress'),ratio:rect.height/(element.clientHeight*(cardRect.height/element.offsetHeight)),bottom:rect.bottom,cardBottom:cardRect.bottom,border:parseFloat(style.borderBottomWidth),pointer:getComputedStyle(surface).pointerEvents,hidden:surface.getAttribute('aria-hidden'),hue:element.style.getPropertyValue('--fill-hue')};});
+      assert.equal(fill.percent,`${percent}%`);assert(Math.abs(fill.ratio-percent/100)<.025,`Fill is ${percent}% of card height at ${size.width}`);
+      assert(Math.abs(fill.cardBottom-fill.bottom-fill.border)<1.1,'Fill is anchored to card bottom');
+      assert.equal(fill.pointer,'none');assert.equal(fill.hidden,'true');assert.equal(fill.hue,String(210-Math.round(percent*.65)));
+    }
     assert.equal(await modal.locator('.deadline-page-student').nth(1).evaluate(element=>element.scrollWidth>element.clientWidth+1),false,'100% indicator stays inside student card');
     if(!teacher)assert.equal(await modal.evaluate(element=>element.scrollHeight>element.clientHeight+1),false,`Page progress grid fits ${size.width}`);
     if(output)await page.screenshot({path:path.join(output,`${teacher?'teacher':'board'}-${size.width}-pages.png`)});
@@ -108,6 +116,7 @@ try {
       await progressEditor.getByRole('button',{name:'儲存頁數',exact:true}).click();
       await progressEditor.waitFor({state:'detached'});
       assert.equal(await modal.locator('.deadline-percent').first().textContent(),'75%');
+      assert.equal(await modal.locator('.deadline-page-student').first().evaluate(element=>element.style.getPropertyValue('--card-progress')),'75%','Saving page progress updates the full-card fill');
       await modal.locator('.deadline-page-student').first().click();
       await progressEditor.getByLabel('已完成到第幾頁',{exact:true}).fill('182');
       await page.evaluate(()=>__deadlineFixture.expire('pages'));

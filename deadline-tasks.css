@@ -77,6 +77,18 @@ button.deadline-student { cursor:pointer; }
 .deadline-board .deadline-student.done { border-color:#8ae2bf;background:#53998b66; }
 .deadline-board .deadline-progress-ring::before { background:#203b40; }
 .deadline-board.deadline-page-dialog { width:min(850px,94vw); }
+/* The entire card is the progress vessel; text and touch targets stay above the fill. */
+.deadline-page-student { position:relative;isolation:isolate;overflow:hidden; }
+.deadline-page-student.done { background:var(--dt-surface); }
+.deadline-page-student > :not(.deadline-card-fill) { position:relative;z-index:1; }
+.deadline-page-student .deadline-card-fill { position:absolute;z-index:0;pointer-events:none;inset:auto 0 0;height:var(--card-progress,0%);background:linear-gradient(to top,hsl(var(--fill-hue) 55% 78% / .94),hsl(var(--fill-hue) 65% 87% / .9)); }
+.deadline-page-student:not([data-progress-state="empty"]) .deadline-card-fill::before { content:'';position:absolute;inset:0 0 auto;height:2px;background:hsl(var(--fill-hue) 50% 57% / .65); }
+.deadline-page-student[data-progress-state="progressing"],.deadline-page-student[data-progress-state="complete"] { border-color:hsl(var(--fill-hue) 43% 55%);--dt-accent:hsl(var(--fill-hue) 50% 31%); }
+.deadline-page-student[data-progress-state="complete"] { border-width:2px; }
+.deadline-board .deadline-page-student.done { background:var(--dt-surface); }
+.deadline-board .deadline-page-student .deadline-card-fill { background:linear-gradient(to top,hsl(var(--fill-hue) 60% 28% / .94),hsl(var(--fill-hue) 54% 35% / .91)); }
+.deadline-board .deadline-page-student:not([data-progress-state="empty"]) { --dt-accent:hsl(var(--fill-hue) 68% 79%);border-color:hsl(var(--fill-hue) 52% 65%); }
+.deadline-board .deadline-page-student .deadline-card-fill::before { background:hsl(var(--fill-hue) 70% 70% / .7); }
 .deadline-button:focus-visible,.deadline-student:focus-visible,.deadline-task-card:focus-visible,.deadline-category-tabs button:focus-visible { outline:3px solid var(--dt-accent);outline-offset:3px; }
 @media(max-height:800px) {
   .deadline-board.deadline-dialog .deadline-student { min-height:0;line-height:1.1;gap:3px;padding:5px; }
