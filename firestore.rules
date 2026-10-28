@@ -95,7 +95,12 @@ service cloud.firestore {
         function validDeadlineTask() {
           let data = request.resource.data;
           return data.keys().hasAll(['name','deadline','participants','hidden','version','createdAt','updatedAt'])
-            && data.keys().hasOnly(['name','deadline','participants','hidden','version','createdAt','updatedAt'])
+            && data.keys().hasOnly(['name','deadline','participants','hidden','version','createdAt','updatedAt','subject','progressMode','startPage','endPage'])
+            && (!data.keys().hasAny(['subject','progressMode','startPage','endPage'])
+              || (data.keys().hasAll(['subject','progressMode','startPage','endPage'])
+                && data.subject == '成語典' && data.progressMode == 'pages'
+                && data.startPage is int && data.endPage is int
+                && data.startPage >= 1 && data.endPage >= data.startPage && data.endPage <= 9999))
             && data.name is string && data.name.size() > 0 && data.name.size() <= 200
             && data.deadline is timestamp
             && data.participants is map && data.participants.size() > 0 && data.participants.size() <= 60
@@ -123,18 +128,33 @@ service cloud.firestore {
           function assignedIdentity() {
             return get(/databases/$(database)/documents/classrooms/classboard-807/deadlineTasks/$(taskId)).data.participants[seatId].identity;
           }
+          function pageTask() {
+            return get(/databases/$(database)/documents/classrooms/classboard-807/deadlineTasks/$(taskId)).data.get('progressMode', '') == 'pages';
+          }
+          function validSeat() {
+            return request.resource.data.seat is int
+              && request.resource.data.seat >= 1 && request.resource.data.seat <= 60
+              && seatId == string(request.resource.data.seat)
+              && request.resource.data.identity is string && request.resource.data.identity == assignedIdentity();
+          }
+          function validPageRecord() {
+            let data = request.resource.data;
+            let task = get(/databases/$(database)/documents/classrooms/classboard-807/deadlineTasks/$(taskId)).data;
+            return data.keys().hasAll(['seat','identity','lastPage','updatedAt','completedAt'])
+              && data.keys().hasOnly(['seat','identity','lastPage','updatedAt','completedAt'])
+              && data.lastPage is int && data.lastPage >= task.startPage - 1 && data.lastPage <= task.endPage
+              && data.updatedAt == request.time
+              && ((data.lastPage == task.endPage && data.completedAt == request.time)
+                || (data.lastPage < task.endPage && data.completedAt == null));
+          }
           allow read: if true;
-          allow create: if acceptingRecords()
-            && request.resource.data.keys().hasAll(['seat','identity','completedAt'])
-            && request.resource.data.keys().hasOnly(['seat','identity','completedAt'])
-            && request.resource.data.seat is int
-            && request.resource.data.seat >= 1 && request.resource.data.seat <= 60
-            && seatId == string(request.resource.data.seat)
-            && request.resource.data.identity is string
-            && request.resource.data.identity == assignedIdentity()
-            && request.resource.data.completedAt == request.time;
-          allow update: if false;
-          allow delete: if acceptingRecords() && resource.data.identity == assignedIdentity();
+          allow create: if acceptingRecords() && validSeat()
+            && ((pageTask() && validPageRecord())
+              || (!pageTask() && request.resource.data.keys().hasAll(['seat','identity','completedAt'])
+                && request.resource.data.keys().hasOnly(['seat','identity','completedAt'])
+                && request.resource.data.completedAt == request.time));
+          allow update: if acceptingRecords() && pageTask() && validSeat() && validPageRecord();
+          allow delete: if acceptingRecords() && !pageTask() && resource.data.identity == assignedIdentity();
         }
       }
 

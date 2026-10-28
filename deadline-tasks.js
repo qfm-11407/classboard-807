@@ -17,6 +17,21 @@
   const formatDate = value => Number.isFinite(millis(value)) ? new Intl.DateTimeFormat('zh-TW', {
     timeZone: 'Asia/Taipei', year: 'numeric', month: '2-digit', day: '2-digit', weekday: 'short', hour: '2-digit', minute: '2-digit', hour12: false,
   }).format(new Date(millis(value))) : '時間不正確';
+  function pageFields(startPage, endPage) {
+    const start = Number(startPage), end = Number(endPage);
+    if (!Number.isInteger(start) || !Number.isInteger(end) || start < 1 || end < start || end > 9999) throw new Error('請填寫正確頁數範圍（1～9999 頁），結束頁不可小於開始頁。');
+    return { subject: '成語典', progressMode: 'pages', startPage: start, endPage: end };
+  }
+  const isPageTask = task => task?.progressMode === 'pages' && task.subject === '成語典' && Number.isInteger(task.startPage) && Number.isInteger(task.endPage) && task.startPage >= 1 && task.endPage >= task.startPage && task.endPage <= 9999;
+  function pageProgress(task, record) {
+    if (!isPageTask(task)) return null;
+    const total = task.endPage - task.startPage + 1;
+    const valid = record?.identity !== undefined && Number.isInteger(record.lastPage);
+    const lastPage = valid ? Math.max(task.startPage - 1, Math.min(task.endPage, record.lastPage)) : task.startPage - 1;
+    const completed = lastPage - task.startPage + 1, finished = completed === total;
+    const percent = finished ? 100 : Math.min(99, Math.round(completed / total * 100));
+    return { total, completed, lastPage, finished, percent, icon: finished ? '✓' : completed ? '↗' : '○' };
+  }
   function participantsFromRoster(roster) {
     const participants = {};
     (Array.isArray(roster) ? roster : []).forEach(student => {
@@ -38,9 +53,10 @@
       if (!title || title.length > 200) throw new Error('請輸入 1～200 字的任務名稱。');
       return { name: title, deadline: firebase.firestore.Timestamp.fromDate(parseDeadline(deadlineInput)) };
     }
-    async function create(name, deadlineInput) {
+    async function create(name, deadlineInput, pages = null) {
       requireTeacher();
       const fields = taskFields(name, deadlineInput);
+      if (pages) Object.assign(fields, pageFields(pages.startPage, pages.endPage));
       if (closed(fields)) throw new Error('截止時間必須晚於現在。');
       const snapshot = await classRef.get({ source: 'server' });
       let roster;
@@ -79,22 +95,43 @@
         const task = taskSnapshot.data();
         if (!taskSnapshot.exists || task.hidden) throw new Error('此任務已隱藏或不存在。');
         if (closed(task)) throw new Error('已到截止時間，完成紀錄已鎖定。');
+        if (isPageTask(task)) throw new Error('成語典任務請登記完成到第幾頁。');
         const participant = task.participants?.[String(Number(seat))];
         if (!participant || participant.identity !== String(identity)) throw new Error('此學生不在這項任務的名單中，請重新開啟。');
         if (recordSnapshot.exists) transaction.delete(record);
         else transaction.set(record, { seat: Number(seat), identity: String(identity), completedAt: stamp() });
       });
     }
+    async function savePageProgress(taskId, seat, lastPage, identity = '', expectedUpdatedAt = undefined) {
+      if (!Number.isInteger(Number(seat)) || Number(seat) < 1 || Number(seat) > 60) throw new Error('學生資料不正確。');
+      const ref = tasks.doc(taskId), recordRef = ref.collection('records').doc(String(Number(seat)));
+      await db.runTransaction(async transaction => {
+        const taskSnapshot = await transaction.get(ref), recordSnapshot = await transaction.get(recordRef), task = taskSnapshot.data();
+        if (!taskSnapshot.exists || task.hidden) throw new Error('此任務已隱藏或不存在。');
+        if (closed(task)) throw new Error('已到截止時間，頁數紀錄已鎖定。');
+        if (!isPageTask(task)) throw new Error('這不是頁數進度任務。');
+        const participant = task.participants?.[String(Number(seat))];
+        if (!participant || participant.identity !== String(identity)) throw new Error('此學生不在這項任務的名單中，請重新開啟。');
+        const page = lastPage === '' || lastPage === null ? task.startPage - 1 : Number(lastPage);
+        if (!Number.isInteger(page) || page < task.startPage - 1 || page > task.endPage) throw new Error(`請填寫 ${task.startPage}～${task.endPage} 頁，尚未開始可留空。`);
+        const previous = recordSnapshot.data();
+        if (expectedUpdatedAt !== undefined && (recordSnapshot.exists ? millis(previous.updatedAt) : null) !== expectedUpdatedAt) throw new Error('另一台裝置已更新此學生進度，請重新開啟後再試。');
+        if (recordSnapshot.exists && previous.lastPage === page) return;
+        transaction.set(recordRef, { seat: Number(seat), identity: String(identity), lastPage: page, updatedAt: stamp(), completedAt: page === task.endPage ? stamp() : null });
+      });
+    }
     const watchTasks = (next, error) => tasks.onSnapshot({ includeMetadataChanges: true }, snapshot => {
+      if (snapshot.metadata.hasPendingWrites) return;
       const items = snapshot.docs.filter(doc => !doc.metadata?.hasPendingWrites).map(doc => ({ ...doc.data(), id: doc.id }));
       next(items.sort((a, b) => millis(b.createdAt) - millis(a.createdAt)), !snapshot.metadata.fromCache);
     }, error);
     const watchRecords = (id, next, error) => tasks.doc(id).collection('records').onSnapshot({ includeMetadataChanges: true }, snapshot => {
+      if (snapshot.metadata.hasPendingWrites) return;
       const records = {};
       snapshot.docs.filter(doc => !doc.metadata?.hasPendingWrites).forEach(doc => { records[doc.id] = doc.data(); });
       next(records, !snapshot.metadata.fromCache);
     }, error);
-    return { create, update, toggle, watchTasks, watchRecords, isTeacher: teacher };
+    return { create, update, toggle, savePageProgress, watchTasks, watchRecords, isTeacher: teacher };
   }
-  root.DeadlineTasks = { millis, closed, parseDeadline, dateInput, formatDate, participantsFromRoster, createService };
+  root.DeadlineTasks = { millis, closed, parseDeadline, dateInput, formatDate, pageFields, isPageTask, pageProgress, participantsFromRoster, createService };
 }(typeof window === 'object' ? window : globalThis));

@@ -27,11 +27,11 @@ const realFetch=window.fetch.bind(window);window.fetch=(input,init)=>String(inpu
 const mockService = `
 ;(()=>{
 const stamp=value=>({toMillis:()=>value}), participants=DeadlineTasks.participantsFromRoster(${JSON.stringify(roster)});
-let tasks=[{id:'open',name:'星期五中午前交作業',deadline:stamp(Date.now()+86400000*2),createdAt:stamp(Date.now()),version:1,hidden:false,participants},{id:'closed',name:'上週限時任務',deadline:stamp(Date.now()-86400000),createdAt:stamp(Date.now()-86400000*2),version:1,hidden:false,participants}];
-let taskWatch,recordWatch;const records={open:{},closed:{'28':{seat:28,identity:'',completedAt:stamp(Date.now()-86400001)}}};
+let tasks=[{id:'open',name:'星期五中午前交作業',deadline:stamp(Date.now()+86400000*2),createdAt:stamp(Date.now()),version:1,hidden:false,participants},{id:'closed',name:'上週限時任務',deadline:stamp(Date.now()-86400000),createdAt:stamp(Date.now()-86400000*2),version:1,hidden:false,participants},{id:'pages',name:'成語典頁數測試',...DeadlineTasks.pageFields(179,182),deadline:stamp(Date.now()+86400000*2),createdAt:stamp(Date.now()),version:1,hidden:false,participants}];
+let taskWatch,recordWatch;const records={open:{},closed:{'28':{seat:28,identity:'',completedAt:stamp(Date.now()-86400001)}},pages:{'28':{seat:28,identity:'',lastPage:180,updatedAt:stamp(Date.now()),completedAt:null},'27':{seat:27,identity:'',lastPage:182,updatedAt:stamp(Date.now()),completedAt:stamp(Date.now())}}};
 const emit=()=>taskWatch?.([...tasks],true);let calls=0;
-window.__deadlineFixture={get calls(){return calls;},expire(){tasks[0].deadline=stamp(Date.now());},remote(){tasks=[...tasks];emit();},offline(){taskWatch?.([...tasks],false);},records};
-DeadlineTasks.createService=()=>({isTeacher:()=>__teacher,watchTasks(next){taskWatch=next;emit();return()=>{};},watchRecords(id,next){recordWatch={id,next};next({...records[id]},true);return()=>{recordWatch=null;};},async toggle(id,seat,identity){calls++;await new Promise(resolve=>setTimeout(resolve,120));if(DeadlineTasks.closed(tasks.find(task=>task.id===id)))throw new Error('已截止');if(records[id][seat])delete records[id][seat];else records[id][seat]={seat,identity,completedAt:stamp(Date.now())};if(recordWatch?.id===id)recordWatch.next({...records[id]},true);},async create(name,date){tasks.push({id:'created',name,deadline:stamp(+DeadlineTasks.parseDeadline(date)),createdAt:stamp(Date.now()+1),version:1,hidden:false,participants});records.created={};emit();return'created';},async update(task,changes){const value=tasks.find(item=>item.id===task.id);if(changes.name)value.name=changes.name;if(changes.deadlineInput)value.deadline=stamp(+DeadlineTasks.parseDeadline(changes.deadlineInput));if('hidden'in changes)value.hidden=changes.hidden;value.version++;emit();}});
+window.__deadlineFixture={get calls(){return calls;},expire(id='open'){tasks.find(task=>task.id===id).deadline=stamp(Date.now());},remote(){tasks=[...tasks];emit();},offline(){taskWatch?.([...tasks],false);},records};
+DeadlineTasks.createService=()=>({isTeacher:()=>__teacher,watchTasks(next){taskWatch=next;emit();return()=>{};},watchRecords(id,next){recordWatch={id,next};next({...records[id]},true);return()=>{recordWatch=null;};},async toggle(id,seat,identity){calls++;await new Promise(resolve=>setTimeout(resolve,120));if(DeadlineTasks.closed(tasks.find(task=>task.id===id)))throw new Error('已截止');if(records[id][seat])delete records[id][seat];else records[id][seat]={seat,identity,completedAt:stamp(Date.now())};if(recordWatch?.id===id)recordWatch.next({...records[id]},true);},async savePageProgress(id,seat,lastPage,identity){calls++;await new Promise(resolve=>setTimeout(resolve,120));const task=tasks.find(task=>task.id===id);if(DeadlineTasks.closed(task))throw new Error('已截止');const page=lastPage===''?task.startPage-1:Number(lastPage);records[id][seat]={seat,identity,lastPage:page,updatedAt:stamp(Date.now()),completedAt:page===task.endPage?stamp(Date.now()):null};recordWatch?.next({...records[id]},true);},async create(name,date,pages){tasks.push({id:'created',name,...pages,deadline:stamp(+DeadlineTasks.parseDeadline(date)),createdAt:stamp(Date.now()+1),version:1,hidden:false,participants});records.created={};emit();return'created';},async update(task,changes){const value=tasks.find(item=>item.id===task.id);if(changes.name)value.name=changes.name;if(changes.deadlineInput)value.deadline=stamp(+DeadlineTasks.parseDeadline(changes.deadlineInput));if('hidden'in changes)value.hidden=changes.hidden;value.version++;emit();}});
 })();`;
 const server = http.createServer((request,response)=>{
   const url = new URL(request.url,'http://localhost');
@@ -86,10 +86,43 @@ try {
     if(output)await page.screenshot({path:path.join(output,`${teacher?'teacher':'board'}-${size.width}-detail.png`)});
     await modal.getByRole('button',{name:'✕ 關閉',exact:true}).click();
     assert.equal(await page.getByRole('tab',{name:'限時任務',exact:true}).getAttribute('aria-selected'),'true','Closing returns to timed task list');
+    // Page progress uses a nested editor, percentage preview, and the unchanged actual seating positions.
+    await page.locator('[data-task-id="pages"]').click();
+    assert.equal(await modal.locator('.deadline-percent').first().textContent(),'50%');
+    assert.equal(await modal.locator('.deadline-progress-ring').count(),26);
+    assert.equal(await modal.locator('.deadline-percent').nth(1).textContent(),'100%');
+    assert.equal(await modal.locator('.deadline-progress-ring').nth(1).textContent(),'✓');
+    assert.equal(await modal.locator('.deadline-page-student').nth(1).evaluate(element=>element.scrollWidth>element.clientWidth+1),false,'100% indicator stays inside student card');
+    if(!teacher)assert.equal(await modal.evaluate(element=>element.scrollHeight>element.clientHeight+1),false,`Page progress grid fits ${size.width}`);
+    if(output)await page.screenshot({path:path.join(output,`${teacher?'teacher':'board'}-${size.width}-pages.png`)});
+    await modal.locator('.deadline-page-student').first().click();
+    const progressEditor=page.locator('.deadline-page-dialog');
+    assert.equal(await progressEditor.getByLabel('已完成到第幾頁',{exact:true}).inputValue(),'180');
+    if(teacher) {
+      assert.equal(await progressEditor.getByLabel('已完成到第幾頁',{exact:true}).isDisabled(),true);
+      assert.equal(await progressEditor.getByRole('button',{name:'儲存頁數',exact:true}).count(),0);
+    } else {
+      await progressEditor.getByLabel('已完成到第幾頁',{exact:true}).fill('181');
+      assert.equal(await progressEditor.locator('.deadline-percent').textContent(),'75%');
+      assert.equal(await modal.locator('.deadline-percent').first().textContent(),'50%','Draft is not a completed cloud save');
+      await progressEditor.getByRole('button',{name:'儲存頁數',exact:true}).click();
+      await progressEditor.waitFor({state:'detached'});
+      assert.equal(await modal.locator('.deadline-percent').first().textContent(),'75%');
+      await modal.locator('.deadline-page-student').first().click();
+      await progressEditor.getByLabel('已完成到第幾頁',{exact:true}).fill('182');
+      await page.evaluate(()=>__deadlineFixture.expire('pages'));
+      await page.waitForTimeout(1150);
+      assert.equal(await progressEditor.getByRole('button',{name:'儲存頁數',exact:true}).isDisabled(),true);
+      assert.equal(await page.evaluate(()=>__deadlineFixture.records.pages['28'].lastPage),181,'Expiry preserves the last committed page');
+    }
+    await progressEditor.getByRole('button',{name:'關閉',exact:true}).click();
+    await modal.getByRole('button',{name:'✕ 關閉',exact:true}).click();
     if(teacher) {
       await page.getByRole('button',{name:'新增限時任務',exact:true}).click();
       const editor=page.locator('.deadline-form-dialog');
       await editor.getByLabel('任務名稱',{exact:true}).fill('建立測試任務');
+      await editor.getByLabel('開始頁',{exact:true}).fill('179');
+      await editor.getByLabel('結束頁',{exact:true}).fill('182');
       await editor.getByLabel('截止日期與時間（台灣時間）',{exact:true}).fill('2099-10-30T12:00');
       const overflow=await editor.evaluate(element=>{const input=element.querySelector('input[type="datetime-local"]');return input.getBoundingClientRect().right>element.getBoundingClientRect().right;});
       assert.equal(overflow,false,'Date input stays inside mobile dialog');

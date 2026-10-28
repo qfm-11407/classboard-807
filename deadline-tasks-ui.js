@@ -26,7 +26,7 @@
   legacy.setAttribute('role', 'tabpanel'); panel.setAttribute('role', 'tabpanel');
   host.append(tabs, legacy, panel);
   let items = [], filter = 'all', started = false, tasksOnline = false, tasksReady = false, recordsOnline = false;
-  let selectedId = '', records = {}, recordsUnsubscribe = null, busy = false, timerState = '', lastFocus = null;
+  let selectedId = '', records = {}, recordsUnsubscribe = null, busy = false, timerState = '', lastFocus = null, refreshPageEditor = null;
   const notice = node('p', 'deadline-message'); notice.setAttribute('role', 'status'); notice.setAttribute('aria-live', 'polite');
   const filters = node('div', 'deadline-filters'), list = node('div', 'deadline-task-list');
   const say = (text, error = false) => { notice.textContent = text; notice.classList.toggle('error', error); };
@@ -52,7 +52,9 @@
     all[index].click(); all[index].focus();
   });
   const toolbar = node('div', 'deadline-toolbar');
-  toolbar.append(node('p', '', teacherPage ? '設定截止時間；到期自動鎖定，紀錄持續保留。' : '截止前可點選完成狀態；到期後僅供查看。'));
+  const subjectIntro = node('div', 'deadline-subject-intro');
+  subjectIntro.append(node('strong', '', '成語典'), node('p', '', teacherPage ? '設定頁數範圍及截止時間，依完成頁數自動計算進度。' : '點選學生，登記完成到第幾頁；截止後僅供查看。'));
+  toolbar.append(subjectIntro);
   if (teacherPage) toolbar.append(button('新增限時任務', () => editTask(), 'deadline-button primary'));
   for (const [value, label] of [['all', '全部'], ['open', '進行中'], ['closed', '已截止'], ...(teacherPage ? [['hidden', '已隱藏']] : [])]) {
     const tab = button(label, () => { filter = value; renderList(); }, '');
@@ -78,7 +80,7 @@
     service.watchTasks((next, online) => {
       items = next; tasksOnline = online; tasksReady = true;
       say(online ? '' : '目前未連線，顯示的是暫存紀錄，不能登記。');
-      renderList(); if (dialog.open) renderDetail();
+      renderList(); if (dialog.open) renderDetail(); refreshPageEditor?.();
     }, error => {
       tasksOnline = false; tasksReady = true;
       say(error.code === 'permission-denied' ? '限時任務尚無法讀取，請確認雲端規則已更新。' : '限時任務載入失敗，請檢查網路後重新開啟頁面。', true);
@@ -97,6 +99,7 @@
       const card = button('', () => openTask(task.id), 'deadline-task-card');
       card.dataset.taskId = task.id;
       card.append(node('span', `deadline-status${D.closed(task) ? ' closed' : ''}`, `${task.hidden ? '已隱藏 · ' : ''}${D.closed(task) ? '已截止 · 紀錄保留' : '進行中'}`), node('strong', '', task.name), node('small', '', `截止 ${D.formatDate(task.deadline)}`));
+      if (D.isPageTask(task)) card.insertBefore(node('small', 'deadline-page-range', `成語典 · P.${task.startPage}～${task.endPage}（${task.endPage - task.startPage + 1} 頁）`), card.lastChild);
       list.append(card);
     });
     timerState = items.map(task => `${task.id}:${D.closed(task)}`).join('|');
@@ -129,11 +132,18 @@
       detailTitle.textContent = '此任務目前不顯示'; detailDate.textContent = '';
       summary.replaceChildren(node('p', '', '請關閉視窗並選擇其他任務。')); grid.replaceChildren(); extraRecords.replaceChildren(); detailActions.replaceChildren(); return;
     }
-    const done = seat => records[seat] && records[seat].identity === task.participants[seat]?.identity;
+    const pages = D.isPageTask(task);
+    const validRecord = seat => records[seat]?.identity === task.participants[seat]?.identity ? records[seat] : null;
+    const progress = seat => D.pageProgress(task, validRecord(seat));
+    const done = seat => pages ? progress(seat).finished : Boolean(validRecord(seat));
     const locked = D.closed(task), offline = !tasksOnline || !recordsOnline;
     const participants = Object.keys(task.participants || {}), completed = participants.filter(done).length;
-    detailTitle.textContent = task.name; detailDate.textContent = `截止 ${D.formatDate(task.deadline)}（台灣時間）`;
+    detailTitle.textContent = task.name; detailDate.textContent = `${pages ? `成語典 P.${task.startPage}～${task.endPage} · ` : ''}截止 ${D.formatDate(task.deadline)}（台灣時間）`;
     summary.replaceChildren(node('strong', '', locked ? '已截止 · 完成紀錄已鎖定' : '進行中'), node('p', '', `已完成 ${completed}／${participants.length} 人`));
+    if (pages && participants.length) {
+      const average = Math.round(participants.reduce((sum, seat) => sum + progress(seat).completed, 0) / ((task.endPage - task.startPage + 1) * participants.length) * 100);
+      summary.append(node('p', '', `全班平均 ${completed === participants.length ? 100 : Math.min(99, average)}%`));
+    }
     if (busy || offline) summary.append(node('p', '', busy ? '同步中，請稍候…' : '正在確認雲端紀錄，暫停點選'));
     detailActions.replaceChildren();
     if (teacherPage && service.isTeacher()) {
@@ -144,9 +154,16 @@
     seats.forEach(seat => {
       if (!seat) { const gap = node('div', 'deadline-student empty', '空位'); gap.setAttribute('aria-hidden', 'true'); grid.append(gap); return; }
       const participant = task.participants[seat], completedRecord = done(seat);
-      const card = node(teacherPage ? 'div' : 'button', `deadline-student${completedRecord ? ' done' : ''}`);
-      card.append(node('small', '', `${String(seat).padStart(2, '0')} 號`), node('strong', '', participant.name), node('small', '', completedRecord ? `已完成 ${timeLabel(records[seat].completedAt)}` : '未完成'));
-      if (!teacherPage) {
+      const card = node(teacherPage && !pages ? 'div' : 'button', `deadline-student${completedRecord ? ' done' : ''}${pages && progress(seat).completed && !completedRecord ? ' progressing' : ''}`);
+      card.append(node('small', '', `${String(seat).padStart(2, '0')} 號`), node('strong', '', participant.name));
+      if (pages) {
+        card.classList.add('deadline-page-student');
+        card.append(progressBadge(progress(seat)));
+        card.type = 'button'; card.setAttribute('aria-label', `${participant.name}，${progress(seat).percent}%，${progress(seat).completed ? `完成到第 ${progress(seat).lastPage} 頁` : '尚未開始'}`);
+        card.disabled = busy || offline;
+        card.onclick = () => openPageProgress(task, seat, teacherPage || locked || !current.has(seat));
+      } else card.append(node('small', '', completedRecord ? `已完成 ${timeLabel(records[seat].completedAt)}` : '未完成'));
+      if (!teacherPage && !pages) {
         card.type = 'button'; card.setAttribute('aria-pressed', String(Boolean(completedRecord)));
         card.disabled = busy || locked || offline || !current.has(seat) || task.hidden;
         card.onclick = () => toggleRecord(task, seat);
@@ -155,12 +172,67 @@
     });
     extra.forEach(seat => {
       const participant = task.participants[seat], record = records[seat], label = node('span');
-      label.append(node('strong', '', `${String(seat).padStart(2, '0')} ${participant.name}`), node('small', '', done(seat) ? `已完成 · ${D.formatDate(record.completedAt)}` : '未完成'));
+      label.append(node('strong', '', `${String(seat).padStart(2, '0')} ${participant.name}`));
+      if (pages) label.append(progressBadge(progress(seat)), node('small', '', progress(seat).completed ? `完成到 P.${progress(seat).lastPage}` : '尚未開始'));
+      else label.append(node('small', '', done(seat) ? `已完成 · ${D.formatDate(record.completedAt)}` : '未完成'));
       // Keep historical/removed participants visible without reassigning their identity to a new student.
       extraRecords.append(label);
     });
   }
   const timeLabel = value => Number.isFinite(D.millis(value)) ? new Intl.DateTimeFormat('zh-TW', { timeZone: 'Asia/Taipei', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date(D.millis(value))) : '同步中';
+  function progressBadge(progress, large = false) {
+    const row = node('div', `deadline-progress-badge${large ? ' large' : ''}`), ring = node('span', 'deadline-progress-ring');
+    ring.append(node('span', '', progress.icon));
+    ring.style.setProperty('--progress', `${progress.percent}%`); ring.setAttribute('aria-hidden', 'true');
+    row.append(ring, node('span', 'deadline-percent', `${progress.percent}%`));
+    row.setAttribute('aria-label', `完成 ${progress.completed}／${progress.total} 頁，${progress.percent}%`);
+    return row;
+  }
+  function openPageProgress(task, seat, readOnly) {
+    if (busy) return;
+    const initial = records[seat]?.identity === task.participants[seat].identity ? records[seat] : null;
+    const editor = node('dialog', `${skin} deadline-dialog deadline-page-dialog`), inner = node('div', 'deadline-dialog-shell');
+    const title = node('h2', '', `${String(seat).padStart(2, '0')} ${task.participants[seat].name}`), form = node('form', 'deadline-form');
+    title.id = 'deadline-page-title'; editor.setAttribute('aria-labelledby', title.id);
+    const range = node('p', 'deadline-message', `成語典 P.${task.startPage}～${task.endPage}，共 ${task.endPage - task.startPage + 1} 頁`);
+    const label = node('label', '', '已完成到第幾頁'), input = node('input');
+    input.type = 'number'; input.inputMode = 'numeric'; input.step = '1'; input.min = String(task.startPage); input.max = String(task.endPage); input.placeholder = '尚未開始可留空';
+    input.value = initial && initial.lastPage >= task.startPage ? String(initial.lastPage) : ''; label.append(input);
+    const preview = node('div', 'deadline-progress-preview'), state = node('p', 'deadline-message'), actions = node('div', 'deadline-form-actions');
+    state.setAttribute('role', 'status');
+    const close = button('關閉', () => editor.close()), clear = button('尚未開始', () => { input.value = ''; previewProgress(); }), save = button('儲存頁數', null, 'deadline-button primary'); save.type = 'submit';
+    actions.append(close); if (!readOnly) actions.append(clear, save);
+    if (initial?.updatedAt) form.append(node('p', 'deadline-message', `最後登記：${D.formatDate(initial.updatedAt)}`));
+    form.append(label, preview, state, actions); inner.append(title, range, form); editor.append(inner); document.body.append(editor);
+    let saving = false;
+    function previewProgress() {
+      const page = input.value === '' ? task.startPage - 1 : Number(input.value);
+      const valid = Number.isInteger(page) && page >= task.startPage - 1 && page <= task.endPage;
+      preview.replaceChildren();
+      if (valid) {
+        const progress = D.pageProgress(task, { lastPage: page, identity: task.participants[seat].identity });
+        preview.append(progressBadge(progress, true), node('p', '', `已完成 ${progress.completed}／${progress.total} 頁`));
+      } else preview.append(node('p', 'deadline-message error', `請填寫 ${task.startPage}～${task.endPage} 頁。`));
+    }
+    const refresh = () => {
+      const current = items.find(item => item.id === task.id), locked = readOnly || !current || current.hidden || D.closed(current) || !tasksOnline || !recordsOnline;
+      input.disabled = clear.disabled = saving || locked; save.disabled = saving || locked; close.disabled = saving;
+      if (locked && !saving) state.textContent = D.closed(current) ? '已截止，頁數紀錄已鎖定。' : readOnly ? '唯讀查詢，不能變更紀錄。' : '目前無法登記，請確認網路與任務狀態。';
+    };
+    refreshPageEditor = refresh; input.addEventListener('input', previewProgress);
+    editor.addEventListener('cancel', event => { if (saving) event.preventDefault(); });
+    editor.addEventListener('close', () => { refreshPageEditor = null; editor.remove(); });
+    form.onsubmit = async event => {
+      event.preventDefault(); if (saving || save.disabled || readOnly) return;
+      saving = busy = true; state.textContent = '同步中…'; refresh(); renderDetail();
+      try {
+        await service.savePageProgress(task.id, seat, input.value, task.participants[seat].identity, initial ? D.millis(initial.updatedAt) : null);
+        editor.close(); detailMessage.textContent = '頁數與完成度已同步。';
+      } catch (error) { state.textContent = error.code === 'permission-denied' ? '已截止或任務設定已更動，這次頁數未儲存。' : error.message || '同步失敗，請重試。'; }
+      finally { saving = busy = false; if (editor.open) refresh(); if (dialog.open) renderDetail(); }
+    };
+    previewProgress(); refresh(); editor.showModal(); (readOnly ? close : input).focus();
+  }
   async function toggleRecord(task, seat) {
     if (busy || D.closed(task) || !tasksOnline || !recordsOnline) return;
     busy = true; detailMessage.textContent = '正在同步…'; renderDetail();
@@ -183,14 +255,19 @@
     const editor = node('dialog', `${skin} deadline-dialog deadline-form-dialog`), editorShell = node('div', 'deadline-dialog-shell');
     const title = node('h2', '', task ? '修改限時任務' : '新增限時任務'); title.id = 'deadline-form-title'; editor.setAttribute('aria-labelledby', title.id);
     const form = node('form', 'deadline-form'), nameLabel = node('label', '', '任務名稱'), name = node('input');
-    name.type = 'text'; name.required = true; name.maxLength = 200; name.value = task?.name || ''; name.autocomplete = 'off';
+    name.type = 'text'; name.required = true; name.maxLength = 200; name.value = task?.name || '成語典'; name.autocomplete = 'off';
     nameLabel.append(name);
     const dateLabel = node('label', '', '截止日期與時間（台灣時間）'), date = node('input');
     date.type = 'datetime-local'; date.required = true; date.step = '60'; date.value = task ? D.dateInput(task.deadline) : `${D.dateInput(new Date(Date.now() + 86400000)).slice(0, 10)}T12:00`; dateLabel.append(date);
-    const hint = node('p', 'deadline-message', '到期即停止點選。截止後不會刪除紀錄，教師仍可查詢。');
+    const pageMode = !task || D.isPageTask(task), range = node('div', 'deadline-page-range-form');
+    const startLabel = node('label', '', '開始頁'), endLabel = node('label', '', '結束頁'), start = node('input'), end = node('input');
+    for (const field of [start, end]) { field.type = 'number'; field.inputMode = 'numeric'; field.min = '1'; field.max = '9999'; field.step = '1'; field.required = pageMode; field.disabled = Boolean(task); }
+    start.value = String(task?.startPage || 1); end.value = task?.endPage ? String(task.endPage) : '';
+    startLabel.append(start); endLabel.append(end); range.append(startLabel, endLabel);
+    const hint = node('p', 'deadline-message', `${pageMode ? '科目：成語典。頁數範圍建立後固定；不同範圍請另建任務。' : ''}到期即停止登記，紀錄保留供教師查詢。`);
     const status = node('p', 'deadline-message'); status.setAttribute('role', 'status');
     const actions = node('div', 'deadline-form-actions'), cancel = button('取消', () => editor.close()), save = button('儲存任務', null, 'deadline-button primary'); save.type = 'submit';
-    actions.append(cancel, save); form.append(nameLabel, dateLabel, hint, status, actions); editorShell.append(title, form); editor.append(editorShell); document.body.append(editor);
+    actions.append(cancel, save); form.append(nameLabel); if (pageMode) form.append(range); form.append(dateLabel, hint, status, actions); editorShell.append(title, form); editor.append(editorShell); document.body.append(editor);
     let saving = false;
     editor.addEventListener('cancel', event => { if (saving) event.preventDefault(); });
     editor.addEventListener('close', () => editor.remove());
@@ -198,10 +275,11 @@
       event.preventDefault(); if (saving) return;
       try {
         const nextDeadline = D.parseDeadline(date.value);
+        const pages = pageMode ? D.pageFields(start.value, end.value) : null;
         if (task && D.closed(task) && +nextDeadline > Date.now() && !confirm('此任務已截止，延後時間會重新開放學生點選，確定繼續？')) return;
         saving = true; save.disabled = cancel.disabled = true; status.textContent = '儲存中…';
         if (task) await service.update(task, { name: name.value, deadlineInput: date.value });
-        else await service.create(name.value, date.value);
+        else await service.create(name.value, date.value, pages);
         editor.close(); say(task ? '限時任務已更新。' : '限時任務已建立。');
       } catch (error) { status.textContent = error.code === 'permission-denied' ? '儲存失敗，請確認教師登入與截止時間。' : error.message || '儲存失敗，請檢查網路。'; }
       finally { saving = false; save.disabled = cancel.disabled = false; }
@@ -213,6 +291,7 @@
     if (!started) return;
     const nextState = items.map(task => `${task.id}:${D.closed(task)}`).join('|');
     if (nextState !== timerState) { renderList(); if (dialog.open) renderDetail(); }
+    refreshPageEditor?.();
   }, 1000);
   window.FirebaseClassroom?.onTeacherChanged(() => { if (dialog.open) renderDetail(); });
   document.addEventListener('visibilitychange', () => { if (!document.hidden && started) { renderList(); if (dialog.open) renderDetail(); } });
