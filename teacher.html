@@ -1188,13 +1188,13 @@
     $('reset-seating').addEventListener('click',()=>{if(confirm('確定依座號重新排列座位，並將狀態重設為正常？')){writeJSON('classSeating',Array(maxSeat()).fill(0));writeJSON('classSeatingSession','');writeJSON('classroomSeatingLayout',defaultSeatingLayout());renderSeating();message('seating-message','座位表已重設。');}});
     function printSeatingAndCadres() {
       const students=roster(), bySeat=new Map(students.map(student=>[student.seat,student]));
-      const absent=currentAbsentSeats(), layout=normalizedSeatingLayout();
+      const layout=normalizedSeatingLayout();
       const config=cadreConfig(), assignments=cadreAssignments(config);
       const groups={class:config.find(group=>group.id==='class')||config[0],subject:config.find(group=>group.id==='subject')||config[1]};
       const seatCards=layout.map(seat=>{
         const student=bySeat.get(seat);
         if(!student)return '<div class="seat empty">空位</div>';
-        return `<div class="seat ${absent.has(seat)?'absent':''}"><small>${String(student.seat).padStart(2,'0')} 號</small><strong>${escapeHTML(student.name)}</strong>${absent.has(seat)?'<em>請假</em>':''}</div>`;
+        return `<div class="seat"><small>${String(student.seat).padStart(2,'0')} 號</small><strong>${escapeHTML(student.name)}</strong></div>`;
       }).join('');
       const groupHtml=group=>{
         if(!group)return '<section class="roles"><h2>班級分工</h2><p class="none">尚未設定職務。</p></section>';
