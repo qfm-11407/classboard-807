@@ -42,6 +42,8 @@
     });
     return participants;
   }
+  const isParticipantActive = (task, seat) => Boolean(task?.participants?.[String(seat)]) && !(task.excludedSeats || []).includes(String(seat));
+  const activeParticipantSeats = task => Object.keys(task?.participants || {}).filter(seat => isParticipantActive(task, seat));
   function createService(firebase, classroom = 'classboard-807') {
     const app = firebase.app(), db = firebase.firestore(app), auth = firebase.auth(app);
     const classRef = db.collection('classrooms').doc(classroom), tasks = classRef.collection('deadlineTasks');
@@ -115,6 +117,31 @@
         return { added, conflicts };
       });
     }
+    async function setParticipantExcluded(task, seat, excluded) {
+      requireTeacher();
+      if (!Number.isInteger(Number(seat)) || Number(seat) < 1 || Number(seat) > 60 || typeof excluded !== 'boolean') throw new Error('學生資料不正確。');
+      const key = String(Number(seat)), ref = tasks.doc(task.id);
+      return db.runTransaction(async transaction => {
+        const snapshot = await transaction.get(ref), current = snapshot.data();
+        if (!snapshot.exists) throw new Error('此任務已不存在。');
+        if (closed(current)) throw new Error('此任務已截止，不能調整學生名單。');
+        if (current.version !== task.version) throw new Error('另一台裝置已修改任務，請重新開啟後再試。');
+        const student = current.participants?.[key];
+        if (!student) throw new Error('此學生不在任務名單中。');
+        if (!excluded) {
+          const classSnapshot = await transaction.get(classRef);
+          let roster;
+          try { roster = JSON.parse(classSnapshot.data()?.data?.classroomStudentRoster || '[]'); } catch (_) { throw new Error('班級名單讀取失敗。'); }
+          const currentStudent = participantsFromRoster(roster)[key];
+          if (!currentStudent || currentStudent.identity !== student.identity) throw new Error('此座號已非原學生，或學生已轉出；不能沿用舊進度，請另建任務。');
+        }
+        const seats = new Set(current.excludedSeats || []);
+        if (seats.has(key) === excluded) return;
+        if (excluded) seats.add(key); else seats.delete(key);
+        transaction.update(ref, { excludedSeats: [...seats].sort((a, b) => Number(a) - Number(b)), version: current.version + 1, updatedAt: stamp() });
+        // Soft removal only: the frozen identity and all progress records remain untouched.
+      });
+    }
     async function toggle(taskId, seat, identity = '') {
       if (!Number.isInteger(Number(seat)) || Number(seat) < 1 || Number(seat) > 60) throw new Error('學生資料不正確。');
       const ref = tasks.doc(taskId), record = ref.collection('records').doc(String(Number(seat)));
@@ -126,6 +153,7 @@
         if (isPageTask(task)) throw new Error('成語典任務請登記完成到第幾頁。');
         const participant = task.participants?.[String(Number(seat))];
         if (!participant || participant.identity !== String(identity)) throw new Error('此學生不在這項任務的名單中，請重新開啟。');
+        if (!isParticipantActive(task, Number(seat))) throw new Error('此學生已移出任務，不能登記。');
         if (recordSnapshot.exists) transaction.delete(record);
         else transaction.set(record, { seat: Number(seat), identity: String(identity), completedAt: stamp() });
       });
@@ -141,6 +169,7 @@
         const participant = task.participants?.[String(Number(seat))];
         if (!participant || participant.identity !== String(identity)) throw new Error('此學生不在這項任務的名單中，請重新開啟。');
         const page = lastPage === '' || lastPage === null ? task.startPage - 1 : Number(lastPage);
+        if (!isParticipantActive(task, Number(seat))) throw new Error('此學生已移出任務，不能登記。');
         if (!Number.isInteger(page) || page < task.startPage - 1 || page > task.endPage) throw new Error(`請填寫 ${task.startPage}～${task.endPage} 頁，尚未開始可留空。`);
         const previous = recordSnapshot.data();
         if (expectedUpdatedAt !== undefined && (recordSnapshot.exists ? millis(previous.updatedAt) : null) !== expectedUpdatedAt) throw new Error('另一台裝置已更新此學生進度，請重新開啟後再試。');
@@ -159,7 +188,7 @@
       snapshot.docs.filter(doc => !doc.metadata?.hasPendingWrites).forEach(doc => { records[doc.id] = doc.data(); });
       next(records, !snapshot.metadata.fromCache);
     }, error);
-    return { create, update, addParticipants, toggle, savePageProgress, watchTasks, watchRecords, isTeacher: teacher };
+    return { create, update, addParticipants, setParticipantExcluded, toggle, savePageProgress, watchTasks, watchRecords, isTeacher: teacher };
   }
-  root.DeadlineTasks = { millis, closed, parseDeadline, dateInput, formatDate, pageFields, isPageTask, pageProgress, participantsFromRoster, createService };
+  root.DeadlineTasks = { millis, closed, parseDeadline, dateInput, formatDate, pageFields, isPageTask, pageProgress, participantsFromRoster, isParticipantActive, activeParticipantSeats, createService };
 }(typeof window === 'object' ? window : globalThis));

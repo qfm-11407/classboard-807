@@ -26,7 +26,7 @@
   legacy.setAttribute('role', 'tabpanel'); panel.setAttribute('role', 'tabpanel');
   host.append(tabs, legacy, panel);
   let items = [], filter = 'all', started = false, tasksOnline = false, tasksReady = false, recordsOnline = false;
-  let selectedId = '', records = {}, recordsUnsubscribe = null, busy = false, timerState = '', lastFocus = null, refreshPageEditor = null;
+  let selectedId = '', records = {}, recordsUnsubscribe = null, busy = false, removing = false, timerState = '', lastFocus = null, refreshPageEditor = null;
   const notice = node('p', 'deadline-message'); notice.setAttribute('role', 'status'); notice.setAttribute('aria-live', 'polite');
   const filters = node('div', 'deadline-filters'), list = node('div', 'deadline-task-list');
   const say = (text, error = false) => { notice.textContent = text; notice.classList.toggle('error', error); };
@@ -70,8 +70,9 @@
   detailHead.append(detailTitleBox, closeButton);
   const summary = node('div', 'deadline-summary'), detailActions = node('div', 'deadline-toolbar');
   const grid = node('div', 'deadline-seat-grid'), extraRecords = node('div', 'deadline-record-list');
+  const removedHistory = node('details', 'deadline-removed-history'); removedHistory.hidden = true;
   const detailMessage = node('p', 'deadline-message'); detailMessage.setAttribute('role', 'status'); detailMessage.setAttribute('aria-live', 'polite');
-  shell.append(detailHead, summary, detailActions, node('div', 'deadline-front', '黑板／講台'), grid, extraRecords, detailMessage);
+  shell.append(detailHead, summary, detailActions, node('div', 'deadline-front', '黑板／講台'), grid, extraRecords, detailMessage, removedHistory);
   dialog.append(shell); document.body.append(dialog);
   dialog.addEventListener('click', event => { if (event.target === dialog) dialog.close(); });
   dialog.addEventListener('close', () => { recordsUnsubscribe?.(); recordsUnsubscribe = null; selectedId = ''; lastFocus?.focus(); });
@@ -105,7 +106,7 @@
     timerState = items.map(task => `${task.id}:${D.closed(task)}`).join('|');
   }
   function openTask(id) {
-    selectedId = id; records = {}; recordsOnline = false; detailMessage.textContent = '';
+    selectedId = id; records = {}; recordsOnline = false; removing = false; removedHistory.open = false; detailMessage.textContent = '';
     recordsUnsubscribe?.(); lastFocus = document.activeElement;
     recordsUnsubscribe = service.watchRecords(id, (next, online) => {
       if (selectedId !== id) return;
@@ -120,24 +121,25 @@
     const used = new Set();
     const seats = Array.from({ length: 30 }, (_, index) => {
       const seat = Number(layout?.[index]), participant = task.participants?.[seat];
-      if (!participant || used.has(seat) || (current.get(seat) && String(current.get(seat).recordSince || '') !== participant.identity)) return null;
+      if (!participant || !D.isParticipantActive(task, seat) || used.has(seat) || (current.get(seat) && String(current.get(seat).recordSince || '') !== participant.identity)) return null;
       used.add(seat); return seat;
     });
-    const extra = Object.keys(task.participants || {}).map(Number).filter(seat => !used.has(seat)).sort((a, b) => a - b);
+    const extra = D.activeParticipantSeats(task).map(Number).filter(seat => !used.has(seat)).sort((a, b) => a - b);
     return { seats, extra, current };
   }
   function renderDetail() {
     const task = items.find(item => item.id === selectedId);
     if (!task || (!teacherPage && task.hidden)) {
       detailTitle.textContent = '此任務目前不顯示'; detailDate.textContent = '';
-      summary.replaceChildren(node('p', '', '請關閉視窗並選擇其他任務。')); grid.replaceChildren(); extraRecords.replaceChildren(); detailActions.replaceChildren(); return;
+      summary.replaceChildren(node('p', '', '請關閉視窗並選擇其他任務。')); grid.replaceChildren(); extraRecords.replaceChildren(); detailActions.replaceChildren(); removedHistory.hidden = true; return;
     }
     const pages = D.isPageTask(task);
     const validRecord = seat => records[seat]?.identity === task.participants[seat]?.identity ? records[seat] : null;
     const progress = seat => D.pageProgress(task, validRecord(seat));
     const done = seat => pages ? progress(seat).finished : Boolean(validRecord(seat));
     const locked = D.closed(task), offline = !tasksOnline || !recordsOnline;
-    const participants = Object.keys(task.participants || {}), completed = participants.filter(done).length;
+    if (locked) removing = false;
+    const participants = D.activeParticipantSeats(task), completed = participants.filter(done).length;
     detailTitle.textContent = task.name; detailDate.textContent = `${pages ? `成語典 P.${task.startPage}～${task.endPage} · ` : ''}截止 ${D.formatDate(task.deadline)}（台灣時間）`;
     summary.replaceChildren(node('strong', '', locked ? '已截止 · 完成紀錄已鎖定' : '進行中'), node('p', '', `已完成 ${completed}／${participants.length} 人`));
     if (pages && participants.length) {
@@ -149,14 +151,24 @@
     if (teacherPage && service.isTeacher()) {
       detailActions.append(button('修改名稱／截止時間', () => editTask(task)), button(task.hidden ? '恢復學生端顯示' : '從學生端隱藏', () => hideTask(task)));
       if (!locked) detailActions.append(button('補入新增學生', () => addParticipants(task)));
+      if (!locked && (participants.length || removing)) {
+        const action = button(removing ? '完成名單調整' : '移出學生', () => {
+          if (busy) return; removing = !removing;
+          detailMessage.textContent = removing ? '請點選要移出的學生；確認後只從此任務移出，原進度保留。' : '';
+          renderDetail();
+        });
+        action.setAttribute('aria-pressed', String(removing)); detailActions.append(action);
+      }
       detailActions.querySelectorAll('button').forEach(action => { action.disabled = busy || offline; });
     }
+    grid.classList.toggle('removal-mode', removing);
     grid.replaceChildren(); extraRecords.replaceChildren();
     const { seats, extra, current } = orderedParticipants(task);
     seats.forEach(seat => {
       if (!seat) { const gap = node('div', 'deadline-student empty', '空位'); gap.setAttribute('aria-hidden', 'true'); grid.append(gap); return; }
       const participant = task.participants[seat], completedRecord = done(seat);
-      const card = node(teacherPage && !pages ? 'div' : 'button', `deadline-student${completedRecord ? ' done' : ''}${pages && progress(seat).completed && !completedRecord ? ' progressing' : ''}`);
+      const card = node(teacherPage && !pages && !removing ? 'div' : 'button', `deadline-student${completedRecord ? ' done' : ''}${pages && progress(seat).completed && !completedRecord ? ' progressing' : ''}`);
+      card.dataset.seat = String(seat);
       card.append(node('small', '', `${String(seat).padStart(2, '0')} 號`), node('strong', '', participant.name));
       if (pages) {
         card.classList.add('deadline-page-student');
@@ -176,6 +188,11 @@
         card.disabled = busy || locked || offline || !current.has(seat) || task.hidden;
         card.onclick = () => toggleRecord(task, seat);
       }
+      if (teacherPage && removing) {
+        card.type = 'button'; card.disabled = busy || offline;
+        card.setAttribute('aria-label', `移出 ${String(seat).padStart(2, '0')} ${participant.name}`);
+        card.onclick = () => changeParticipant(task, seat, true);
+      }
       grid.append(card);
     });
     extra.forEach(seat => {
@@ -184,8 +201,26 @@
       if (pages) label.append(progressBadge(progress(seat)), node('small', '', progress(seat).completed ? `完成到 P.${progress(seat).lastPage}` : '尚未開始'));
       else label.append(node('small', '', done(seat) ? `已完成 · ${D.formatDate(record.completedAt)}` : '未完成'));
       // Keep historical/removed participants visible without reassigning their identity to a new student.
+      if (teacherPage && removing) {
+        const action = button('移出', () => changeParticipant(task, seat, true)); action.disabled = busy || offline; label.append(action);
+      }
       extraRecords.append(label);
     });
+    const excluded = Object.keys(task.participants || {}).filter(seat => !D.isParticipantActive(task, seat));
+    removedHistory.hidden = !teacherPage || !excluded.length; removedHistory.replaceChildren();
+    if (teacherPage && excluded.length) {
+      removedHistory.append(node('summary', '', `已移出 ${excluded.length} 人 · 不列入完成率（點選查詢）`));
+      excluded.forEach(seat => {
+        const participant = task.participants[seat], row = node('div', 'deadline-history-row'), info = node('div'); row.dataset.seat = seat;
+        info.append(node('strong', '', `${String(seat).padStart(2, '0')} ${participant.name}`));
+        const record = validRecord(seat);
+        info.append(node('small', '', pages ? `${progress(seat).percent}% · ${progress(seat).completed ? `完成到 P.${progress(seat).lastPage}` : '尚未開始'}${record?.updatedAt ? ` · ${D.formatDate(record.updatedAt)}` : ''}` : record ? `已完成 · ${D.formatDate(record.completedAt)}` : '未完成'));
+        row.append(info);
+        if (pages) { const view = button('查看進度', () => openPageProgress(task, seat, true)); view.disabled = busy || offline; row.append(view); }
+        if (!locked) { const restore = button('重新補入', () => changeParticipant(task, seat, false)); restore.disabled = busy || offline; row.append(restore); }
+        removedHistory.append(row);
+      });
+    }
   }
   const timeLabel = value => Number.isFinite(D.millis(value)) ? new Intl.DateTimeFormat('zh-TW', { timeZone: 'Asia/Taipei', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date(D.millis(value))) : '同步中';
   function progressBadge(progress, large = false) {
@@ -224,9 +259,10 @@
       } else preview.append(node('p', 'deadline-message error', `請填寫 ${task.startPage}～${task.endPage} 頁。`));
     }
     const refresh = () => {
-      const current = items.find(item => item.id === task.id), locked = readOnly || !current || current.hidden || D.closed(current) || !tasksOnline || !recordsOnline;
+      const current = items.find(item => item.id === task.id), excluded = !D.isParticipantActive(current, seat), locked = readOnly || !current || current.hidden || excluded || D.closed(current) || !tasksOnline || !recordsOnline;
       input.disabled = clear.disabled = saving || locked; save.disabled = saving || locked; close.disabled = saving;
-      if (locked && !saving) state.textContent = D.closed(current) ? '已截止，頁數紀錄已鎖定。' : readOnly ? '唯讀查詢，不能變更紀錄。' : '目前無法登記，請確認網路與任務狀態。';
+      if (locked && !saving) state.textContent = D.closed(current) ? '已截止，頁數紀錄已鎖定。' : excluded ? '此學生已移出任務，原進度保留供查詢。' : readOnly ? '唯讀查詢，不能變更紀錄。' : '目前無法登記，請確認網路與任務狀態。';
+      if (!locked && !saving) state.textContent = '';
     };
     refreshPageEditor = refresh; input.addEventListener('input', previewProgress);
     editor.addEventListener('cancel', event => { if (saving) event.preventDefault(); });
@@ -271,6 +307,22 @@
       if (selectedId === task.id) detailMessage.textContent = text;
       else say(text, true);
     } finally { busy = false; if (dialog.open) renderDetail(); }
+  }
+  async function changeParticipant(task, seat, excluded) {
+    if (busy || !teacherPage || !service.isTeacher() || D.closed(task) || !tasksOnline || !recordsOnline) return;
+    const name = `${String(seat).padStart(2, '0')} ${task.participants[seat].name}`;
+    if (!confirm(excluded ? `確定將 ${name} 移出此任務？不列入完成率；原有進度保留，不會刪除班級名單或其他紀錄。` : `確定重新補入 ${name}？將恢復此學生原有進度，並重新計入完成率。`)) return;
+    busy = true; detailMessage.textContent = '正在同步任務名單…'; renderDetail();
+    try {
+      if (!excluded && typeof window.syncCloudNow === 'function') await window.syncCloudNow();
+      await service.setParticipantExcluded(task, seat, excluded);
+      const text = excluded ? `已移出 ${name}，原進度保留；可在下方「已移出」重新補入。` : `已重新補入 ${name}，並恢復原進度。`;
+      if (selectedId === task.id) { detailMessage.textContent = text; if (excluded) removedHistory.open = true; }
+      else say(text);
+    } catch (error) {
+      const text = error.code === 'permission-denied' ? '調整未成功：請確認教師登入、任務尚未截止及網站已更新。原紀錄未變更。' : error.message || '調整失敗，請檢查網路後重試。';
+      if (selectedId === task.id) detailMessage.textContent = text; else say(text, true);
+    } finally { busy = false; if (dialog.open) renderDetail(); refreshPageEditor?.(); }
   }
   async function hideTask(task) {
     if (busy || !confirm(task.hidden ? '確定恢復學生端顯示？截止時間不會變更。' : '確定從學生端隱藏？教師端仍保留完整紀錄。')) return;

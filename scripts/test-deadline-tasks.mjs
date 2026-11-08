@@ -36,7 +36,16 @@ const db = { collection:name=>new Ref(name), runTransaction:async callback=>{
     }
     if(path.includes('/records/')) {
       const task=documents.get(path.split('/records/')[0]);
-      if(task.hidden||serverNow>=task.deadline.toMillis()) { const error=new Error('server denied');error.code='permission-denied';throw error; }
+      if(task.hidden||serverNow>=task.deadline.toMillis()||(task.excludedSeats||[]).includes(path.split('/').at(-1))) { const error=new Error('server denied');error.code='permission-denied';throw error; }
+    }
+    if(operation==='update' && data?.excludedSeats && path.startsWith(collection+'/')) {
+      const old=documents.get(path);
+      if(!teacher || serverNow>=old.deadline.toMillis()
+        || Object.keys(data).some(key=>!['excludedSeats','version','updatedAt'].includes(key))
+        || !Array.isArray(data.excludedSeats) || new Set(data.excludedSeats).size!==data.excludedSeats.length
+        || data.excludedSeats.some(seat=>typeof seat!=='string'||!(seat in old.participants))) {
+        const error=new Error('server denied exclusion change');error.code='permission-denied';throw error;
+      }
     }
     if(data?.createdAt==='server-time') data.createdAt=new Timestamp(serverNow);
     if(data?.updatedAt==='server-time') data.updatedAt=new Timestamp(serverNow);
@@ -207,6 +216,53 @@ now=serverNow=+new Date('2026-10-28T03:00:00Z');
 setRoster([]);await assert.rejects(()=>api.addParticipants(latestTask(pageId)),/班級名單/);
 setRoster('invalid');await assert.rejects(()=>api.addParticipants(latestTask(pageId)),/班級名單/);
 documents.set(root,originalClass);
+// Soft removal changes eligibility only, never deletes frozen participants or records.
+const lifecycleId=await api.create('移出與恢復測試','2026-10-30T12:00',{startPage:10,endPage:13});
+teacher=false;await api.savePageProgress(lifecycleId,1,11);await api.savePageProgress(lifecycleId,3,13,students[1].recordSince);teacher=true;
+const recordsBeforeRemoval=allRecords(),originalPeople=JSON.stringify(latestTask(lifecycleId).participants);
+teacher=false;await assert.rejects(()=>api.setParticipantExcluded(latestTask(lifecycleId),1,true),/登入/);teacher=true;
+offline=true;await assert.rejects(()=>api.setParticipantExcluded(latestTask(lifecycleId),1,true),/offline/);offline=false;
+const staleRemoval=latestTask(lifecycleId);
+await api.setParticipantExcluded(staleRemoval,1,true);
+assert.deepEqual(plain(D.activeParticipantSeats(latestTask(lifecycleId))),['3']);
+assert.equal(JSON.stringify(latestTask(lifecycleId).participants),originalPeople);
+assert.equal(allRecords(),recordsBeforeRemoval);
+await assert.rejects(()=>api.setParticipantExcluded(staleRemoval,3,true),/另一台裝置/);
+const beforeDuplicateRemove=writes.length;
+await api.setParticipantExcluded(latestTask(lifecycleId),1,true);assert.equal(writes.length,beforeDuplicateRemove);
+teacher=false;await assert.rejects(()=>api.savePageProgress(lifecycleId,1,13),/已移出/);teacher=true;
+// A stale browser sending records directly is also blocked by the server policy model.
+await assert.rejects(()=>db.runTransaction(async transaction=>transaction.set(new Ref(`${collection}/${lifecycleId}/records/1`),{seat:1,identity:'',lastPage:13,updatedAt:'server-time',completedAt:'server-time'})),error=>error.code==='permission-denied');
+await api.setParticipantExcluded(latestTask(lifecycleId),3,true);
+assert.deepEqual(plain(D.activeParticipantSeats(latestTask(lifecycleId))),[],'All students may be moved out without deleting the task');
+assert.equal(allRecords(),recordsBeforeRemoval);
+setRoster([...students,newStudent]);await api.addParticipants(latestTask(lifecycleId));
+assert.deepEqual(plain(D.activeParticipantSeats(latestTask(lifecycleId))),['7'],'Bulk add must not accidentally restore intentionally removed students');
+setRoster([{seat:1,name:'重用座號的新生',recordSince:'different'},students[1],newStudent]);
+await assert.rejects(()=>api.setParticipantExcluded(latestTask(lifecycleId),1,false),/非原學生/);
+setRoster([students[1],newStudent]);await assert.rejects(()=>api.setParticipantExcluded(latestTask(lifecycleId),1,false),/已轉出/);
+documents.set(root,originalClass);
+await api.setParticipantExcluded(latestTask(lifecycleId),1,false);
+assert(D.isParticipantActive(latestTask(lifecycleId),1));
+assert.equal(D.pageProgress(latestTask(lifecycleId),documents.get(`${collection}/${lifecycleId}/records/1`)).percent,50);
+assert.equal(allRecords(),recordsBeforeRemoval,'Rejoining restores the same record and timestamp, not a copied/reset record');
+const legacyPeople=JSON.stringify(latestTask(id).participants),legacyRecords=allRecords();
+await api.setParticipantExcluded(latestTask(id),3,true);
+teacher=false;await assert.rejects(()=>api.toggle(id,3,students[1].recordSince),/已移出/);teacher=true;
+await api.setParticipantExcluded(latestTask(id),3,false);
+assert.equal(JSON.stringify(latestTask(id).participants),legacyPeople);assert.equal(allRecords(),legacyRecords);
+for(const seat of [0,61,1.5,'invalid'])await assert.rejects(()=>api.setParticipantExcluded(latestTask(lifecycleId),seat,true),/不正確/);
+await assert.rejects(()=>api.setParticipantExcluded(latestTask(lifecycleId),2,true),/不在任務/);
+const lifecycleTask=latestTask(lifecycleId);
+now=serverNow=lifecycleTask.deadline.toMillis();
+await assert.rejects(()=>api.setParticipantExcluded(lifecycleTask,1,true),/已截止/);
+await assert.rejects(()=>api.setParticipantExcluded(lifecycleTask,3,false),/已截止/);
+now-=60000;await assert.rejects(()=>api.setParticipantExcluded(lifecycleTask,1,true),error=>error.code==='permission-denied');
+serverNow=now;beforeCommit=()=>{serverNow=lifecycleTask.deadline.toMillis();};
+await assert.rejects(()=>api.setParticipantExcluded(lifecycleTask,1,true),error=>error.code==='permission-denied');
+assert(D.isParticipantActive(latestTask(lifecycleId),1));assert.equal(allRecords(),legacyRecords);
+now=serverNow=+new Date('2026-10-28T03:00:00Z');
+for(const excludedSeats of [['61'],['1','1'],[1]])await assert.rejects(()=>db.runTransaction(async transaction=>transaction.update(new Ref(`${collection}/${lifecycleId}`),{excludedSeats,version:latestTask(lifecycleId).version+1,updatedAt:'server-time'})),error=>error.code==='permission-denied');
 let taskResult,recordResult;
 api.watchTasks((items,online)=>taskResult={items,online},()=>{});
 const publicTask=documents.get(`${collection}/${id}`);
@@ -233,10 +289,13 @@ assert(scoped.includes('request.time < resource.data.deadline'));
 assert(scoped.includes("hasOnly(['participants','version','updatedAt'])"));
 assert(scoped.includes('changes.addedKeys().size() > 0'));
 assert(scoped.includes('changes.changedKeys().size() == 0 && changes.removedKeys().size() == 0'));
+assert(scoped.includes("hasOnly(['excludedSeats','version','updatedAt'])"));
+assert(scoped.includes("&& !(seatId in task.get('excludedSeats', []))"));
+assert(scoped.includes("data.get('excludedSeats', []).toSet().hasOnly(data.participants.keys())"));
 for(const file of ['board.html','teacher.html']) {
   const html=fs.readFileSync(new URL(`../${file}`,import.meta.url),'utf8');
   for(const match of html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/g))new vm.Script(match[1]);
-  for(const asset of ['deadline-tasks.js?v=3','deadline-tasks-ui.js?v=5','deadline-tasks.css?v=4'])assert(html.includes(asset));
+  for(const asset of ['deadline-tasks.js?v=4','deadline-tasks-ui.js?v=6','deadline-tasks.css?v=5'])assert(html.includes(asset));
 }
 const ui=fs.readFileSync(new URL('../deadline-tasks-ui.js',import.meta.url),'utf8');
 assert(!/location\.(reload|href)|subjectData.*setItem/.test(ui));
@@ -244,4 +303,4 @@ assert(ui.includes('getSeatingLayout')&&ui.includes('normalizedSeatingLayout'));
 assert(ui.includes('if (busy || D.closed(task) || !tasksOnline || !recordsOnline) return;'));
 assert(ui.includes("dialog.addEventListener('close'"));
 assert(ui.includes('延後時間會重新開放學生點選'));
-console.log('Deadline tasks: passed (teacher-only append, fresh cloud roster, preserved pages/legacy records, new student progress, idempotency, reused seats, stale versions, append-only rule model, exact/spoofed/late expiry, offline safety, page calculations and scoped rules).');
+console.log('Deadline tasks: passed (teacher-only soft removal/restore, frozen names/identity, retained partial/legacy records and timestamps, zero-active state, no bulk rejoin, seat reuse protection, stale/late/offline denial, append compatibility and scoped policy models).');

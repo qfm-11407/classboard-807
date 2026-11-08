@@ -43,6 +43,12 @@ button.deadline-student { cursor:pointer; }
 .deadline-record-list { display:flex;gap:8px;flex-wrap:wrap;margin-top:16px; }
 .deadline-record-list > span { border:1px solid var(--dt-line);border-radius:12px;padding:9px 12px;font-size:.9em; }
 .deadline-record-list small { display:block;color:var(--dt-muted);margin-top:3px; }
+.deadline-seat-grid.removal-mode .deadline-student:not(.empty) { outline:2px dashed var(--dt-accent);outline-offset:-4px;cursor:pointer; }
+.deadline-removed-history { margin-top:18px;border-top:1px solid var(--dt-line);padding-top:14px; }
+.deadline-removed-history > summary { cursor:pointer;font-weight:800; }
+.deadline-history-row { display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:12px 0;border-bottom:1px solid var(--dt-line); }
+.deadline-history-row > div { flex:1;min-width:140px; }
+.deadline-history-row small { display:block;color:var(--dt-muted);margin-top:4px; }
 .deadline-dialog .deadline-toolbar:empty,.deadline-dialog .deadline-record-list:empty,.deadline-dialog .deadline-message:empty { display:none;margin:0; }
 .deadline-form { display:grid;gap:16px; }
 .deadline-form label { display:grid;gap:7px;font-weight:700;min-width:0; }

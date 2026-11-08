@@ -33,7 +33,19 @@ const emit=()=>taskWatch?.([...tasks],true);let calls=0;
 window.__deadlineFixture={get calls(){return calls;},expire(id='open'){tasks.find(task=>task.id===id).deadline=stamp(Date.now());},remote(){tasks=[...tasks];emit();},offline(){taskWatch?.([...tasks],false);},records};
 DeadlineTasks.createService=()=>({isTeacher:()=>__teacher,watchTasks(next){taskWatch=next;emit();return()=>{};},watchRecords(id,next){recordWatch={id,next};next({...records[id]},true);return()=>{recordWatch=null;};},async toggle(id,seat,identity){calls++;await new Promise(resolve=>setTimeout(resolve,120));if(DeadlineTasks.closed(tasks.find(task=>task.id===id)))throw new Error('已截止');if(records[id][seat])delete records[id][seat];else records[id][seat]={seat,identity,completedAt:stamp(Date.now())};if(recordWatch?.id===id)recordWatch.next({...records[id]},true);},async savePageProgress(id,seat,lastPage,identity){calls++;await new Promise(resolve=>setTimeout(resolve,120));const task=tasks.find(task=>task.id===id);if(DeadlineTasks.closed(task))throw new Error('已截止');const page=lastPage===''?task.startPage-1:Number(lastPage);records[id][seat]={seat,identity,lastPage:page,updatedAt:stamp(Date.now()),completedAt:page===task.endPage?stamp(Date.now()):null};recordWatch?.next({...records[id]},true);},async create(name,date,pages){tasks.push({id:'created',name,...pages,deadline:stamp(+DeadlineTasks.parseDeadline(date)),createdAt:stamp(Date.now()+1),version:1,hidden:false,participants});records.created={};emit();return'created';},async update(task,changes){const value=tasks.find(item=>item.id===task.id);if(changes.name)value.name=changes.name;if(changes.deadlineInput)value.deadline=stamp(+DeadlineTasks.parseDeadline(changes.deadlineInput));if('hidden'in changes)value.hidden=changes.hidden;value.version++;emit();}});
 const originalService=DeadlineTasks.createService;
-DeadlineTasks.createService=()=>({...originalService(),async addParticipants(task){
+const exclude=(id,seat,excluded)=>{
+  const task=tasks.find(item=>item.id===id),seats=new Set(task.excludedSeats||[]);
+  if(excluded)seats.add(String(seat));else seats.delete(String(seat));
+  task.excludedSeats=[...seats];task.version++;emit();
+};
+__deadlineFixture.exclude=exclude;
+__deadlineFixture.excludeAll=(id,excluded)=>{const task=tasks.find(item=>item.id===id);task.excludedSeats=excluded?Object.keys(task.participants):[];task.version++;emit();};
+DeadlineTasks.createService=()=>({...originalService(),async setParticipantExcluded(task,seat,excluded){
+  calls++;await new Promise(resolve=>setTimeout(resolve,180));
+  if(!__teacher)throw new Error('請先登入教師帳號');
+  if(DeadlineTasks.closed(tasks.find(item=>item.id===task.id)))throw new Error('已截止');
+  exclude(task.id,seat,excluded);
+},async addParticipants(task){
   calls++;await new Promise(resolve=>setTimeout(resolve,180));
   const current=tasks.find(item=>item.id===task.id);
   if(DeadlineTasks.closed(current))throw new Error('此任務已截止，不能補入學生。');
@@ -88,6 +100,7 @@ try {
     assert.equal(await modal.locator('button.deadline-student').count(),teacher?0:26);
     if(!teacher) {
       assert.equal(await modal.getByRole('button',{name:'補入新增學生',exact:true}).count(),0,'Students cannot append task participants');
+      assert.equal(await modal.getByRole('button',{name:'移出學生',exact:true}).count(),0,'Students cannot remove task participants');
       const fit=await modal.evaluate(element=>({scroll:element.scrollHeight,client:element.clientHeight,grid:element.querySelector('.deadline-seat-grid').getBoundingClientRect().height}));
       assert.equal(fit.scroll>fit.client+1,false,`Full seating grid fits on one screen ${size.width}: ${JSON.stringify(fit)}`);
       await modal.locator('button.deadline-student').first().dblclick();
@@ -122,6 +135,15 @@ try {
     assert.equal(await modal.locator('.deadline-page-student').nth(1).evaluate(element=>element.scrollWidth>element.clientWidth+1),false,'100% indicator stays inside student card');
     if(!teacher)assert.equal(await modal.evaluate(element=>element.scrollHeight>element.clientHeight+1),false,`Page progress grid fits ${size.width}`);
     if(output)await page.screenshot({path:path.join(output,`${teacher?'teacher':'board'}-${size.width}-pages.png`)});
+    if(!teacher) {
+      await page.evaluate(()=>__deadlineFixture.excludeAll('pages',true));
+      assert.equal(await modal.locator('.deadline-page-student').count(),0,'All removed students are hidden');
+      assert.equal(await modal.locator('.deadline-student.empty').count(),30,'All-removed task still preserves actual seat layout');
+      assert((await modal.locator('.deadline-summary').textContent()).includes('已完成 0／0 人'));
+      assert(!(await modal.locator('.deadline-summary').textContent()).includes('全班平均'),'Zero participants do not produce NaN or a false 100% average');
+      await page.evaluate(()=>__deadlineFixture.excludeAll('pages',false));
+      assert.equal(await modal.locator('.deadline-percent').first().textContent(),'50%','Restoring eligibility preserves all original records');
+    }
     await modal.locator('.deadline-page-student').first().click();
     const progressEditor=page.locator('.deadline-page-dialog');
     assert.equal(await progressEditor.getByLabel('已完成到第幾頁',{exact:true}).inputValue(),'180');
@@ -129,6 +151,17 @@ try {
       assert.equal(await progressEditor.getByLabel('已完成到第幾頁',{exact:true}).isDisabled(),true);
       assert.equal(await progressEditor.getByRole('button',{name:'儲存頁數',exact:true}).count(),0);
     } else {
+      const recordsBefore=await page.evaluate(()=>JSON.stringify(__deadlineFixture.records));
+      await page.evaluate(()=>__deadlineFixture.exclude('pages',28,true));
+      assert.equal(await progressEditor.getByRole('button',{name:'儲存頁數',exact:true}).isDisabled(),true,'Remote removal locks an already-open page editor');
+      assert.equal(await modal.locator('.deadline-seat-grid [data-seat="28"]').count(),0,'Removed students disappear without moving other seats');
+      assert.equal(await modal.locator('.deadline-record-list').textContent(),'','Removed students do not leak into student extras');
+      assert.equal(await modal.locator('.deadline-removed-history').isVisible(),false,'Removed history is teacher-only');
+      assert((await modal.locator('.deadline-summary').textContent()).includes('已完成 1／25 人'));
+      assert((await modal.locator('.deadline-summary').textContent()).includes('全班平均 8%'));
+      assert.equal(await page.evaluate(()=>JSON.stringify(__deadlineFixture.records)),recordsBefore);
+      await page.evaluate(()=>__deadlineFixture.exclude('pages',28,false));
+      assert.equal(await progressEditor.getByRole('button',{name:'儲存頁數',exact:true}).isDisabled(),false,'Same student can continue from retained progress after restoration');
       await progressEditor.getByLabel('已完成到第幾頁',{exact:true}).fill('181');
       assert.equal(await progressEditor.locator('.deadline-percent').textContent(),'75%');
       assert.equal(await modal.locator('.deadline-percent').first().textContent(),'50%','Draft is not a completed cloud save');
@@ -173,10 +206,51 @@ try {
       await append().click();
       await page.waitForFunction(()=>document.querySelector('#deadline-task-dialog .deadline-message').textContent.includes('沒有需要補入'));
       assert.equal(await modal.locator('.deadline-page-student').count(),27,'Repeat does not duplicate student cards');
+      // Remove a completed student: preserve history, recalculate completion and permit undo.
+      await modal.getByRole('button',{name:'移出學生',exact:true}).click();
+      const remove=()=>modal.getByRole('button',{name:'移出 27 學生27',exact:true});
+      const callsBeforeRemoval=await page.evaluate(()=>__deadlineFixture.calls);
+      page.once('dialog',dialog=>dialog.dismiss());await remove().click();
+      assert.equal(await page.evaluate(()=>__deadlineFixture.calls),callsBeforeRemoval,'Cancel keeps membership unchanged');
+      page.once('dialog',dialog=>dialog.accept());await remove().click();
+      assert.equal(await remove().isDisabled(),true,'Removing disables student selection while syncing');
+      await remove().dispatchEvent('click');
+      await page.waitForFunction(()=>document.querySelector('#deadline-task-dialog .deadline-message').textContent.includes('已移出 27'));
+      assert.equal(await page.evaluate(()=>__deadlineFixture.calls),callsBeforeRemoval+1,'Removal busy guard rejects duplicate clicks');
+      assert.equal(await modal.locator('.deadline-seat-grid [data-seat="27"]').count(),0);
+      assert.equal(await modal.locator('.deadline-student').count(),30);
+      assert((await modal.locator('.deadline-summary').textContent()).includes('已完成 0／26 人'));
+      assert.equal(await page.evaluate(()=>JSON.stringify(__deadlineFixture.records)),before,'Removal preserves every record');
+      const history=modal.locator('.deadline-removed-history');
+      assert.equal(await history.isVisible(),true);assert((await history.textContent()).includes('100%'));
+      await history.getByRole('button',{name:'查看進度',exact:true}).click();
+      assert.equal(await progressEditor.getByLabel('已完成到第幾頁',{exact:true}).inputValue(),'182');
+      assert.equal(await progressEditor.getByLabel('已完成到第幾頁',{exact:true}).isDisabled(),true);
+      assert.equal(await progressEditor.getByRole('button',{name:'儲存頁數',exact:true}).count(),0);
+      await progressEditor.getByRole('button',{name:'關閉',exact:true}).click();
+      page.once('dialog',dialog=>dialog.accept());await append().click();
+      await page.waitForFunction(()=>document.querySelector('#deadline-task-dialog .deadline-message').textContent.includes('沒有需要補入'));
+      assert.equal(await modal.locator('.deadline-seat-grid [data-seat="27"]').count(),0,'Bulk append does not rejoin intentionally removed students');
+      page.once('dialog',dialog=>dialog.dismiss());await history.getByRole('button',{name:'重新補入',exact:true}).click();
+      assert.equal(await modal.locator('.deadline-seat-grid [data-seat="27"]').count(),0,'Restore also requires confirmation');
+      page.once('dialog',dialog=>dialog.accept());await history.getByRole('button',{name:'重新補入',exact:true}).click();
+      await page.waitForFunction(()=>document.querySelector('#deadline-task-dialog .deadline-message').textContent.includes('已重新補入 27'));
+      assert.equal(await modal.locator('.deadline-seat-grid [data-seat="27"] .deadline-percent').textContent(),'100%');
+      assert((await modal.locator('.deadline-summary').textContent()).includes('已完成 1／27 人'));
+      assert.equal(await page.evaluate(()=>JSON.stringify(__deadlineFixture.records)),before,'Restore reuses the unchanged completed record');
+      assert.equal(await history.isVisible(),false);
+      await modal.getByRole('button',{name:'完成名單調整',exact:true}).click();
+      // A historical exclusion remains visible to teachers after expiry, with no restore action.
+      await page.evaluate(()=>__deadlineFixture.exclude('pages',28,true));
+      if(!await history.evaluate(element=>element.open))await history.locator('summary').click();
+      assert((await history.textContent()).includes('50%'),'Teacher retained history includes original partial progress');
+      if(output)await page.screenshot({path:path.join(output,`teacher-${size.width}-removed.png`)});
       await page.evaluate(()=>__deadlineFixture.offline());assert.equal(await append().isDisabled(),true,'Offline append is disabled');
       await page.evaluate(()=>__deadlineFixture.remote());assert.equal(await append().isDisabled(),false);
       await page.evaluate(()=>__deadlineFixture.expire('pages'));await page.waitForTimeout(1150);
       assert.equal(await append().count(),0,'Expired tasks no longer offer append');
+      assert.equal(await modal.getByRole('button',{name:'移出學生',exact:true}).count(),0);
+      assert.equal(await history.getByRole('button',{name:'重新補入',exact:true}).count(),0,'Closed history cannot restore participants');
     }
     await modal.getByRole('button',{name:'✕ 關閉',exact:true}).click();
     if(teacher) {
@@ -206,5 +280,5 @@ try {
     assert.deepEqual(errors,[],`${file} ${size.width}: no page exceptions`);
     await context.close();
   }
-  console.log('Deadline UI: passed (desktop/mobile teacher append, confirm/cancel, failed-sync guard, busy guard, 0% new cards, retained progress and 30 actual seat slots, idempotency, offline/expiry locks, student isolation and legacy navigation).');
+  console.log('Deadline UI: passed (desktop/mobile remove/restore, confirmation and busy guards, retained read-only history, excluded completion averages, all-removed state, live editor locking, append idempotency, expiry/offline protections and legacy navigation).');
 } finally {await browser.close();await new Promise(resolve=>server.close(resolve));}
