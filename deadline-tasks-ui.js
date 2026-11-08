@@ -148,6 +148,8 @@
     detailActions.replaceChildren();
     if (teacherPage && service.isTeacher()) {
       detailActions.append(button('修改名稱／截止時間', () => editTask(task)), button(task.hidden ? '恢復學生端顯示' : '從學生端隱藏', () => hideTask(task)));
+      if (!locked) detailActions.append(button('補入新增學生', () => addParticipants(task)));
+      detailActions.querySelectorAll('button').forEach(action => { action.disabled = busy || offline; });
     }
     grid.replaceChildren(); extraRecords.replaceChildren();
     const { seats, extra, current } = orderedParticipants(task);
@@ -248,6 +250,26 @@
       detailMessage.textContent = '完成狀態已同步。';
     } catch (error) {
       detailMessage.textContent = error.code === 'permission-denied' ? '此任務已截止或設定已更動，未儲存這次點選；請重新開啟查看。' : error.message || '同步失敗，請檢查網路。';
+    } finally { busy = false; if (dialog.open) renderDetail(); }
+  }
+  async function addParticipants(task) {
+    if (busy || !teacherPage || !service.isTeacher() || D.closed(task) || !tasksOnline || !recordsOnline) return;
+    if (!confirm('將最新班級名單中尚未加入的學生補入此任務？原有學生、頁數及完成紀錄都會保留；已截止任務不會變更。')) return;
+    busy = true; detailMessage.textContent = '正在同步名單並補入學生…'; renderDetail();
+    try {
+      // Flush normal teacher edits first; a failed sync must not import an older cloud roster.
+      if (typeof window.syncCloudNow === 'function') await window.syncCloudNow();
+      const result = await service.addParticipants(task);
+      const added = result.added.map(student => `${String(student.seat).padStart(2, '0')} ${student.name}`).join('、');
+      const conflicts = result.conflicts.map(student => `${String(student.seat).padStart(2, '0')} 號`).join('、');
+      const text = (result.added.length ? `已補入 ${result.added.length} 人：${added}。原有進度保持不變。` : '沒有需要補入的新學生，原有進度保持不變。')
+        + (conflicts ? ` ${conflicts}已有不同學生的歷史名單，未覆蓋；請另建任務。` : '');
+      if (selectedId === task.id) detailMessage.textContent = text;
+      else say(text);
+    } catch (error) {
+      const text = error.code === 'permission-denied' ? '補入未成功：請確認教師登入、任務尚未截止及網站已更新。原有紀錄未變更。' : error.message || '補入失敗，請檢查網路後重試。';
+      if (selectedId === task.id) detailMessage.textContent = text;
+      else say(text, true);
     } finally { busy = false; if (dialog.open) renderDetail(); }
   }
   async function hideTask(task) {

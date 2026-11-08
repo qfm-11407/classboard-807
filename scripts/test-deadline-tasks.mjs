@@ -24,8 +24,16 @@ const db = { collection:name=>new Ref(name), runTransaction:async callback=>{
   if(offline) throw new Error('offline');
   const pending=[];
   const transaction={get:async ref=>snap(ref.path),set:(ref,data)=>pending.push(['set',ref.path,data]),update:(ref,data)=>pending.push(['update',ref.path,data]),delete:ref=>pending.push(['delete',ref.path])};
-  await callback(transaction); beforeCommit?.(); beforeCommit=null;
+  const result=await callback(transaction); beforeCommit?.(); beforeCommit=null;
   for(const [operation,path,data] of pending) {
+    if(operation==='update' && data?.participants && path.startsWith(collection+'/')) {
+      const old=documents.get(path), additions=Object.keys(data.participants).filter(seat=>!(seat in old.participants));
+      if(!teacher || serverNow>=old.deadline.toMillis() || !additions.length
+        || Object.keys(data).some(key=>!['participants','version','updatedAt'].includes(key))
+        || Object.entries(old.participants).some(([seat,student])=>JSON.stringify(data.participants[seat])!==JSON.stringify(student))) {
+        const error=new Error('server denied participant change');error.code='permission-denied';throw error;
+      }
+    }
     if(path.includes('/records/')) {
       const task=documents.get(path.split('/records/')[0]);
       if(task.hidden||serverNow>=task.deadline.toMillis()) { const error=new Error('server denied');error.code='permission-denied';throw error; }
@@ -37,6 +45,7 @@ const db = { collection:name=>new Ref(name), runTransaction:async callback=>{
     else documents.set(path,operation==='update'?{...documents.get(path),...data}:data);
     writes.push([operation,path]);
   }
+  return result;
 }};
 const firestore=()=>db;firestore.Timestamp=Timestamp;firestore.FieldValue={serverTimestamp:()=> 'server-time'};
 const firebase={app:()=>({}),firestore,auth:()=>({get currentUser(){return teacher?{email:'teacher@qfm.kh.edu.tw'}:null;}})};
@@ -141,6 +150,63 @@ now-=60000;await assert.rejects(()=>api.savePageProgress(pageId,1,182),error=>er
 assert.equal(documents.get(pagePath),partial,'Expiry preserves partial progress, not just fully completed records');
 assert.deepEqual(documents.get(root),originalClass);
 assert.deepEqual(plain(D.participantsFromRoster([{seat:0,name:'無效'},{seat:2,name:'第二位'},{seat:61,name:'無效'}])),{'2':{name:'第二位',identity:''}});
+// Teacher-only append reads the current cloud roster and leaves every existing record intact.
+teacher=true;now=serverNow=+new Date('2026-10-28T03:00:00Z');
+const latestTask=taskId=>({...documents.get(`${collection}/${taskId}`),id:taskId});
+const allRecords=()=>JSON.stringify([...documents].filter(([path])=>path.includes('/records/')));
+const progressBeforeAppend=allRecords();
+const newStudent={seat:7,name:'新學生',recordSince:'2026-10-28T03:00:00Z'};
+const setRoster=value=>documents.set(root,{...originalClass,data:{...originalClass.data,classroomStudentRoster:JSON.stringify(value)}});
+setRoster([...students,newStudent]);
+teacher=false;await assert.rejects(()=>api.addParticipants(latestTask(pageId)),/登入/);teacher=true;
+offline=true;await assert.rejects(()=>api.addParticipants(latestTask(pageId)),/offline/);offline=false;
+const oldPageVersion=latestTask(pageId), result=await api.addParticipants(oldPageVersion);
+assert.deepEqual(plain(result),{added:[newStudent].map(({recordSince,...student})=>({...student,identity:recordSince})),conflicts:[]});
+assert.equal(latestTask(pageId).version,oldPageVersion.version+1);
+assert.equal(allRecords(),progressBeforeAppend,'Partial pages, completion times and legacy records are never rewritten');
+assert.equal(D.pageProgress(latestTask(pageId),documents.get(`${collection}/${pageId}/records/7`)).percent,0);
+teacher=false;
+await api.savePageProgress(pageId,7,180,newStudent.recordSince,null);
+assert.equal(D.pageProgress(latestTask(pageId),documents.get(`${collection}/${pageId}/records/7`)).percent,50,'Appended student can register progress normally');
+// Remove only this synthetic new record to keep subsequent preservation comparisons exact.
+documents.delete(`${collection}/${pageId}/records/7`);teacher=true;
+assert.equal(latestTask(pageId).startPage,179);assert.equal(latestTask(pageId).endPage,182);
+assert.deepEqual(plain(latestTask(pageId).participants['1']),plain(oldPageVersion.participants['1']));
+await assert.rejects(()=>api.addParticipants(oldPageVersion),/另一台裝置/);
+const writesBeforeRepeat=writes.length;
+assert.deepEqual(plain(await api.addParticipants(latestTask(pageId))),{added:[],conflicts:[]});
+assert.equal(writes.length,writesBeforeRepeat,'Repeating with no new students does not write or bump the version');
+const forbiddenAppend=(participants,extra={})=>db.runTransaction(async transaction=>{
+  const ref=new Ref(`${collection}/${pageId}`),current=latestTask(pageId);
+  transaction.update(ref,{participants,version:current.version+1,updatedAt:'server-time',...extra});
+});
+const preservedParticipants=latestTask(pageId).participants;
+await assert.rejects(()=>forbiddenAppend({...preservedParticipants,'1':{name:'更名',identity:'changed'},'9':{name:'新生',identity:''}}),error=>error.code==='permission-denied');
+const removedParticipants={...preservedParticipants,'9':{name:'新生',identity:''}};delete removedParticipants['3'];
+await assert.rejects(()=>forbiddenAppend(removedParticipants),error=>error.code==='permission-denied');
+await assert.rejects(()=>forbiddenAppend({...preservedParticipants,'9':{name:'新生',identity:''}},{deadline:new Timestamp(now+86400000)}),error=>error.code==='permission-denied','Append cannot silently extend the deadline in the same write');
+assert.equal(allRecords(),progressBeforeAppend);
+// Removed participants and reused seat numbers retain the old identity, name and progress.
+setRoster([{seat:1,name:'轉入的新同學',recordSince:'new-person'},newStudent,{seat:8,name:'另一位新生',recordSince:'new-8'}]);
+const reuseResult=await api.addParticipants(latestTask(pageId));
+assert.equal(reuseResult.added[0].seat,8);assert.equal(reuseResult.conflicts[0].seat,1);
+assert.deepEqual(plain(latestTask(pageId).participants['1']),plain(oldPageVersion.participants['1']));
+assert.deepEqual(plain(latestTask(pageId).participants['3']),plain(oldPageVersion.participants['3']),'Transferred-out participant remains in historical task');
+assert.equal(allRecords(),progressBeforeAppend);
+// Legacy tasks support the same append without resetting completion status.
+await api.addParticipants(latestTask(id));assert.equal(allRecords(),progressBeforeAppend);
+setRoster([...students,newStudent,{seat:9,name:'截止測試新生'}]);
+const openVersion=latestTask(pageId);
+now=serverNow=openVersion.deadline.toMillis();
+await assert.rejects(()=>api.addParticipants(openVersion),/已截止/);
+now-=60000;await assert.rejects(()=>api.addParticipants(openVersion),error=>error.code==='permission-denied','Spoofed client time cannot append after server deadline');
+serverNow=now;beforeCommit=()=>{serverNow=openVersion.deadline.toMillis();};
+await assert.rejects(()=>api.addParticipants(openVersion),error=>error.code==='permission-denied','An append started before expiry cannot commit after expiry');
+assert(!latestTask(pageId).participants['9']);assert.equal(allRecords(),progressBeforeAppend);
+now=serverNow=+new Date('2026-10-28T03:00:00Z');
+setRoster([]);await assert.rejects(()=>api.addParticipants(latestTask(pageId)),/班級名單/);
+setRoster('invalid');await assert.rejects(()=>api.addParticipants(latestTask(pageId)),/班級名單/);
+documents.set(root,originalClass);
 let taskResult,recordResult;
 api.watchTasks((items,online)=>taskResult={items,online},()=>{});
 const publicTask=documents.get(`${collection}/${id}`);
@@ -163,10 +229,14 @@ assert(scoped.includes('allow delete: if acceptingRecords()'));
 assert(scoped.includes('allow delete: if false;'));
 assert(scoped.includes('assignedIdentity()'));
 assert(scoped.includes("['name','deadline','hidden','version','updatedAt']"));
+assert(scoped.includes('request.time < resource.data.deadline'));
+assert(scoped.includes("hasOnly(['participants','version','updatedAt'])"));
+assert(scoped.includes('changes.addedKeys().size() > 0'));
+assert(scoped.includes('changes.changedKeys().size() == 0 && changes.removedKeys().size() == 0'));
 for(const file of ['board.html','teacher.html']) {
   const html=fs.readFileSync(new URL(`../${file}`,import.meta.url),'utf8');
   for(const match of html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/g))new vm.Script(match[1]);
-  for(const asset of ['deadline-tasks.js?v=2','deadline-tasks-ui.js?v=4','deadline-tasks.css?v=4'])assert(html.includes(asset));
+  for(const asset of ['deadline-tasks.js?v=3','deadline-tasks-ui.js?v=5','deadline-tasks.css?v=4'])assert(html.includes(asset));
 }
 const ui=fs.readFileSync(new URL('../deadline-tasks-ui.js',import.meta.url),'utf8');
 assert(!/location\.(reload|href)|subjectData.*setItem/.test(ui));
@@ -174,4 +244,4 @@ assert(ui.includes('getSeatingLayout')&&ui.includes('normalizedSeatingLayout'));
 assert(ui.includes('if (busy || D.closed(task) || !tasksOnline || !recordsOnline) return;'));
 assert(ui.includes("dialog.addEventListener('close'"));
 assert(ui.includes('延後時間會重新開放學生點選'));
-console.log('Deadline tasks: passed (inclusive idiom pages, 0/25/50/75/100%, partial corrections, reset, server timestamps, stale progress conflicts, exact expiry, spoofed/late writes denied, offline safety, pending-delete protection, retained partial/legacy records, and scoped rules).');
+console.log('Deadline tasks: passed (teacher-only append, fresh cloud roster, preserved pages/legacy records, new student progress, idempotency, reused seats, stale versions, append-only rule model, exact/spoofed/late expiry, offline safety, page calculations and scoped rules).');

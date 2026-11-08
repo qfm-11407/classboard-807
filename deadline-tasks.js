@@ -87,6 +87,34 @@
         transaction.update(ref, { ...fields, version: current.version + 1, updatedAt: stamp() });
       });
     }
+    async function addParticipants(task) {
+      requireTeacher();
+      const ref = tasks.doc(task.id);
+      // Read both documents in the transaction so a concurrent roster edit is retried safely.
+      return db.runTransaction(async transaction => {
+        const snapshot = await transaction.get(ref), classSnapshot = await transaction.get(classRef);
+        const current = snapshot.data();
+        if (!snapshot.exists) throw new Error('此任務已不存在。');
+        if (closed(current)) throw new Error('此任務已截止，不能補入學生。');
+        if (current.version !== task.version) throw new Error('另一台裝置已修改任務，請重新開啟後再試。');
+        let roster;
+        try { roster = JSON.parse(classSnapshot.data()?.data?.classroomStudentRoster || '[]'); } catch (_) { throw new Error('班級名單讀取失敗，請重新載入後再試。'); }
+        if (!Array.isArray(roster) || !roster.length) throw new Error('請先設定並同步班級名單。');
+        const latest = participantsFromRoster(roster), participants = { ...current.participants }, added = [], conflicts = [];
+        for (const [seat, student] of Object.entries(latest)) {
+          if (Object.prototype.hasOwnProperty.call(participants, seat)) {
+            // A reused seat must never take over the previous student's history.
+            if (participants[seat].identity !== student.identity) conflicts.push({ seat: Number(seat), ...student });
+            continue;
+          }
+          participants[seat] = student; added.push({ seat: Number(seat), ...student });
+        }
+        if (Object.keys(participants).length > 60) throw new Error('任務名單最多 60 人，無法補入。');
+        if (added.length) transaction.update(ref, { participants, version: current.version + 1, updatedAt: stamp() });
+        // No writes to records: existing pages, completion times and identities stay intact.
+        return { added, conflicts };
+      });
+    }
     async function toggle(taskId, seat, identity = '') {
       if (!Number.isInteger(Number(seat)) || Number(seat) < 1 || Number(seat) > 60) throw new Error('學生資料不正確。');
       const ref = tasks.doc(taskId), record = ref.collection('records').doc(String(Number(seat)));
@@ -131,7 +159,7 @@
       snapshot.docs.filter(doc => !doc.metadata?.hasPendingWrites).forEach(doc => { records[doc.id] = doc.data(); });
       next(records, !snapshot.metadata.fromCache);
     }, error);
-    return { create, update, toggle, savePageProgress, watchTasks, watchRecords, isTeacher: teacher };
+    return { create, update, addParticipants, toggle, savePageProgress, watchTasks, watchRecords, isTeacher: teacher };
   }
   root.DeadlineTasks = { millis, closed, parseDeadline, dateInput, formatDate, pageFields, isPageTask, pageProgress, participantsFromRoster, createService };
 }(typeof window === 'object' ? window : globalThis));

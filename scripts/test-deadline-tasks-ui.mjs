@@ -32,6 +32,22 @@ let taskWatch,recordWatch;const records={open:{},closed:{'28':{seat:28,identity:
 const emit=()=>taskWatch?.([...tasks],true);let calls=0;
 window.__deadlineFixture={get calls(){return calls;},expire(id='open'){tasks.find(task=>task.id===id).deadline=stamp(Date.now());},remote(){tasks=[...tasks];emit();},offline(){taskWatch?.([...tasks],false);},records};
 DeadlineTasks.createService=()=>({isTeacher:()=>__teacher,watchTasks(next){taskWatch=next;emit();return()=>{};},watchRecords(id,next){recordWatch={id,next};next({...records[id]},true);return()=>{recordWatch=null;};},async toggle(id,seat,identity){calls++;await new Promise(resolve=>setTimeout(resolve,120));if(DeadlineTasks.closed(tasks.find(task=>task.id===id)))throw new Error('已截止');if(records[id][seat])delete records[id][seat];else records[id][seat]={seat,identity,completedAt:stamp(Date.now())};if(recordWatch?.id===id)recordWatch.next({...records[id]},true);},async savePageProgress(id,seat,lastPage,identity){calls++;await new Promise(resolve=>setTimeout(resolve,120));const task=tasks.find(task=>task.id===id);if(DeadlineTasks.closed(task))throw new Error('已截止');const page=lastPage===''?task.startPage-1:Number(lastPage);records[id][seat]={seat,identity,lastPage:page,updatedAt:stamp(Date.now()),completedAt:page===task.endPage?stamp(Date.now()):null};recordWatch?.next({...records[id]},true);},async create(name,date,pages){tasks.push({id:'created',name,...pages,deadline:stamp(+DeadlineTasks.parseDeadline(date)),createdAt:stamp(Date.now()+1),version:1,hidden:false,participants});records.created={};emit();return'created';},async update(task,changes){const value=tasks.find(item=>item.id===task.id);if(changes.name)value.name=changes.name;if(changes.deadlineInput)value.deadline=stamp(+DeadlineTasks.parseDeadline(changes.deadlineInput));if('hidden'in changes)value.hidden=changes.hidden;value.version++;emit();}});
+const originalService=DeadlineTasks.createService;
+DeadlineTasks.createService=()=>({...originalService(),async addParticipants(task){
+  calls++;await new Promise(resolve=>setTimeout(resolve,180));
+  const current=tasks.find(item=>item.id===task.id);
+  if(DeadlineTasks.closed(current))throw new Error('此任務已截止，不能補入學生。');
+  const latest=DeadlineTasks.participantsFromRoster(JSON.parse(localStorage.getItem('classroomStudentRoster'))),added=[],conflicts=[];
+  current.participants={...current.participants};
+  for(const [seat,student]of Object.entries(latest))if(!current.participants[seat]){current.participants[seat]=student;added.push({seat:Number(seat),...student});}
+  if(added.length){current.version++;emit();}return{added,conflicts};
+}});
+__deadlineFixture.addStudent=()=>{
+  const next=JSON.parse(__data.classroomStudentRoster);next.push({seat:29,name:'補入新生',recordSince:'new-29'});
+  const seats=JSON.parse(__data.classroomSeatingLayout);seats[26]=29;
+  __data.classroomStudentRoster=JSON.stringify(next);__data.classroomSeatingLayout=JSON.stringify(seats);
+  localStorage.setItem('classroomStudentRoster',__data.classroomStudentRoster);localStorage.setItem('classroomSeatingLayout',__data.classroomSeatingLayout);
+};
 })();`;
 const server = http.createServer((request,response)=>{
   const url = new URL(request.url,'http://localhost');
@@ -71,6 +87,7 @@ try {
     assert.equal(await modal.locator('.deadline-student strong').first().textContent(),'學生28','Uses the real reversed seating layout, not seat-number order');
     assert.equal(await modal.locator('button.deadline-student').count(),teacher?0:26);
     if(!teacher) {
+      assert.equal(await modal.getByRole('button',{name:'補入新增學生',exact:true}).count(),0,'Students cannot append task participants');
       const fit=await modal.evaluate(element=>({scroll:element.scrollHeight,client:element.clientHeight,grid:element.querySelector('.deadline-seat-grid').getBoundingClientRect().height}));
       assert.equal(fit.scroll>fit.client+1,false,`Full seating grid fits on one screen ${size.width}: ${JSON.stringify(fit)}`);
       await modal.locator('button.deadline-student').first().dblclick();
@@ -127,6 +144,40 @@ try {
       assert.equal(await page.evaluate(()=>__deadlineFixture.records.pages['28'].lastPage),181,'Expiry preserves the last committed page');
     }
     await progressEditor.getByRole('button',{name:'關閉',exact:true}).click();
+    if(teacher) {
+      const before=await page.evaluate(()=>JSON.stringify(__deadlineFixture.records));
+      await page.evaluate(()=>__deadlineFixture.addStudent());
+      const append=()=>modal.getByRole('button',{name:'補入新增學生',exact:true});
+      page.once('dialog',dialog=>dialog.dismiss());
+      await append().click();
+      assert.equal(await modal.locator('.deadline-page-student').count(),26,'Cancel does not import new students');
+      await page.evaluate(()=>{window.__originalSync=window.syncCloudNow;window.syncCloudNow=async()=>{throw new Error('名單尚未同步');};});
+      page.once('dialog',dialog=>dialog.accept());await append().click();
+      await page.waitForFunction(()=>document.querySelector('#deadline-task-dialog .deadline-message').textContent.includes('名單尚未同步'));
+      assert.equal(await page.evaluate(()=>__deadlineFixture.calls),0,'Do not append from stale cloud roster if teacher sync fails');
+      await page.evaluate(()=>{window.syncCloudNow=window.__originalSync;});
+      page.once('dialog',dialog=>dialog.accept());
+      await append().click();
+      assert.equal(await append().isDisabled(),true,'Append is disabled while syncing');
+      await append().dispatchEvent('click');
+      await page.waitForFunction(()=>document.querySelector('#deadline-task-dialog .deadline-message').textContent.includes('已補入 1 人'));
+      assert.equal(await page.evaluate(()=>__deadlineFixture.calls),1,'Busy guard rejects duplicate clicks');
+      assert.equal(await modal.locator('.deadline-student').count(),30,'Appending preserves the actual 30 seat slots');
+      assert.equal(await modal.locator('.deadline-page-student').count(),27);
+      assert.equal(await modal.locator('.deadline-page-student strong').nth(26).textContent(),'補入新生');
+      assert.equal(await modal.locator('.deadline-percent').nth(26).textContent(),'0%');
+      assert.equal(await modal.locator('.deadline-percent').first().textContent(),'50%','Existing progress stays unchanged');
+      assert.equal(await page.evaluate(()=>JSON.stringify(__deadlineFixture.records)),before);
+      assert.equal(await modal.isVisible(),true,'Appending keeps the detail dialog open');
+      page.once('dialog',dialog=>dialog.accept());
+      await append().click();
+      await page.waitForFunction(()=>document.querySelector('#deadline-task-dialog .deadline-message').textContent.includes('沒有需要補入'));
+      assert.equal(await modal.locator('.deadline-page-student').count(),27,'Repeat does not duplicate student cards');
+      await page.evaluate(()=>__deadlineFixture.offline());assert.equal(await append().isDisabled(),true,'Offline append is disabled');
+      await page.evaluate(()=>__deadlineFixture.remote());assert.equal(await append().isDisabled(),false);
+      await page.evaluate(()=>__deadlineFixture.expire('pages'));await page.waitForTimeout(1150);
+      assert.equal(await append().count(),0,'Expired tasks no longer offer append');
+    }
     await modal.getByRole('button',{name:'✕ 關閉',exact:true}).click();
     if(teacher) {
       await page.getByRole('button',{name:'新增限時任務',exact:true}).click();
@@ -155,5 +206,5 @@ try {
     assert.deepEqual(errors,[],`${file} ${size.width}: no page exceptions`);
     await context.close();
   }
-  console.log('Deadline UI: passed (real board/teacher HTML, desktop/mobile, actual seating order, 30 preserved slots, teacher read-only records, duplicate click guard, live updates stay open, automatic lock, retained history, nested editor, date containment and legacy subject navigation).');
+  console.log('Deadline UI: passed (desktop/mobile teacher append, confirm/cancel, failed-sync guard, busy guard, 0% new cards, retained progress and 30 actual seat slots, idempotency, offline/expiry locks, student isolation and legacy navigation).');
 } finally {await browser.close();await new Promise(resolve=>server.close(resolve));}
