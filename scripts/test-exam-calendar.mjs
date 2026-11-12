@@ -78,11 +78,11 @@ const notices=board.match(/<ol\b[^>]*id="exam-notices"[^>]*>([\s\S]*?)<\/ol>/)?.
 assert(notices,'Exam notice panel has an ordered list');
 const noticeLines=[...notices.matchAll(/<li>(.*?)<\/li>/g)].map(match=>match[1].replace(/<[^>]+>/g,''));
 assert.deepEqual(noticeLines,[
-  '作答前，請確實核對答案卡之「個人資料」。',
-  '非電腦劃卡作答之測驗，限用「黑色墨水的筆」作答。',
-  '禁止使用穿戴式裝置(如智慧型手錶、智慧型手環)等電子產品。',
-  '測驗結束後除「答案卡」外，「題目卷」也要一併收回。'
+  '作答前，請確實核對答案卡之個人資料。',
+  '非電腦劃卡作答之測驗，限用黑色墨水的筆作答。',
+  '禁止使用 智慧型手錶、智慧型手環 電子穿戴式裝置。',
+  '測驗結束後除「答案卡」外，題目卷也要一併收回。'
 ]);
-assert.deepEqual([...notices.matchAll(/<strong class="exam-notice-keyword">([^<]+)<\/strong>/g)].map(match=>match[1]),['「個人資料」','「黑色墨水的筆」','智慧型手錶、智慧型手環','「題目卷」']);
+assert.deepEqual([...notices.matchAll(/<strong class="exam-notice-keyword">([^<]+)<\/strong>/g)].map(match=>match[1]),['個人資料','黑色墨水的筆','智慧型手錶、智慧型手環','題目卷']);
 for(const html of [teacher,board]){assert(html.includes('exam-calendar.js?v=1'));for(const match of html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g))if(match[1].trim())new vm.Script(match[1]);}
 console.log('Exam calendar: passed (2/3 dates, validation, Taiwan rollover, matching day independent of last save, disabled/gap dates, no incorrect fallback, legacy preservation, AM/PM, date-only cloud sync, offline feedback and seven-period save preservation).');
