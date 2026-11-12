@@ -73,5 +73,16 @@ $('exam-day-select').value='day2';context.loadExamDraft();assert.equal(context.e
 $('exam-day-count').value='2';context.renderExamDates();assert.equal($('exam-dates').children.length,2);
 $('exam-day-count').value='3';context.renderExamDates();assert.equal($('exam-dates').children[2].children[0].value,'2026-10-17');
 assert.equal(writes.length,0,'Editing dates and viewing existing schedules do not write until saved');
+// The exam board displays exactly four instructions and emphasizes only the requested words.
+const notices=board.match(/<ol\b[^>]*id="exam-notices"[^>]*>([\s\S]*?)<\/ol>/)?.[1];
+assert(notices,'Exam notice panel has an ordered list');
+const noticeLines=[...notices.matchAll(/<li>(.*?)<\/li>/g)].map(match=>match[1].replace(/<[^>]+>/g,''));
+assert.deepEqual(noticeLines,[
+  '作答前，請確實核對答案卡之「個人資料」。',
+  '非電腦劃卡作答之測驗，限用「黑色墨水的筆」作答。',
+  '禁止使用穿戴式裝置(如智慧型手錶、智慧型手環)等電子產品。',
+  '測驗結束後除「答案卡」外，「題目卷」也要一併收回。'
+]);
+assert.deepEqual([...notices.matchAll(/<strong class="exam-notice-keyword">([^<]+)<\/strong>/g)].map(match=>match[1]),['「個人資料」','「黑色墨水的筆」','智慧型手錶、智慧型手環','「題目卷」']);
 for(const html of [teacher,board]){assert(html.includes('exam-calendar.js?v=1'));for(const match of html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g))if(match[1].trim())new vm.Script(match[1]);}
 console.log('Exam calendar: passed (2/3 dates, validation, Taiwan rollover, matching day independent of last save, disabled/gap dates, no incorrect fallback, legacy preservation, AM/PM, date-only cloud sync, offline feedback and seven-period save preservation).');

@@ -124,6 +124,9 @@
 
         .corkboard { background-color: #CDAA7D; border: 14px solid #8B5A2B; }
         .blackboard-exam { background-color: #2b4c3b; border: 16px solid #4A2F1D; }
+        .exam-notice-list { display: grid; gap: .55rem; list-style: decimal outside; padding-inline-start: 1.55em; font-size: 1.375rem; line-height: 1.55; }
+        .exam-notice-list li::marker { color: #ffe56c; font-weight: 800; }
+        .exam-notice-keyword { background: #ffe56c; color: #352607; font-weight: 900; padding: .08em .25em; border-radius: .24em; white-space: nowrap; }
         
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
@@ -731,11 +734,13 @@
                     </div>
                     <div class="flex items-stretch justify-between w-full z-10 space-x-6">
                         <div class="flex-1 border-2 border-white/60 p-6 rounded relative flex flex-col justify-center">
-                            <div class="absolute -top-5 left-4 bg-[#2b4c3b] px-4 text-[#FF8A8A] text-2xl font-black tracking-widest">注意事項</div>
-                            <ul class="space-y-3 text-xl text-white tracking-wide mt-2">
-                                <li>1. 作答前，請確實核對答案卡之「個人資料」。</li>
-                                <li>2. 考試期間請嚴守「試場規則」。</li>
-                            </ul>
+                            <div id="exam-notices-title" class="absolute -top-5 left-4 bg-[#2b4c3b] px-4 text-[#FF8A8A] text-2xl font-black tracking-widest">注意事項</div>
+                            <ol id="exam-notices" aria-labelledby="exam-notices-title" class="exam-notice-list text-white tracking-wide mt-2">
+                                <li>作答前，請確實核對答案卡之<strong class="exam-notice-keyword">「個人資料」</strong>。</li>
+                                <li>非電腦劃卡作答之測驗，限用<strong class="exam-notice-keyword">「黑色墨水的筆」</strong>作答。</li>
+                                <li>禁止使用穿戴式裝置(如<strong class="exam-notice-keyword">智慧型手錶、智慧型手環</strong>)等電子產品。</li>
+                                <li>測驗結束後除「答案卡」外，<strong class="exam-notice-keyword">「題目卷」</strong>也要一併收回。</li>
+                            </ol>
                         </div>
                         <div class="w-[20rem] border-2 border-white/60 p-6 rounded relative flex flex-col justify-center text-white">
                             <div class="absolute -top-5 left-4 bg-[#2b4c3b] px-4 text-xl font-bold tracking-widest">出缺席</div>
