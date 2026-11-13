@@ -8,19 +8,31 @@ const symbols = {
   O: '<svg viewBox="0 0 64 64" aria-hidden="true" focusable="false"><circle cx="32" cy="32" r="23" fill="none" stroke="currentColor" stroke-width="6"/></svg>',
   X: '<svg viewBox="0 0 64 64" aria-hidden="true" focusable="false"><path d="M12 12L52 52M52 12L12 52" fill="none" stroke="currentColor" stroke-width="6" stroke-linecap="round"/></svg>',
 };
+const newRound = () => ({
+  cells: Array(9).fill(null), turn: 'O', finished: false, winner: null, winning: [],
+  order: { O: [], X: [] }, positions: new Map(),
+});
+const newState = () => ({ ...newRound(), scores: { O: 0, X: 0, draw: 0 } });
 
 function createTable(index) {
   // Each invocation owns new cells, scores and turn state; nothing is shared between tables.
-  const state = { cells: Array(9).fill(null), turn: 'O', finished: false, winner: null, winning: [], scores: { O: 0, X: 0, draw: 0 } };
+  const modes = { classic: newState(), rotating: newState() };
   const root = document.createElement('article');
   root.className = 'ox-table';
   root.dataset.table = index;
   root.setAttribute('aria-label', `第 ${index + 1} 桌`);
-  root.innerHTML = `<header class="table-head"><h2><span class="table-number" aria-hidden="true">0${index + 1}</span>第 ${index + 1} 桌</h2><div class="turn-badge" role="status" aria-live="polite" aria-atomic="true"></div></header><div class="table-body"><div class="ox-board" role="group" aria-label="第 ${index + 1} 桌棋盤，3 欄 3 列"></div></div><footer class="table-footer"><div class="table-scores" aria-label="此桌戰績"><span class="score-o">O <b data-score="O">0</b></span><span class="score-x">X <b data-score="X">0</b></span><span>和 <b data-score="draw">0</b></span></div><button type="button" class="table-reset" aria-label="重開第 ${index + 1} 桌">重開此桌 ↻</button></footer>`;
+  root.innerHTML = `<header class="table-head"><h2><span class="table-number" aria-hidden="true">0${index + 1}</span>第 ${index + 1} 桌</h2><div class="turn-badge" role="status" aria-live="polite" aria-atomic="true"></div></header><div class="table-body"><div class="ox-board" role="group" aria-label="第 ${index + 1} 桌棋盤，3 欄 3 列"></div></div><footer class="table-footer"><select class="table-mode" aria-label="第 ${index + 1} 桌玩法" aria-describedby="ox-mode-help"><option value="classic">經典井字</option><option value="rotating">三子輪替</option></select><div class="table-scores" aria-label="此桌戰績"><span class="score-o">O <b data-score="O">0</b></span><span class="score-x">X <b data-score="X">0</b></span><span>和 <b data-score="draw">0</b></span></div><button type="button" class="table-reset" aria-label="重開第 ${index + 1} 桌">重開此桌 ↻</button></footer>`;
   const board = root.querySelector('.ox-board');
   const status = root.querySelector('.turn-badge');
   const scoreLabels = Object.fromEntries(['O', 'X', 'draw'].map(mark => [mark, root.querySelector(`[data-score="${mark}"]`)]));
-  const table = { index, state, root, board, status, scoreLabels, buttons: [] };
+  const table = { index, mode: 'classic', state: modes.classic, root, board, status, scoreLabels, buttons: [] };
+  const selector = root.querySelector('.table-mode');
+  selector.addEventListener('change', () => {
+    if (!Object.hasOwn(modes, selector.value)) return;
+    table.mode = selector.value;
+    table.state = modes[table.mode];
+    render(table);
+  });
   table.buttons = Array.from({ length: 9 }, (_, cellIndex) => {
     const cell = document.createElement('button');
     cell.type = 'button';
@@ -50,6 +62,7 @@ function createTable(index) {
 
 function render(table) {
   const { state, index } = table;
+  const fading = table.mode === 'rotating' && !state.finished && state.order[state.turn].length === 3 ? state.order[state.turn][0] : -1;
   table.root.classList.toggle('finished', state.finished);
   table.status.dataset.mark = state.winner || (state.finished ? '' : state.turn);
   table.status.textContent = state.finished ? (state.winner ? `${state.winner} 獲勝！` : '平手，再來一局！') : `輪到 ${state.turn}`;
@@ -59,9 +72,10 @@ function render(table) {
     button.innerHTML = mark ? symbols[mark] : '';
     button.disabled = Boolean(mark) || state.finished;
     button.classList.toggle('winning', state.winning.includes(cellIndex));
+    button.classList.toggle('fading', cellIndex === fading);
     const row = Math.floor(cellIndex / 3) + 1;
     const column = cellIndex % 3 + 1;
-    button.setAttribute('aria-label', `第 ${index + 1} 桌，第 ${row} 列第 ${column} 欄，${mark || '空格'}`);
+    button.setAttribute('aria-label', `第 ${index + 1} 桌，第 ${row} 列第 ${column} 欄，${mark || '空格'}${cellIndex === fading ? '，下一手會移除' : ''}`);
   });
   for (const mark of ['O', 'X', 'draw']) table.scoreLabels[mark].textContent = state.scores[mark];
 }
@@ -70,6 +84,12 @@ function play(table, cellIndex) {
   const { state } = table;
   if (!Number.isInteger(cellIndex) || cellIndex < 0 || cellIndex > 8 || state.finished || state.cells[cellIndex]) return false;
   const mark = state.turn;
+  const rotating = table.mode === 'rotating';
+  if (rotating) {
+    const order = state.order[mark];
+    if (order.length === 3) state.cells[order.shift()] = null;
+    order.push(cellIndex);
+  }
   state.cells[cellIndex] = mark;
   const line = winningLines.find(indices => indices.every(index => state.cells[index] === mark));
   if (line) {
@@ -77,12 +97,19 @@ function play(table, cellIndex) {
     state.winner = mark;
     state.winning = [...line];
     state.scores[mark] += 1;
-    window.ClassroomGameScores.increment('tic-tac-toe', 'wins', `${table.index}:${mark}`, `第 ${table.index + 1} 桌 · ${mark}`);
+    if (!rotating) window.ClassroomGameScores.increment('tic-tac-toe', 'wins', `${table.index}:${mark}`, `第 ${table.index + 1} 桌 · ${mark}`);
   } else if (state.cells.every(Boolean)) {
     state.finished = true;
     state.scores.draw += 1;
   } else {
     state.turn = mark === 'O' ? 'X' : 'O';
+    if (rotating && state.order.O.length === 3 && state.order.X.length === 3) {
+      // Piece ages and the next player affect which moves the position allows.
+      const key = `${state.turn}:${state.order.O}:${state.order.X}`;
+      const repeats = (state.positions.get(key) || 0) + 1;
+      state.positions.set(key, repeats);
+      if (repeats === 3) { state.finished = true; state.scores.draw += 1; }
+    }
   }
   render(table);
   return true;
@@ -90,17 +117,13 @@ function play(table, cellIndex) {
 
 function reset(table) {
   // Only this table's current round resets. Its scores and all other tables stay intact.
-  table.state.cells = Array(9).fill(null);
-  table.state.turn = 'O';
-  table.state.finished = false;
-  table.state.winner = null;
-  table.state.winning = [];
+  Object.assign(table.state, newRound());
   render(table);
 }
 
 const tables = Array.from({ length: 4 }, (_, index) => createTable(index));
 const updateDailyBest = () => { $('best').textContent = window.ClassroomGameScores.dailyBest('tic-tac-toe', 'wins') ?? '—'; };
-window.ClassroomGameScores.attach({ trigger:$('open-score-rank'), game:'tic-tac-toe', mode:()=>'wins', title:'圈叉對決', modeLabel:()=>'各裝置／桌 O／X 每日累積勝場', unit:'勝', onChange:updateDailyBest });
+window.ClassroomGameScores.attach({ trigger:$('open-score-rank'), game:'tic-tac-toe', mode:()=>'wins', title:'圈叉對決', modeLabel:()=>'經典井字 · 各裝置／桌 O／X 每日累積勝場', unit:'勝', onChange:updateDailyBest });
 updateDailyBest();
 
 $('fullscreen').hidden = !document.fullscreenEnabled;

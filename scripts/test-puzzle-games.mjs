@@ -45,6 +45,41 @@ for (const n of [5,6,7]) for (let variant=0;variant<8;variant++) {
   assert(!R.flowProgress(paths,puzzle.ends,n).success,'Partial paths cannot finish a board');
 }
 const flowPaths=[[0,1,2],[]],flowEnds=[[0,3],[4,7]];
+for (const n of [5,6,7]) {
+  const distance=(a,b)=>Math.abs(a%n-b%n)+Math.abs(Math.floor(a/n)-Math.floor(b/n));
+  const signatures=new Set();
+  for (let layout=0;layout<3;layout++) {
+    const variants=[];
+    for (let variant=0;variant<8;variant++) {
+      const {ends,solution}=R.flowRemix(n,layout,variant),paths=ends.map(()=>[]);
+      assert.equal(ends.length,n-1);
+      assert.equal(new Set(solution.flat()).size,n*n);
+      solution.forEach(([start,...steps],group)=>{
+        paths[group]=[start];
+        for(const index of steps)assert(R.extendFlow(paths,ends,group,index,n));
+      });
+      assert(R.flowProgress(paths,ends,n).success);
+      variants.push(ends.map(pair=>[...pair].sort((a,b)=>a-b).join(',')).sort().join(';'));
+      if(variant!==0)continue;
+      // Search only shortest paths. If they cannot coexist, some pair must detour.
+      const shortest=ends.map(([start,goal],group)=>{
+        const blocked=new Set(ends.filter((_,i)=>i!==group).flat()),options=[];
+        function walk(cell,mask){
+          if(cell===goal){options.push(mask);return;}
+          for(const next of [cell-n,cell+n,cell-1,cell+1]){
+            if(next>=0&&next<n*n&&R.adjacent(cell,next,n)&&!blocked.has(next)&&distance(next,goal)<distance(cell,goal))walk(next,mask|(1n<<BigInt(next)));
+          }
+        }
+        walk(start,1n<<BigInt(start));return options;
+      }).sort((a,b)=>a.length-b.length);
+      const allShortest=(group,used)=>group===shortest.length||shortest[group].some(mask=>!(mask&used)&&allShortest(group+1,mask|used));
+      assert(!allShortest(0,0n),'The remix cannot be solved by giving every pair its shortest path');
+    }
+    const signature=variants.sort()[0];
+    assert(!signatures.has(signature),'New rounds are distinct even under rotation, reflection and recoloring');
+    signatures.add(signature);
+  }
+}
 assert(!R.extendFlow(flowPaths,flowEnds,0,4,4),'Diagonal jumps are rejected');
 flowPaths[1]=[4,5];assert(!R.extendFlow(flowPaths,flowEnds,0,5,4),'Other paths cannot be crossed');
 assert(R.extendFlow(flowPaths,flowEnds,0,1,4));assert.equal(flowPaths[0].length,2,'Backtracking truncates the old route');
@@ -100,6 +135,40 @@ function createGame(id,difficulty=1){
   return {api:ctx.api,get,back,docEvents,events,parent,posts,scores,document,inputs,advance(seconds){now+=seconds*1000;ctx.api.advance(now);}};
 }
 const tap=button=>button.listeners.pointerdown({button:0,preventDefault(){},stopPropagation(){}});
+for(const difficulty of [1,2,3]){
+  const g=createGame('bubble-connect',difficulty);
+  g.get('flow-remix').checked=true;
+  g.get('flow-mode-options').listeners.change();
+  assert.match(g.get('flow-mode-note').textContent,/本局/);
+  g.get('start').listeners.click();
+  assert(g.get('flow-mode-options').hidden);
+  const seen=new Set();
+  for(let round=0;round<3;round++){
+    const f=g.api.snapshot().flow;
+    assert.equal(f.n,difficulty+4);
+    seen.add(JSON.stringify(f.ends));
+    if(round===0){
+      g.get('reset-board').listeners.click();
+      assert.deepEqual(g.api.snapshot().flow.ends,f.ends,'Reset preserves the remix layout');
+    }
+    for(const path of g.api.snapshot().flow.solution)for(const index of path){
+      const board=g.api.snapshot().flow.board;
+      board.listeners.pointerdown({button:0,pointerId:1,clientX:(index%f.n+.5)*400/f.n,clientY:(Math.floor(index/f.n)+.5)*400/f.n,preventDefault(){}});
+      board.listeners.pointerup({pointerId:1});
+    }
+    assert.equal(g.api.snapshot().state,'celebrating');
+    g.advance(1.51);
+    if(round<2)g.get('start').listeners.click();
+  }
+  assert.equal(seen.size,3);
+  assert.equal(g.api.snapshot().state,'finished');
+  assert.equal(g.scores.completed.length,0,'Remix finishes without entering the classic ranking');
+  assert.equal(g.get('flow-mode-options').hidden,false);
+  assert.match(g.get('results').textContent,/分/);
+  g.get('flow-remix').checked=false;
+  g.get('start').listeners.click();
+  assert(!g.get('stage-note').textContent.includes('迴路挑戰'));
+}
 for(const id of ['spot-difference','memory-match','balance-ball','light-maze','bubble-connect'])for(const difficulty of [1,2,3]){
   const g=createGame(id,difficulty),{api}=g;api.start();
   assert.equal(api.snapshot().state,'running');assert.equal(g.back.textContent,'← 互動區');
@@ -204,4 +273,4 @@ for(const g of [perfectMemory,wrongMemory]){
   for(const value of new Set(m.deck)){const pair=m.deck.map((v,i)=>v===value?i:-1).filter(i=>i>=0);tap(m.buttons[pair[0]]);tap(m.buttons[pair[1]]);}
 }
 assert.equal(perfectMemory.scores.completed[0].score,1000);assert.equal(wrongMemory.scores.completed[0].score,953,'One mismatch deducts 45 points plus elapsed time');
-console.log('Puzzle games tests: passed (15 completions; nine light layouts with essential mirrors; upgraded 5/6/7 flow grids and 24 solvable variants; solved boards held 1.5 seconds; frozen score time; pause/resume; three lives; memory scoring; touch steering; navigation and physics).');
+console.log('Puzzle games tests: passed (classic completions and rankings; 72 solvable remix variants with necessary detours; remix completion without ranking; 1.5-second solved board; pause/resume; touch and navigation).');

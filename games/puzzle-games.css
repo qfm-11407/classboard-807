@@ -31,6 +31,9 @@
 .beam-layer { filter:drop-shadow(0 0 5px #ffde75aa); }
 .flow-board .puzzle-cell.on-path { background:color-mix(in srgb,var(--path-color) 13%,#142234); }
 .flow-end { position:relative; z-index:2; width:64%; aspect-ratio:1; border-radius:50%; display:grid; place-items:center; color:#112034; font-weight:800; background:var(--path-color); box-shadow:0 0 0 3px #ffffff20; font-size:clamp(16px,3vw,34px); }
+.puzzle-page .flow-mode-options { margin:12px 0 8px; }
+.flow-mode-options input:focus-visible + span { outline:2px solid var(--lime); outline-offset:3px; }
+.puzzle-page #flow-mode-note { margin:0; }
 .balance-arena { position:relative; width:100%; flex:1; min-height:0; display:flex; align-items:center; justify-content:center; touch-action:none; cursor:grab; overflow:hidden; }
 .balance-arena:active { cursor:grabbing; }
 .tilt-stick { position:absolute; z-index:3; width:96px; height:96px; margin:-48px 0 0 -48px; border:2px solid #a8e5bd99; border-radius:50%; background:#0c172b88; pointer-events:none; }

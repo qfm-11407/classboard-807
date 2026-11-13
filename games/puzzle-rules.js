@@ -63,6 +63,33 @@
     const solution = lengths.map(length => { const path = snake.slice(cursor,cursor + length); cursor += length; return path; });
     return { n, ends:solution.map(path => [path[0],path.at(-1)]), solution };
   }
+  // Each layout has its own route geometry, including at least one necessary detour.
+  const flowRemixLayouts = {
+    5: [
+      [[12,7,2,3,4,9],[8,13,14,19],[24,23,18,17,22,21,20,15],[16,11,10,5,6,1,0]],
+      [[8,13,18,19],[24,23,22,17,16,21,20],[15,10,5,0,1,6,11,12],[7,2,3,4,9,14]],
+      [[22,23,18,13,8,7,6,11],[12,17,16,21],[20,15,10,5,0,1],[2,3,4,9,14,19,24]],
+    ],
+    6: [
+      [[30,24,25,31,32,33,27],[26,20,21,15,14,8,7,13],[19,18,12,6,0,1],[2,3,9,10,4,5,11,17],[16,22,23,29,28,34,35]],
+      [[22,28,27,26,32,33,34],[35,29,23,17,16,15,9],[10,11,5,4,3,2,8,7],[1,0,6,12,18,24,30,31,25],[19,13,14,20,21]],
+      [[23,29,35,34,33,32,31],[30,24,18,12,6,0,1],[2,3,9,10,4,5,11,17],[16,22,28,27,26,25,19,13],[7,8,14,15,21,20]],
+    ],
+    7: [
+      [[46,39,40,47,48,41,34,27,26],[33,32,25,18,11,10],[9,16,17,24,23,30,31,38],[45,44,37,36,43,42,35,28,29,22],[21,14,15,8,7,0,1,2,3],[4,5,6,13,12,19,20]],
+      [[16,15,8,9,2,1,0,7],[14,21,28,35,42,43,44,45,46],[39,38,31,30,37,36,29,22,23],[24,17,10,3,4,5,6,13,12],[11,18,25,32,33,40,47],[48,41,34,27,26,19,20]],
+      [[4,3,2,1,0,7],[8,15,14,21,28,35,42,43],[36,37,38,31,30,29,22,23,16,9,10],[17,24,25,26,19,18,11,12],[5,6,13,20,27,34],[41,48,47,40,33,32,39,46,45,44]],
+    ],
+  };
+  function flowRemix(n, layout, variant) {
+    const solution = flowRemixLayouts[n][layout].map(path => path.map(index => {
+      let x = index % n, y = Math.floor(index / n);
+      for (let turn = 0; turn < variant % 4; turn++) [x,y] = [n-1-y,x];
+      if (variant >= 4) x = n-1-x;
+      return y*n+x;
+    }));
+    return { n, ends:solution.map(path => [path[0],path.at(-1)]), solution };
+  }
   function extendFlow(paths, ends, group, index, n) {
     const path = paths[group];
     if (!path?.length || !Number.isInteger(index) || index < 0 || index >= n*n) return false;
@@ -112,5 +139,5 @@
     }
     return 'moving';
   }
-  globalThis.ClassroomPuzzles = { adjacent, shuffle, memoryDeck, memoryTurn, lightLayouts, traceLight, flowPuzzle, extendFlow, flowProgress, balanceCourses, balanceStep };
+  globalThis.ClassroomPuzzles = { adjacent, shuffle, memoryDeck, memoryTurn, lightLayouts, traceLight, flowPuzzle, flowRemix, extendFlow, flowProgress, balanceCourses, balanceStep };
 })();

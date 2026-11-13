@@ -5,13 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#111827">
   <title>追光點點｜互動遊戲室</title>
-  <link rel="stylesheet" href="games.css?v=interaction-1">
+  <link rel="stylesheet" href="games.css?v=combo-1">
   <link rel="stylesheet" href="game-rankings.css?v=1">
   <script src="https://www.gstatic.com/firebasejs/12.17.1/firebase-app-compat.js" defer></script>
   <script src="https://www.gstatic.com/firebasejs/12.17.1/firebase-firestore-compat.js" defer></script>
   <script src="game-rankings-cloud.js?v=1" defer></script>
   <script src="game-rankings.js?v=cloud-3" defer></script>
-  <script src="moving-dot.js?v=speed-2" defer></script>
+  <script src="moving-dot.js?v=combo-1" defer></script>
 </head>
 <body class="game-page">
   <main id="game" class="game-shell">
@@ -27,6 +27,7 @@
     </section>
     <section id="arena" class="arena" aria-label="圓點遊戲區">
       <div class="arena-label" aria-hidden="true">FOLLOW THE LIGHT</div>
+      <div id="combo-flash" class="combo-flash" aria-hidden="true"></div>
       <button id="dot" class="dot" aria-label="點擊移動圓點" hidden><span class="dot-core"></span></button>
       <div id="overlay" class="overlay">
         <div class="dialog">
@@ -37,12 +38,12 @@
           <fieldset id="duration-options" class="duration-options"><legend>選擇回合時間</legend><label><input type="radio" name="duration" value="30"><span>30 秒</span></label><label><input type="radio" name="duration" value="60" checked><span>60 秒</span></label><label><input type="radio" name="duration" value="90"><span>90 秒</span></label></fieldset>
           <button id="start" class="primary-button">開始挑戰 <span aria-hidden="true">↗</span></button>
           <button id="restart" class="text-button" hidden>重新開始</button>
-          <p class="dialog-note" id="dialog-note">用手指或滑鼠點擊圓點 · 點空白不扣分</p>
+          <p class="dialog-note" id="dialog-note">每 5 連擊亮燈，圓點逾時會中斷連擊。點空白不扣分。</p>
         </div>
       </div>
       <div id="feedback" class="feedback" aria-hidden="true"></div>
     </section>
-    <footer class="game-footer"><span><i></i> 點中就換下一顆，越點越有挑戰</span><span id="misses">逾時 0 次</span></footer>
+    <footer class="game-footer"><span class="combo-count"><i></i> 目前連擊 <strong id="combo">0</strong></span><span id="misses">逾時 0 次</span></footer>
     <div id="announcement" class="sr-only" role="status" aria-live="polite"></div>
   </main>
 </body>

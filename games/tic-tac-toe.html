@@ -6,22 +6,22 @@
   <meta name="theme-color" content="#111827">
   <title>圈叉對決｜互動遊戲室</title>
   <link rel="stylesheet" href="games.css?v=ox-1">
-  <link rel="stylesheet" href="tic-tac-toe.css?v=ox-1">
+  <link rel="stylesheet" href="tic-tac-toe.css?v=ox-2">
   <link rel="stylesheet" href="game-rankings.css?v=1">
   <script src="https://www.gstatic.com/firebasejs/12.17.1/firebase-app-compat.js" defer></script>
   <script src="https://www.gstatic.com/firebasejs/12.17.1/firebase-firestore-compat.js" defer></script>
   <script src="game-rankings-cloud.js?v=1" defer></script>
   <script src="game-rankings.js?v=cloud-3" defer></script>
-  <script src="tic-tac-toe.js?v=cloud-2" defer></script>
+  <script src="tic-tac-toe.js?v=rotate-1" defer></script>
 </head>
 <body class="game-page ox-page">
   <main id="game" class="game-shell">
     <header class="game-header">
       <div class="game-heading"><a class="back-link" href="./">← 遊戲室</a><h1>圈叉對決 <span>四桌同場 · 各自對決</span></h1></div>
-      <div class="toolbar"><button type="button" id="open-score-rank" class="quiet-button ox-best-button" aria-label="今日最佳，查看前十名勝場排行榜">今日最佳 <strong id="best">—</strong><small> 勝 ›</small></button><button id="fullscreen" class="quiet-button">全螢幕</button></div>
+      <div class="toolbar"><button type="button" id="open-score-rank" class="quiet-button ox-best-button" aria-label="經典井字今日最佳，查看前十名勝場排行榜">經典最佳 <strong id="best">—</strong><small> 勝 ›</small></button><button id="fullscreen" class="quiet-button">全螢幕</button></div>
     </header>
     <section id="tables" class="ox-deck" aria-label="2 欄 2 列，四桌獨立的 OX 棋盤"></section>
-    <footer class="game-footer"><span><i></i> 每桌兩人 · O 先手 · 橫、直、斜三連線獲勝</span><span>各桌獨立，重開互不影響</span></footer>
+    <footer class="game-footer"><span><i></i> 每桌兩人 · O 先手 · 三連線獲勝</span><span id="ox-mode-help">三子輪替：下第 4 子會移除虛線棋子，同一局面出現三次算平手。戰績只記在此桌。</span></footer>
     <div id="announcement" class="sr-only" role="status" aria-live="polite"></div>
   </main>
 </body>

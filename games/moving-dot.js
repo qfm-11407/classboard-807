@@ -15,6 +15,8 @@ let state = 'ready';
 let duration = 60;
 let score = 0;
 let misses = 0;
+let combo = 0;
+let longestCombo = 0;
 let remaining = duration;
 let frame = 0;
 let lastTime = 0;
@@ -31,6 +33,7 @@ function updateStats() {
   $('level').textContent = String(1 + Math.floor(score / 5)).padStart(2, '0');
   $('best').textContent = best() ?? '—';
   $('misses').textContent = `逾時 ${misses} 次`;
+  $('combo').textContent = combo;
 }
 
 function bounds(size) {
@@ -85,6 +88,8 @@ function advance(now) {
   target.life -= elapsed;
   if (target.life <= 0) {
     misses += 1;
+    combo = 0;
+    $('combo-flash').classList.remove('show');
     spawnTarget();
   } else {
     const limits = bounds(target.size);
@@ -107,6 +112,8 @@ function showDialog(tag, title, description, button) {
   $('start').textContent = button;
   overlay.hidden = false;
   dot.hidden = true;
+  $('combo-flash').classList.remove('show');
+  $('feedback').classList.remove('show');
   $('start').focus({ preventScroll: true });
 }
 
@@ -116,6 +123,8 @@ function startGame() {
   remaining = duration;
   score = 0;
   misses = 0;
+  combo = 0;
+  longestCombo = 0;
   state = 'running';
   $('results').hidden = true;
   $('restart').hidden = true;
@@ -175,9 +184,9 @@ function finish() {
   $('results').append(unit);
   $('results').hidden = false;
   $('dialog-note').textContent = `今日最佳依台灣日期計算 · 完整回合列入前十名 · ${duration} 秒`;
-  showDialog(newBest ? 'TODAY\'S BEST' : 'NICE PLAY', newBest ? '刷新今日最佳！' : '挑戰完成！', `圓點逾時 ${misses} 次。再試一次，挑戰自己的反應力。`, '再玩一次');
+  showDialog(newBest ? 'TODAY\'S BEST' : 'NICE PLAY', newBest ? '刷新今日最佳！' : '挑戰完成！', `最長連擊 ${longestCombo} 次 · 圓點逾時 ${misses} 次。`, '再玩一次');
   updateStats();
-  $('announcement').textContent = `挑戰完成，點中 ${score} 次，逾時 ${misses} 次。`;
+  $('announcement').textContent = `挑戰完成，點中 ${score} 次，最長連擊 ${longestCombo} 次，逾時 ${misses} 次。`;
 }
 
 function hit() {
@@ -187,6 +196,16 @@ function hit() {
   // An expired circle cannot score a hit on its replacement.
   if (state !== 'running' || previousGeneration !== generation) return;
   score += 1;
+  combo += 1;
+  longestCombo = Math.max(longestCombo, combo);
+  if (combo % 5 === 0) {
+    const flash = $('combo-flash');
+    flash.textContent = `${combo} 連擊！`;
+    flash.classList.remove('show');
+    void flash.offsetWidth;
+    flash.classList.add('show');
+    $('announcement').textContent = `${combo} 連擊！`;
+  }
   $('feedback').textContent = '+1 點中！';
   $('feedback').classList.remove('show');
   void $('feedback').offsetWidth;

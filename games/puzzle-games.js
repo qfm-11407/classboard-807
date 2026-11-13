@@ -15,6 +15,15 @@
   let state = 'ready', level = 1, elapsed = 0, last = 0, frame = 0, round = 0, errors = 0, actions = 0;
   let celebrationRemaining = 0, pausedCelebration = false;
   let memory, spot, light, flow, ball, tilt = null, hideAt = 0, wrongAt = 0, wrongButton = null, drag = null;
+  let remix = null;
+  const flowModeOptions = game === 'bubble-connect' ? $('flow-mode-options') : null;
+  const flowModeNote = game === 'bubble-connect' ? $('flow-mode-note') : null;
+  const remixSelected = () => $('flow-remix')?.checked === true;
+  function updateFlowModeNote() {
+    if (flowModeNote) flowModeNote.textContent = remixSelected()
+      ? '迴路挑戰：有些配對要繞路，記得替其他組留通道。成績只在本局顯示。'
+      : '經典連線：完成三關後列入對應難度的排行榜。';
+  }
   const held = new Map(), keys = new Set();
   document.body.style.setProperty('--lime',config.accent);
   $('title').textContent = config.title;
@@ -151,7 +160,7 @@
       button.setAttribute('aria-label',`第 ${Math.floor(index/flow.n)+1} 列第 ${index%flow.n+1} 欄，${endpoint >= 0 ? `第 ${endpoint+1} 組泡泡` : pathGroup >= 0 ? `第 ${pathGroup+1} 組路線` : '空格'}`);
     });
     flow.lines.innerHTML = flow.paths.map((path,group) => `<polyline points="${path.map(index => `${(index%flow.n+.5)*100},${(Math.floor(index/flow.n)+.5)*100}`).join(' ')}" fill="none" stroke="${colors[group]}" stroke-width="22" stroke-linecap="round" stroke-linejoin="round"/>`).join('');
-    $('stage-note').textContent = `第 ${round+1} 關 · ${progress.connected}/${flow.ends.length} 組連好 · 全部連好就過關`;
+    $('stage-note').textContent = `${remix ? '迴路挑戰 · ' : ''}第 ${round+1} 關 · ${progress.connected}/${flow.ends.length} 組連好 · 全部連好就過關`;
     stats(); if (progress.success && state === 'running') stageComplete();
   }
   function beginFlow(index) {
@@ -180,7 +189,8 @@
     else beginFlow(index);
   }
   function buildFlow() {
-    const puzzle = rules.flowPuzzle(level+4,(round*2+Math.floor(Math.random()*2))%8), board = grid(puzzle.n); board.classList.add('flow-board');
+    const puzzle = remix ? rules.flowRemix(level+4,remix.order[round],remix.variant) : rules.flowPuzzle(level+4,(round*2+Math.floor(Math.random()*2))%8);
+    const board = grid(puzzle.n); board.classList.add('flow-board');
     flow = {...puzzle,paths:puzzle.ends.map(() => []),group:-1,board,buttons:[]};
     const indexAt = event => {
       const rect = board.getBoundingClientRect(), x = Math.floor((event.clientX-rect.left)/rect.width*flow.n), y = Math.floor((event.clientY-rect.top)/rect.height*flow.n);
@@ -254,6 +264,8 @@
   function run(nextState = 'running') { state = nextState; pausedCelebration = state === 'celebrating'; host.inert = state !== 'running'; host.hidden = false; $('stage-note').hidden = false; overlay.hidden = true; $('pause').disabled = false; $('pause').textContent = '暫停'; last = performance.now(); frame = requestAnimationFrame(tick); }
   function start() {
     cancelAnimationFrame(frame); level = Number(document.querySelector('input[name="difficulty"]:checked').value); elapsed = 0; round = 0; errors = 0; actions = 0; celebrationRemaining = 0; pausedCelebration = false;
+    remix = flowModeOptions && remixSelected() ? {order:rules.shuffle([0,1,2]),variant:Math.floor(Math.random()*8)} : null;
+    if (flowModeOptions) { flowModeOptions.hidden = true; flowModeNote.hidden = true; }
     $('results').hidden = true; $('restart').hidden = true; $('difficulty-options').hidden = true; state = 'ready'; buildRound(); run(); announce('挑戰開始！');
   }
   function stageComplete() {
@@ -279,7 +291,8 @@
     if (!['running','celebrating'].includes(state)) return;
     state = 'finished'; cancelAnimationFrame(frame); clearControls(); drag = null;
     const score = Math.max(0,Math.round((game === 'spot-difference' ? round*100 : 1000) - elapsed*2 - errors*35 - (game === 'memory-match' ? Math.max(0,memory.turns-memory.deck.length/2)*10 : 0)));
-    window.ClassroomGameScores.record(game,modeKey(),score);
+    if (!remix) window.ClassroomGameScores.record(game,modeKey(),score);
+    if (flowModeOptions) { flowModeOptions.hidden = false; flowModeNote.hidden = false; }
     $('results').textContent = `${score} 分`; $('results').hidden = false; $('difficulty-options').hidden = false; $('restart').hidden = true; $('pause').disabled = true;
     const ending = success ? '挑戰完成' : reason === 'lives' ? '生命用完' : '時間到';
     dialog(success ? 'CHALLENGE COMPLETE' : reason === 'lives' ? 'OUT OF LIVES' : 'TIME IS UP',`${ending}！`,`使用 ${Math.floor(elapsed)} 秒，${game === 'spot-difference' ? `找到 ${round} 題` : game === 'memory-match' ? `翻牌 ${memory.turns} 回` : `完成 ${round} 關`}，失誤 ${errors} 次。`,'再玩一次');
@@ -320,6 +333,8 @@
   $('reset-board').hidden = !['bubble-connect','balance-ball','light-maze'].includes(game);
   $('reset-board').addEventListener('click',() => { if (state !== 'running') return; actions++; buildRound(); announce('此關已重置。'); });
   document.querySelectorAll('input[name="difficulty"]').forEach(input => input.addEventListener('change',() => { if (!['ready','finished'].includes(state)) return; level = Number(input.value); stats(); }));
+  flowModeOptions?.addEventListener('change',updateFlowModeNote);
+  updateFlowModeNote();
   document.addEventListener('visibilitychange',() => { if (document.hidden) pause(); });
   window.addEventListener('blur',clearControls);
   const keyActions = {ArrowLeft:'left',ArrowRight:'right',ArrowUp:'up',ArrowDown:'down',' ':'brake'};
@@ -333,6 +348,6 @@
     back.addEventListener('click',event => { event.preventDefault(); pause(); window.parent.postMessage({type:'classroom-interaction-back'},window.location.protocol === 'file:' ? '*' : window.location.origin); });
     window.addEventListener('message',event => { if (event.source === window.parent && event.origin === window.location.origin && event.data?.type === 'classroom-game-pause') pause(); });
   }
-  window.ClassroomGameScores.attach({trigger:$('open-score-rank'),game,mode:modeKey,title:config.title,modeLabel:() => ['簡易','正常','挑戰'][level-1],beforeOpen:pause,onChange:() => { $('best').textContent = window.ClassroomGameScores.dailyBest(game,modeKey()) ?? '—'; }});
+  window.ClassroomGameScores.attach({trigger:$('open-score-rank'),game,mode:modeKey,title:config.title,modeLabel:() => (flowModeOptions ? '經典連線 · ' : '') + ['簡易','正常','挑戰'][level-1],beforeOpen:pause,onChange:() => { $('best').textContent = window.ClassroomGameScores.dailyBest(game,modeKey()) ?? '—'; }});
   stats();
 })();
