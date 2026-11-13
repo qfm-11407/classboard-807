@@ -16,13 +16,26 @@
   let celebrationRemaining = 0, pausedCelebration = false;
   let memory, spot, light, flow, ball, tilt = null, hideAt = 0, wrongAt = 0, wrongButton = null, drag = null;
   let remix = null;
-  const flowModeOptions = game === 'bubble-connect' ? $('flow-mode-options') : null;
-  const flowModeNote = game === 'bubble-connect' ? $('flow-mode-note') : null;
-  const remixSelected = () => $('flow-remix')?.checked === true;
-  function updateFlowModeNote() {
-    if (flowModeNote) flowModeNote.textContent = remixSelected()
-      ? '迴路挑戰：有些配對要繞路，記得替其他組留通道。成績只在本局顯示。'
-      : '經典連線：完成三關後列入對應難度的排行榜。';
+  let playMode = 'classic', flowPlayer = 1, stars = new Set(), totalStars = 0;
+  const modeDescriptions = {
+    remix:'有些配對要繞路，記得替其他組留通道。',
+    coop:'一人動手、一人規劃，每連好一組就交換角色。',
+    duo:'配對成功再翻一次，配錯蓋牌後換人。比誰配對多！',
+    stars:'每關有 3 顆星可收集。可以直接到旗子過關，也可以繞路收星。',
+    split:'轉動菱形分光鏡：一路直行、一路反射。兩顆星都亮才過關。',
+    focus:'每隔幾題會換一個觀察重點。看題目上方的提示，仍然只有三顆愛心。',
+  };
+  const hasModes = ['bubble-connect','memory-match','balance-ball','light-maze','spot-difference'].includes(game);
+  const modeOptions = hasModes ? $('puzzle-mode-options') : null;
+  const modeNote = hasModes ? $('puzzle-mode-note') : null;
+  const selectedMode = () => {
+    const value = document.querySelector('input[name="puzzle-mode"]:checked')?.value;
+    return Object.hasOwn(modeDescriptions,value) ? value : 'classic';
+  };
+  function updateModeNote() {
+    if (!modeNote) return;
+    const mode = selectedMode();
+    modeNote.textContent = mode === 'classic' ? '經典玩法的成績會同步到排行榜。' : `${modeDescriptions[mode]} 成績只在本局顯示。`;
   }
   const held = new Map(), keys = new Set();
   document.body.style.setProperty('--lime',config.accent);
@@ -81,22 +94,29 @@
     host.replaceChildren();
   }
   function renderMemory() {
+    if (playMode === 'duo') $('stage-note').textContent = `玩家 ${memory.player+1} 的回合 · 玩家 1：${memory.pairs[0]} 對 · 玩家 2：${memory.pairs[1]} 對`;
     memory.buttons.forEach((button,index) => {
       const visible = memory.open.includes(index) || memory.matched.has(index);
-      button.innerHTML = `<span aria-hidden="true">${visible ? icons[memory.deck[index]] : '✦'}</span>`;
+      const owner = memory.owners.get(index);
+      button.innerHTML = `<span aria-hidden="true">${visible ? icons[memory.deck[index]] : '✦'}</span>${owner === undefined ? '' : `<small class="pair-owner" aria-hidden="true">P${owner+1}</small>`}`;
       button.classList.toggle('revealed',visible); button.classList.toggle('matched',memory.matched.has(index));
       button.disabled = memory.matched.has(index);
-      button.setAttribute('aria-label',`卡片 ${index+1}，${memory.matched.has(index) ? '已配對' : visible ? icons[memory.deck[index]] : '未翻開'}`);
+      button.setAttribute('aria-label',`卡片 ${index+1}，${memory.matched.has(index) ? (owner === undefined ? '已配對' : `玩家 ${owner+1} 已配對`) : visible ? icons[memory.deck[index]] : '未翻開'}`);
     }); stats();
   }
   function buildMemory() {
     const pairs = [6,8,12][level-1], columns = level === 3 ? 6 : 4;
     const board = grid(columns,pairs*2/columns); board.classList.add('memory-board');
-    memory = {deck:rules.memoryDeck(pairs), matched:new Set(), open:[], locked:false, turns:0};
+    memory = {deck:rules.memoryDeck(pairs), matched:new Set(), open:[], locked:false, turns:0, player:0, pairs:[0,0], owners:new Map()};
     memory.buttons = memory.deck.map((_,index) => {
       const button = cell('', '', () => {
         const result = rules.memoryTurn(memory,index);
         if (result === 'mismatch') { errors++; hideAt = elapsed + .85; }
+        if (playMode === 'duo' && (result === 'match' || result === 'complete')) {
+          memory.pairs[memory.player]++;
+          for (const card of memory.matched) if (!memory.owners.has(card)) memory.owners.set(card,memory.player);
+          if (result !== 'complete') announce(`玩家 ${memory.player+1} 配對成功，再翻一次！`);
+        }
         renderMemory();
         if (result === 'complete') finish(true);
       }); board.append(button); return button;
@@ -116,39 +136,50 @@
     return `${base}<path d="M65 15A37 37 0 1 0 65 85A30 30 0 0 1 65 15Z" fill="currentColor" transform="rotate(${odd ? 180 : 0} 50 50)"/>${end}`;
   }
   function buildSpot() {
-    const n = Math.min(6,level+2+Math.floor(round/4)), board = grid(n), odd = Math.floor(Math.random()*n*n), kind = round%6;
+    const n = Math.min(6,level+2+Math.floor(round/4)), board = grid(n), odd = Math.floor(Math.random()*n*n);
+    const kind = playMode === 'focus' ? [0,0,1,1,2,2,3,3,4,5][round] : round%6;
+    const hint = ['看圓點的位置','數一數花瓣','看三角形朝向','看葉片傾斜方向','看箭頭朝向','看月牙開口方向'][kind];
+    $('stage-note').textContent = playMode === 'focus' ? `第 ${round+1} 題 · ${hint}` : '';
     board.classList.add('spot-board'); const question = spot = {odd,n,buttons:[]};
     for (let index = 0; index < n*n; index++) {
       const button = cell(`第 ${Math.floor(index/n)+1} 列第 ${index%n+1} 欄圖案`,symbol(kind,index===odd), () => {
         if (spot !== question) return;
-        if (index === spot.odd) { round++; if (round === 10) finish(true); else { clearBoard(); buildSpot(); stats(); announce(`答對了，完成 ${round} 題！`); } }
+        if (index === spot.odd) { round++; if (round === 10) finish(true); else { clearBoard(); buildSpot(); stats(); announce(playMode === 'focus' ? `答對了！${$('stage-note').textContent}` : `答對了，完成 ${round} 題！`); } }
         else { errors++; wrongButton?.classList.remove('wrong'); wrongButton = button; wrongAt = elapsed+.3; button.classList.add('wrong'); stats(); if (errors >= 3) finish(false,'lives'); else announce(`選錯了，剩餘 ${3-errors} 顆生命。再看仔細一點！`); }
       }); board.append(button); spot.buttons.push(button);
     }
   }
   function buildLight() {
-    const layout = rules.lightLayouts[(level-1)*3+round], board = grid(layout.n); board.classList.add('light-board');
+    const split = playMode === 'split';
+    const layout = (split ? rules.splitLayouts : rules.lightLayouts)[(level-1)*3+round], board = grid(layout.n); board.classList.add('light-board');
+    const trace = split ? rules.traceSplitLight : rules.traceLight;
     const mirrors = Object.fromEntries(layout.mirrors.map(([index]) => [index,Math.random()<.5 ? '/' : '\\']));
-    if (rules.traceLight(layout,mirrors).success) mirrors[layout.mirrors[0][0]] = mirrors[layout.mirrors[0][0]] === '/' ? '\\' : '/';
-    light = {layout,mirrors,buttons:[],board};
+    if (trace(layout,mirrors).success) {
+      if (split) Object.assign(mirrors,Object.fromEntries(layout.mirrors));
+      const index = split ? layout.splitter : layout.mirrors[0][0];
+      mirrors[index] = mirrors[index] === '/' ? '\\' : '/';
+    }
+    light = {layout,mirrors,buttons:[],board,trace};
     for (let index = 0; index < layout.n*layout.n; index++) {
-      const button = cell('', '', mirrors[index] ? () => { actions++; mirrors[index] = mirrors[index] === '/' ? '\\' : '/'; renderLight(); if (rules.traceLight(layout,mirrors).success) stageComplete(); } : null);
+      const button = cell('', '', mirrors[index] ? () => { actions++; mirrors[index] = mirrors[index] === '/' ? '\\' : '/'; if (renderLight()) stageComplete(); } : null);
       if (!mirrors[index]) { button.disabled = true; button.classList.add('empty-cell'); }
+      if (index === layout.splitter) button.classList.add('split-cell');
       board.append(button); light.buttons.push(button);
     }
     light.beam = document.createElementNS('http://www.w3.org/2000/svg','svg'); light.beam.classList.add('beam-layer'); light.beam.setAttribute('viewBox',`0 0 ${layout.n*100} ${layout.n*100}`); light.beam.setAttribute('aria-hidden','true'); board.append(light.beam);
     renderLight();
   }
   function renderLight() {
-    const {layout,mirrors} = light;
+    const {layout,mirrors} = light, result = light.trace(layout,mirrors), goals = layout.goals ?? [layout.goal];
     light.buttons.forEach((button,index) => {
-      button.innerHTML = index === layout.source ? '<span class="source-mark" aria-hidden="true">➜</span>' : index === layout.goal ? '<span class="goal-mark" aria-hidden="true">★</span>' : mirrors[index] ? `<span class="mirror-mark" aria-hidden="true">${mirrors[index]}</span>` : '';
-      button.setAttribute('aria-label',index === layout.source ? '光線起點' : index === layout.goal ? '星星目標' : mirrors[index] ? `鏡子 ${index+1}，${mirrors[index] === '/' ? '右斜' : '左斜'}，點擊旋轉` : '空格');
+      const star = goals.includes(index), lit = result.lit?.has(index);
+      button.innerHTML = index === layout.source ? '<span class="source-mark" aria-hidden="true">➜</span>' : star ? `<span class="goal-mark${lit ? ' lit-star' : ''}" aria-hidden="true">${layout.goals && !lit ? '☆' : '★'}</span>` : mirrors[index] ? `<span class="mirror-mark" aria-hidden="true">${mirrors[index]}</span>` : '';
+      button.setAttribute('aria-label',index === layout.source ? '光線起點' : star ? `星星目標${layout.goals ? (lit ? '，已點亮' : '，未點亮') : ''}` : mirrors[index] ? `${index === layout.splitter ? '分光鏡' : '鏡子'} ${index+1}，${mirrors[index] === '/' ? '右斜' : '左斜'}，點擊旋轉` : '空格');
     });
-    const trace = rules.traceLight(layout,mirrors);
-    light.beam.innerHTML = `<polyline points="${trace.points.map(([x,y]) => `${x*100},${y*100}`).join(' ')}" fill="none" stroke="#ffde75" stroke-width="5" stroke-linejoin="round"/>`;
-    $('stage-note').textContent = `第 ${round+1} 關 · ${layout.mirrors.length} 面鏡子 · 點鏡子改變方向`;
+    light.beam.innerHTML = (result.paths || [result.points]).map((path,index) => `<polyline points="${path.map(([x,y]) => `${x*100},${y*100}`).join(' ')}" fill="none" stroke="${index ? '#8ff8ed' : '#ffde75'}" stroke-width="5" stroke-linejoin="round"/>`).join('');
+    $('stage-note').textContent = layout.goals ? `雙星關卡 · 第 ${round+1} 關 · 已點亮 ${result.lit.size}/2 顆星` : `第 ${round+1} 關 · ${layout.mirrors.length} 面鏡子 · 點鏡子改變方向`;
     stats();
+    return result.success;
   }
   function renderFlow() {
     const progress = rules.flowProgress(flow.paths,flow.ends,flow.n);
@@ -160,7 +191,15 @@
       button.setAttribute('aria-label',`第 ${Math.floor(index/flow.n)+1} 列第 ${index%flow.n+1} 欄，${endpoint >= 0 ? `第 ${endpoint+1} 組泡泡` : pathGroup >= 0 ? `第 ${pathGroup+1} 組路線` : '空格'}`);
     });
     flow.lines.innerHTML = flow.paths.map((path,group) => `<polyline points="${path.map(index => `${(index%flow.n+.5)*100},${(Math.floor(index/flow.n)+.5)*100}`).join(' ')}" fill="none" stroke="${colors[group]}" stroke-width="22" stroke-linecap="round" stroke-linejoin="round"/>`).join('');
-    $('stage-note').textContent = `${remix ? '迴路挑戰 · ' : ''}第 ${round+1} 關 · ${progress.connected}/${flow.ends.length} 組連好 · 全部連好就過關`;
+    if (playMode === 'coop' && progress.connected > flow.connected) {
+      flowPlayer = 3-flowPlayer;
+      flow.group = -1;
+      if (!progress.success) announce(`配對完成！換玩家 ${flowPlayer} 動手。`);
+    }
+    flow.connected = progress.connected;
+    $('stage-note').textContent = playMode === 'coop'
+      ? `第 ${round+1} 關 · ${progress.connected}/${flow.ends.length} 組 · 玩家 ${flowPlayer} 動手，玩家 ${3-flowPlayer} 規劃`
+      : `${remix ? '迴路挑戰 · ' : ''}第 ${round+1} 關 · ${progress.connected}/${flow.ends.length} 組連好 · 全部連好就過關`;
     stats(); if (progress.success && state === 'running') stageComplete();
   }
   function beginFlow(index) {
@@ -191,7 +230,7 @@
   function buildFlow() {
     const puzzle = remix ? rules.flowRemix(level+4,remix.order[round],remix.variant) : rules.flowPuzzle(level+4,(round*2+Math.floor(Math.random()*2))%8);
     const board = grid(puzzle.n); board.classList.add('flow-board');
-    flow = {...puzzle,paths:puzzle.ends.map(() => []),group:-1,board,buttons:[]};
+    flow = {...puzzle,paths:puzzle.ends.map(() => []),group:-1,connected:0,board,buttons:[]};
     const indexAt = event => {
       const rect = board.getBoundingClientRect(), x = Math.floor((event.clientX-rect.left)/rect.width*flow.n), y = Math.floor((event.clientY-rect.top)/rect.height*flow.n);
       return x < 0 || y < 0 || x >= flow.n || y >= flow.n ? -1 : y*flow.n+x;
@@ -222,9 +261,12 @@
   }
   function buildBalance() {
     host.replaceChildren(); const course = rules.balanceCourses[round]; ball = {...course.start,vx:0,vy:0};
+    stars = new Set();
     const arena = document.createElement('div'); arena.className = 'balance-arena';
     arena.setAttribute('aria-label','觸控平台，按住並拖曳控制傾斜，放開煞車');
     arena.innerHTML = `<svg id="balance-scene" viewBox="0 0 800 480" role="img" aria-label="平衡平台，避開黑洞，前往右上方旗子"><defs><radialGradient id="ball-fill" cx="30%" cy="25%"><stop stop-color="#fff"/><stop offset="1" stop-color="#65bddc"/></radialGradient></defs><rect x="5" y="5" width="790" height="470" rx="22" fill="#172e32" stroke="#85e9af66" stroke-width="8"/><path d="M50 60H750M50 140H750M50 220H750M50 300H750M50 380H750M140 40V440M260 40V440M380 40V440M500 40V440M620 40V440" stroke="#ffffff08"/>${course.walls.map(wall => `<rect x="${wall.x}" y="${wall.y}" width="${wall.w}" height="${wall.h}" rx="6" fill="#859b9d"/>`).join('')}${course.holes.map(hole => `<circle cx="${hole.x}" cy="${hole.y}" r="${19+level*2}" fill="#060d14" stroke="#ff839977" stroke-width="3"/>`).join('')}<circle cx="${course.goal.x}" cy="${course.goal.y}" r="30" fill="#85e9af22" stroke="#85e9af" stroke-width="3"/><text x="${course.goal.x}" y="${course.goal.y+8}" text-anchor="middle" font-size="25" fill="#85e9af">⚑</text><circle id="balance-ball" cx="${ball.x}" cy="${ball.y}" r="12" fill="url(#ball-fill)" stroke="#fff" stroke-width="2"/></svg>`;
+    if (playMode === 'stars') arena.querySelector('#balance-ball').insertAdjacentHTML('beforebegin',rules.balanceStars[round].map(({x,y},index) =>
+      `<text id="balance-star-${index}" x="${x}" y="${y}" dy=".35em" text-anchor="middle" font-size="32" fill="#ffe275" aria-hidden="true">★</text>`).join(''));
     const stick = document.createElement('div'); stick.className = 'tilt-stick'; stick.hidden = true; stick.setAttribute('aria-hidden','true');
     const knob = document.createElement('div'); knob.className = 'tilt-knob'; stick.append(knob); arena.append(stick);
     const updateTilt = event => {
@@ -249,7 +291,21 @@
       const release = event => { held.delete(event.pointerId); button.classList.remove('pressed'); };
       button.addEventListener('pointerup',release); button.addEventListener('pointercancel',release); button.addEventListener('lostpointercapture',release); pad.append(button);
     }
-    host.append(arena,pad); $('stage-note').textContent = `第 ${round+1} 關 · 平台上按住拖曳控球 · 放開煞車`;
+    host.append(arena,pad);
+    if (playMode === 'stars') showStars();
+    else $('stage-note').textContent = `第 ${round+1} 關 · 平台上按住拖曳控球 · 放開煞車`;
+  }
+  function showStars() {
+    $('stage-note').textContent = `收星路線 · 第 ${round+1} 關 · 已收集 ${stars.size}/3 顆星`;
+  }
+  function collectStar(position) {
+    rules.balanceStars[round].forEach(({x,y},index) => {
+      if (stars.has(index) || Math.hypot(x-position.x,y-position.y)>24) return;
+      stars.add(index);
+      $('balance-star-'+index).setAttribute('visibility','hidden');
+      showStars();
+      announce(`已收集 ${stars.size}/3 顆星。`);
+    });
   }
   function buildRound() {
     clearBoard(); $('stage-note').textContent = '';
@@ -264,12 +320,16 @@
   function run(nextState = 'running') { state = nextState; pausedCelebration = state === 'celebrating'; host.inert = state !== 'running'; host.hidden = false; $('stage-note').hidden = false; overlay.hidden = true; $('pause').disabled = false; $('pause').textContent = '暫停'; last = performance.now(); frame = requestAnimationFrame(tick); }
   function start() {
     cancelAnimationFrame(frame); level = Number(document.querySelector('input[name="difficulty"]:checked').value); elapsed = 0; round = 0; errors = 0; actions = 0; celebrationRemaining = 0; pausedCelebration = false;
-    remix = flowModeOptions && remixSelected() ? {order:rules.shuffle([0,1,2]),variant:Math.floor(Math.random()*8)} : null;
-    if (flowModeOptions) { flowModeOptions.hidden = true; flowModeNote.hidden = true; }
-    $('results').hidden = true; $('restart').hidden = true; $('difficulty-options').hidden = true; state = 'ready'; buildRound(); run(); announce('挑戰開始！');
+    playMode = hasModes ? selectedMode() : 'classic';
+    remix = playMode === 'remix' || playMode === 'coop' ? {order:rules.shuffle([0,1,2]),variant:Math.floor(Math.random()*8)} : null;
+    flowPlayer = 1; totalStars = 0;
+    if (modeOptions) { modeOptions.hidden = true; modeNote.hidden = true; }
+    $('results').hidden = true; $('restart').hidden = true; $('difficulty-options').hidden = true; state = 'ready'; buildRound(); run();
+    announce(playMode === 'focus' ? $('stage-note').textContent : '挑戰開始！');
   }
   function stageComplete() {
     if (state !== 'running') return;
+    if (playMode === 'stars') totalStars += stars.size;
     round++; clearControls(); drag = null;
     if (['light-maze','bubble-connect'].includes(game)) {
       state = 'celebrating'; celebrationRemaining = 1.5;
@@ -285,18 +345,22 @@
     celebrationRemaining = 0; host.classList.remove('stage-won'); $('stage-note').classList.remove('stage-success');
     if (round >= config.total) { finish(true); return; }
     state = 'between'; cancelAnimationFrame(frame); $('pause').disabled = true; $('restart').hidden = false; stats();
-    dialog('NICELY DONE',`第 ${round} 關完成！`,'休息一下，再挑戰下一關。','下一關'); announce(`第 ${round} 關完成。`);
+    dialog('NICELY DONE',`第 ${round} 關完成！`,playMode === 'stars' ? `這關收集 ${stars.size}/3 顆星，累計 ${totalStars} 顆。` : '休息一下，再挑戰下一關。','下一關'); announce(`第 ${round} 關完成。`);
   }
   function finish(success,reason = 'time') {
     if (!['running','celebrating'].includes(state)) return;
     state = 'finished'; cancelAnimationFrame(frame); clearControls(); drag = null;
     const score = Math.max(0,Math.round((game === 'spot-difference' ? round*100 : 1000) - elapsed*2 - errors*35 - (game === 'memory-match' ? Math.max(0,memory.turns-memory.deck.length/2)*10 : 0)));
-    if (!remix) window.ClassroomGameScores.record(game,modeKey(),score);
-    if (flowModeOptions) { flowModeOptions.hidden = false; flowModeNote.hidden = false; }
-    $('results').textContent = `${score} 分`; $('results').hidden = false; $('difficulty-options').hidden = false; $('restart').hidden = true; $('pause').disabled = true;
+    if (playMode === 'classic') window.ClassroomGameScores.record(game,modeKey(),score);
+    if (modeOptions) { modeOptions.hidden = false; modeNote.hidden = false; }
+    const result = playMode === 'duo' ? (memory.pairs[0] === memory.pairs[1] ? '平手！' : `玩家 ${memory.pairs[0] > memory.pairs[1] ? 1 : 2} 獲勝！`)
+      : playMode === 'stars' ? `${totalStars} / 9 顆星` : `${score} 分`;
+    $('results').textContent = result; $('results').hidden = false; $('difficulty-options').hidden = false; $('restart').hidden = true; $('pause').disabled = true;
     const ending = success ? '挑戰完成' : reason === 'lives' ? '生命用完' : '時間到';
-    dialog(success ? 'CHALLENGE COMPLETE' : reason === 'lives' ? 'OUT OF LIVES' : 'TIME IS UP',`${ending}！`,`使用 ${Math.floor(elapsed)} 秒，${game === 'spot-difference' ? `找到 ${round} 題` : game === 'memory-match' ? `翻牌 ${memory.turns} 回` : `完成 ${round} 關`}，失誤 ${errors} 次。`,'再玩一次');
-    stats(); announce(`${ending}，${score} 分。`);
+    const summary = playMode === 'duo' ? `玩家 1：${memory.pairs[0]} 對 · 玩家 2：${memory.pairs[1]} 對。`
+      : `使用 ${Math.floor(elapsed)} 秒，${game === 'spot-difference' ? `找到 ${round} 題` : game === 'memory-match' ? `翻牌 ${memory.turns} 回` : `完成 ${round} 關`}，失誤 ${errors} 次。`;
+    dialog(success ? 'CHALLENGE COMPLETE' : reason === 'lives' ? 'OUT OF LIVES' : 'TIME IS UP',`${ending}！`,summary,'再玩一次');
+    stats(); announce(`${ending}，${result}`);
   }
   function advance(now) {
     if (state === 'celebrating') {
@@ -307,10 +371,14 @@
     if (state !== 'running') return;
     const dt = Math.max(0,(now-last)/1000); last = now; elapsed += dt;
     if (game === 'spot-difference' && elapsed >= 60) { elapsed = 60; finish(false); return; }
-    if (hideAt && elapsed >= hideAt) { memory.open = []; memory.locked = false; hideAt = 0; renderMemory(); }
+    if (hideAt && elapsed >= hideAt) {
+      memory.open = []; memory.locked = false; hideAt = 0;
+      if (playMode === 'duo') { memory.player = 1-memory.player; announce(`換玩家 ${memory.player+1} 翻牌。`); }
+      renderMemory();
+    }
     if (wrongButton && elapsed >= wrongAt) { wrongButton.classList.remove('wrong'); wrongButton = null; }
     if (game === 'balance-ball') {
-      const input = control(), result = rules.balanceStep(ball,rules.balanceCourses[round],input,Math.min(.1,dt),level);
+      const input = control(), result = rules.balanceStep(ball,rules.balanceCourses[round],input,Math.min(.1,dt),level,playMode === 'stars' ? collectStar : undefined);
       $('balance-scene').style.transform = `perspective(1000px) rotateX(${-input.y*3}deg) rotateY(${input.x*3}deg)`;
       $('balance-ball').setAttribute('cx',ball.x); $('balance-ball').setAttribute('cy',ball.y);
       if (result === 'fall') { errors++; announce('掉進洞裡，回到起點再試！'); }
@@ -333,8 +401,8 @@
   $('reset-board').hidden = !['bubble-connect','balance-ball','light-maze'].includes(game);
   $('reset-board').addEventListener('click',() => { if (state !== 'running') return; actions++; buildRound(); announce('此關已重置。'); });
   document.querySelectorAll('input[name="difficulty"]').forEach(input => input.addEventListener('change',() => { if (!['ready','finished'].includes(state)) return; level = Number(input.value); stats(); }));
-  flowModeOptions?.addEventListener('change',updateFlowModeNote);
-  updateFlowModeNote();
+  modeOptions?.addEventListener('change',updateModeNote);
+  updateModeNote();
   document.addEventListener('visibilitychange',() => { if (document.hidden) pause(); });
   window.addEventListener('blur',clearControls);
   const keyActions = {ArrowLeft:'left',ArrowRight:'right',ArrowUp:'up',ArrowDown:'down',' ':'brake'};
@@ -348,6 +416,6 @@
     back.addEventListener('click',event => { event.preventDefault(); pause(); window.parent.postMessage({type:'classroom-interaction-back'},window.location.protocol === 'file:' ? '*' : window.location.origin); });
     window.addEventListener('message',event => { if (event.source === window.parent && event.origin === window.location.origin && event.data?.type === 'classroom-game-pause') pause(); });
   }
-  window.ClassroomGameScores.attach({trigger:$('open-score-rank'),game,mode:modeKey,title:config.title,modeLabel:() => (flowModeOptions ? '經典連線 · ' : '') + ['簡易','正常','挑戰'][level-1],beforeOpen:pause,onChange:() => { $('best').textContent = window.ClassroomGameScores.dailyBest(game,modeKey()) ?? '—'; }});
+  window.ClassroomGameScores.attach({trigger:$('open-score-rank'),game,mode:modeKey,title:config.title,modeLabel:() => (hasModes ? '經典玩法 · ' : '') + ['簡易','正常','挑戰'][level-1],beforeOpen:pause,onChange:() => { $('best').textContent = window.ClassroomGameScores.dailyBest(game,modeKey()) ?? '—'; }});
   stats();
 })();

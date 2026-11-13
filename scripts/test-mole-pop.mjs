@@ -117,6 +117,8 @@ for (let count = 0; count < 20; count++) {
   advance(.2);
 }
 assert.equal(game.snapshot().score, 20, 'Keyboard/assistive button activation scores');
+assert.equal(get('combo').textContent,20);
+assert.match(get('feedback').textContent,/20 連擊/);
 let maximum = 0;
 for (let count = 0; count < 120; count++) {
   advance(.06);
@@ -331,4 +333,11 @@ assert.equal(game.snapshot().state, 'running', 'Easy mode remains playable after
 select(90);
 assert.equal(game.snapshot().duration, 30, 'Hidden mode changes cannot change a live round');
 assert.equal(get('mode').textContent, '簡易');
-console.log('Mole game tests: passed (30 positions, longer red lifetimes, scoring, negative game over for blank/background/red, zero continues, easy without deductions, stopped clock/input, final score recorded once, pause/resume, embedded navigation, restart).');
+select(30);game.startGame();earnHits(5);
+assert.equal(get('combo').textContent,5);
+assert.match(get('feedback').textContent,/5 連擊/);
+backgroundTap();assert.equal(get('combo').textContent,0);
+earnHits(2);game.finish();
+assert.match(get('dialog-description').textContent,/最長連擊 5 次/);
+assert.deepEqual(scoreService.completed.at(-1),{game:'mole-pop',mode:'30',score:7});
+console.log('Mole game tests: passed (30 positions, longer red lifetimes, combo milestones and reset, unchanged ranking scores, negative game over, pause/resume and embedded navigation).');

@@ -49,6 +49,36 @@
     }
     return {points, success:false, loop:true};
   }
+  const splitParts = [
+    [9,'\\',33,'/',31], [27,'/',3,'\\',1], [33,'/',3,'\\',1],
+    [19,'\\',20,'\\',48], [33,'/',34,'/',6], [39,'/',4,'\\',1],
+    [30,'\\',31,'\\',63], [38,'/',39,'/',7], [41,'/',43,'/',27],
+  ];
+  const splitLayouts = lightLayouts.map((layout,index) => {
+    const [splitter,orientation,mirror,bend,star] = splitParts[index];
+    return {...layout, splitter, goals:[layout.goal,star], mirrors:[...layout.mirrors,[splitter,orientation],[mirror,bend]]};
+  });
+  function traceSplitLight({n,source,splitter,goals}, mirrors) {
+    const rays = [[source%n,Math.floor(source/n),1,0]], paths = [], lit = new Set(), visited = new Set();
+    while (rays.length) {
+      let [x,y,dx,dy] = rays.pop();
+      const path = [[x+.5,y+.5]];
+      paths.push(path);
+      while (true) {
+        const key = `${x},${y},${dx},${dy}`;
+        if (visited.has(key)) break;
+        visited.add(key);
+        x += dx; y += dy; path.push([x+.5,y+.5]);
+        if (x < 0 || y < 0 || x >= n || y >= n) break;
+        const cell = y*n+x;
+        if (goals.includes(cell)) { lit.add(cell); break; }
+        if (cell === splitter) rays.push([x,y,dx,dy]);
+        if (mirrors[cell] === '/') [dx,dy] = [-dy,-dx];
+        else if (mirrors[cell] === '\\') [dx,dy] = [dy,dx];
+      }
+    }
+    return {paths,lit,success:lit.size===goals.length};
+  }
   function flowPuzzle(n, variant = 0) {
     const snake = [];
     for (let y = 0; y < n; y++) for (let j = 0; j < n; j++) {
@@ -112,7 +142,12 @@
     { start:{x:65,y:405}, goal:{x:735,y:70}, walls:[{x:240,y:170,w:22,h:210},{x:450,y:105,w:22,h:210}], holes:[{x:365,y:395},{x:660,y:190},{x:105,y:200},{x:580,y:390}] },
     { start:{x:65,y:405}, goal:{x:735,y:70}, walls:[{x:170,y:270,w:230,h:22},{x:425,y:140,w:230,h:22}], holes:[{x:120,y:120},{x:495,y:350},{x:690,y:275},{x:330,y:190},{x:600,y:65}] },
   ];
-  function balanceStep(ball, course, control, seconds, difficulty = 1) {
+  const balanceStars = [
+    [{x:172,y:356},{x:340,y:157},{x:627,y:282}],
+    [{x:108,y:315},{x:356,y:151},{x:632,y:258}],
+    [{x:200,y:374},{x:360,y:166},{x:626,y:215}],
+  ];
+  function balanceStep(ball, course, control, seconds, difficulty = 1, onPosition) {
     const radius = 12, holeRadius = 19 + difficulty * 2, steps = Math.max(1,Math.ceil(seconds / (1/120))), dt = seconds / steps;
     const reset = () => Object.assign(ball,{...course.start,vx:0,vy:0});
     for (let step = 0; step < steps; step++) {
@@ -135,9 +170,10 @@
         }
       }
       if (course.holes.some(hole => Math.hypot(ball.x-hole.x,ball.y-hole.y) < holeRadius - 3)) { reset(); return 'fall'; }
+      onPosition?.(ball);
       if (Math.hypot(ball.x-course.goal.x,ball.y-course.goal.y) < 27) return 'goal';
     }
     return 'moving';
   }
-  globalThis.ClassroomPuzzles = { adjacent, shuffle, memoryDeck, memoryTurn, lightLayouts, traceLight, flowPuzzle, flowRemix, extendFlow, flowProgress, balanceCourses, balanceStep };
+  globalThis.ClassroomPuzzles = { adjacent, shuffle, memoryDeck, memoryTurn, lightLayouts, traceLight, splitLayouts, traceSplitLight, flowPuzzle, flowRemix, extendFlow, flowProgress, balanceCourses, balanceStars, balanceStep };
 })();

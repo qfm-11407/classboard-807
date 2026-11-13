@@ -45,6 +45,17 @@ for (const n of [5,6,7]) for (let variant=0;variant<8;variant++) {
   assert(!R.flowProgress(paths,puzzle.ends,n).success,'Partial paths cannot finish a board');
 }
 const flowPaths=[[0,1,2],[]],flowEnds=[[0,3],[4,7]];
+for(const layout of R.splitLayouts){
+  assert.equal(new Set([layout.source,...layout.goals,...layout.mirrors.map(([cell])=>cell)]).size,3+layout.mirrors.length);
+  const mirrors=Object.fromEntries(layout.mirrors);
+  const solved=R.traceSplitLight(layout,mirrors);
+  assert(solved.success);
+  assert.equal(solved.lit.size,2);
+  mirrors[layout.splitter]=mirrors[layout.splitter]==='/'?'\\':'/';
+  const wrong=R.traceSplitLight(layout,mirrors);
+  assert(!wrong.success);
+  assert.equal(wrong.lit.size,1,'Changing the splitter keeps the straight ray but loses the reflected star');
+}
 for (const n of [5,6,7]) {
   const distance=(a,b)=>Math.abs(a%n-b%n)+Math.abs(Math.floor(a/n)-Math.floor(b/n));
   const signatures=new Set();
@@ -108,6 +119,16 @@ for (let difficulty=1;difficulty<=3;difficulty++) for(const course of R.balanceC
     for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){const next=[x+dx,y+dy],key=next.join(',');if(!seen.has(key)&&safe(next[0]*10,next[1]*10)){seen.add(key);queue.push(next);}}
   }
   assert(found,'Every balance course has a safe route to the flag');
+  const stars=R.balanceStars[R.balanceCourses.indexOf(course)];
+  assert(stars.every(({x,y})=>safe(x,y)),'Every collectible is centered away from holes and walls');
+  for(let head=0;head<queue.length;head++){
+    const [x,y]=queue[head];
+    for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){
+      const next=[x+dx,y+dy],key=next.join(',');
+      if(!seen.has(key)&&safe(next[0]*10,next[1]*10)){seen.add(key);queue.push(next);}
+    }
+  }
+  assert(stars.every(({x,y})=>seen.has([Math.round(x/10),Math.round(y/10)].join(','))),'Every collectible has a safe route from the start');
 }
 
 function element(tag='div') {
@@ -117,31 +138,30 @@ function element(tag='div') {
     setAttribute:(n,v)=>attributes.set(n,v),getAttribute:n=>attributes.get(n),append(...items){this.children.push(...items);},replaceChildren(...items){this.children=items;},
     addEventListener(n,fn){this.listeners[n]=fn;},focus(){},setPointerCapture(){},releasePointerCapture(){},
     getBoundingClientRect(){return {left:0,top:0,width:400,height:400};},
-    querySelector(){return {textContent:''};},
+    querySelector(){return {textContent:'',insertAdjacentHTML(){}};},
     querySelectorAll(selector){return this.children.filter(child=>selector==='.puzzle-board'&&child.className?.includes('puzzle-board'));},
   };
 }
 const engine=fs.readFileSync(new URL('../games/puzzle-games.js',import.meta.url),'utf8');
-function createGame(id,difficulty=1){
+function createGame(id,difficulty=1,mode='classic'){
   const elements=new Map(),docEvents={},events={},posts=[],scores=createScoreFixture(),inputs=[1,2,3].map(value=>({...element('input'),value:String(value)}));
   const get=id=>{if(!elements.has(id)){const item=element();item.parentElement=element();elements.set(id,item);}return elements.get(id);},back=element('a'),parent={postMessage:(data,origin)=>posts.push({data,origin})};
   let now=0;
   const document={getElementById:get,createElement:element,createElementNS:(_,tag)=>element(tag),body:Object.assign(element(),{dataset:{game:id}}),hidden:false,fullscreenEnabled:false,
-    querySelector:selector=>selector==='.back-link'?back:inputs[difficulty-1],querySelectorAll:()=>inputs,addEventListener:(n,fn)=>{docEvents[n]=fn;}};
+    querySelector:selector=>selector==='.back-link'?back:selector.includes('puzzle-mode')?{value:mode}:inputs[difficulty-1],querySelectorAll:()=>inputs,addEventListener:(n,fn)=>{docEvents[n]=fn;}};
   const ctx=vm.createContext({document,URLSearchParams,performance:{now:()=>now},requestAnimationFrame:()=>1,cancelAnimationFrame(){},ResizeObserver:class{observe(){}disconnect(){}},Math:Object.assign(Object.create(Math),{random:()=>.7})});
   ctx.window={ClassroomGameScores:scores,parent,location:{search:'?embedded=1',origin:'https://example.test',protocol:'https:'},addEventListener:(n,fn)=>{events[n]=fn;}};
   vm.runInContext(rulesSource,ctx);ctx.window.ClassroomPuzzles=ctx.ClassroomPuzzles;
   vm.runInContext(engine.replace(/\}\)\(\);\s*$/,'globalThis.api={start,pause,resume,advance,finish,beginFlow,moveFlow,control,snapshot:()=>({state,elapsed,round,errors,level,memory,spot,light,flow,ball,tilt,celebrationRemaining})};\n})();'),ctx);
-  return {api:ctx.api,get,back,docEvents,events,parent,posts,scores,document,inputs,advance(seconds){now+=seconds*1000;ctx.api.advance(now);}};
+  return {api:ctx.api,get,back,docEvents,events,parent,posts,scores,document,inputs,setMode(value){mode=value;},advance(seconds){now+=seconds*1000;ctx.api.advance(now);}};
 }
 const tap=button=>button.listeners.pointerdown({button:0,preventDefault(){},stopPropagation(){}});
 for(const difficulty of [1,2,3]){
-  const g=createGame('bubble-connect',difficulty);
-  g.get('flow-remix').checked=true;
-  g.get('flow-mode-options').listeners.change();
-  assert.match(g.get('flow-mode-note').textContent,/本局/);
+  const g=createGame('bubble-connect',difficulty,'remix');
+  g.get('puzzle-mode-options').listeners.change();
+  assert.match(g.get('puzzle-mode-note').textContent,/本局/);
   g.get('start').listeners.click();
-  assert(g.get('flow-mode-options').hidden);
+  assert(g.get('puzzle-mode-options').hidden);
   const seen=new Set();
   for(let round=0;round<3;round++){
     const f=g.api.snapshot().flow;
@@ -163,11 +183,69 @@ for(const difficulty of [1,2,3]){
   assert.equal(seen.size,3);
   assert.equal(g.api.snapshot().state,'finished');
   assert.equal(g.scores.completed.length,0,'Remix finishes without entering the classic ranking');
-  assert.equal(g.get('flow-mode-options').hidden,false);
+  assert.equal(g.get('puzzle-mode-options').hidden,false);
   assert.match(g.get('results').textContent,/分/);
-  g.get('flow-remix').checked=false;
+  g.setMode('classic');
   g.get('start').listeners.click();
   assert(!g.get('stage-note').textContent.includes('迴路挑戰'));
+}
+{
+  const g=createGame('memory-match',1,'duo');g.api.start();
+  const m=g.api.snapshot().memory, different=m.deck.findIndex(x=>x!==m.deck[0]);
+  tap(m.buttons[0]);tap(m.buttons[different]);
+  assert.equal(m.player,0,'Show both mismatched cards before handing over');
+  g.api.pause();g.advance(2);assert.equal(m.player,0);g.api.resume();
+  g.advance(.86);assert.equal(m.player,1);
+  for(const value of new Set(m.deck)){
+    for(const [index,card] of m.deck.entries())if(card===value)tap(m.buttons[index]);
+    assert.equal(m.player,1,'Matching pairs lets the same player keep going');
+  }
+  assert.match(g.get('results').textContent,/玩家 2 獲勝/);
+  assert.equal(g.scores.completed.length,0);
+}
+{
+  const g=createGame('spot-difference',1,'focus');g.api.start();
+  assert.match(g.get('stage-note').textContent,/圓點/);
+  for(let i=0;i<2;i++){const s=g.api.snapshot().spot;tap(s.buttons[s.odd]);}
+  assert.match(g.get('stage-note').textContent,/花瓣/);
+  for(let i=0;i<3;i++){const s=g.api.snapshot().spot;tap(s.buttons[(s.odd+1)%(s.n*s.n)]);}
+  assert.equal(g.api.snapshot().state,'finished');
+  assert.equal(g.scores.completed.length,0);
+}
+{
+  const g=createGame('bubble-connect',1,'coop');g.api.start();
+  const f=g.api.snapshot().flow;
+  assert.match(g.get('stage-note').textContent,/玩家 1 動手/);
+  f.solution.slice(0,2).forEach((path,index)=>{
+    g.api.beginFlow(path[0]);
+    for(const cell of path.slice(1))g.api.moveFlow(cell);
+    assert.match(g.get('stage-note').textContent,new RegExp(`玩家 ${2-index} 動手`));
+  });
+  g.api.finish(true);assert.equal(g.scores.completed.length,0);
+}
+{
+  const g=createGame('light-maze',3,'split');g.api.start();
+  for(let i=0;i<3;i++){
+    const l=g.api.snapshot().light;
+    assert.equal(l.layout.goals.length,2);
+    for(const [index,orientation] of l.layout.mirrors)if(l.mirrors[index]!==orientation)tap(l.buttons[index]);
+    assert.equal(g.api.snapshot().state,'celebrating');g.advance(1.51);
+    if(i<2)g.get('start').listeners.click();
+  }
+  assert.equal(g.api.snapshot().state,'finished');assert.equal(g.scores.completed.length,0);
+}
+{
+  const g=createGame('balance-ball',3,'stars');g.api.start();
+  for(let i=0;i<3;i++){
+    const ball=g.api.snapshot().ball;
+    for(const point of R.balanceStars[i].slice(0,i)){
+      Object.assign(ball,point);g.advance(.02);
+    }
+    assert.match(g.get('stage-note').textContent,new RegExp(`已收集 ${i}/3`));
+    Object.assign(ball,R.balanceCourses[i].goal);g.advance(.02);
+    if(i<2)g.get('start').listeners.click();
+  }
+  assert.equal(g.get('results').textContent,'3 / 9 顆星');assert.equal(g.scores.completed.length,0);
 }
 for(const id of ['spot-difference','memory-match','balance-ball','light-maze','bubble-connect'])for(const difficulty of [1,2,3]){
   const g=createGame(id,difficulty),{api}=g;api.start();
@@ -273,4 +351,4 @@ for(const g of [perfectMemory,wrongMemory]){
   for(const value of new Set(m.deck)){const pair=m.deck.map((v,i)=>v===value?i:-1).filter(i=>i>=0);tap(m.buttons[pair[0]]);tap(m.buttons[pair[1]]);}
 }
 assert.equal(perfectMemory.scores.completed[0].score,1000);assert.equal(wrongMemory.scores.completed[0].score,953,'One mismatch deducts 45 points plus elapsed time');
-console.log('Puzzle games tests: passed (classic completions and rankings; 72 solvable remix variants with necessary detours; remix completion without ranking; 1.5-second solved board; pause/resume; touch and navigation).');
+console.log('Puzzle games tests: passed (classic rankings; 72 remix variants, nine solvable dual-star puzzles, safe star routes, two-player handoffs, observation hints, optional modes stay off ranking, 1.5-second solved board and pause).');

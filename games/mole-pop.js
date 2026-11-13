@@ -56,6 +56,7 @@ let hits = 0;
 let errors = 0;
 let wrongMoles = 0;
 let misses = 0;
+let combo = 0, longestCombo = 0;
 let elapsed = 0;
 let remaining = duration;
 let nextSpawn = 0;
@@ -76,6 +77,7 @@ function updateStats() {
   $('mode').textContent = mode.name;
   $('best').textContent = best() ?? '—';
   $('misses').textContent = `命中 ${hits} · 打空 ${errors} · 誤打 ${wrongMoles} · 漏掉 ${misses}`;
+  $('combo').textContent = combo;
   $('target-rules').textContent = `棕色可打 +${mode.reward}`;
   $('decoy-rules').textContent = `紅色避開${mode.penalty ? ` −${mode.penalty}` : ' · 不加分'}`;
   $('rules').textContent = `${mode.name} · ${mode.penalty ? `打空或誤打紅色 −${mode.penalty} · 負分即結束` : '打空與誤打紅色都不扣分'}`;
@@ -157,6 +159,7 @@ function startGame() {
   errors = 0;
   wrongMoles = 0;
   misses = 0;
+  combo = 0; longestCombo = 0;
   elapsed = 0;
   remaining = duration;
   previousHole = -1;
@@ -187,6 +190,7 @@ function showFeedback(message, negative = false) {
 function registerError(index = null) {
   if (state !== 'running') return;
   errors += 1;
+  combo = 0;
   score -= mode.penalty;
   if (score < 0) { finish(); return; }
   if (index !== null && !active.has(index)) {
@@ -210,6 +214,7 @@ function hit(index) {
   effects.set(index, elapsed + .35);
   if (mole.decoy) {
     wrongMoles += 1;
+    combo = 0;
     score -= mode.penalty;
     if (score < 0) { finish(); return; }
     holes[index].classList.remove('hit');
@@ -219,10 +224,14 @@ function hit(index) {
     return;
   }
   hits += 1;
+  combo += 1;
+  longestCombo = Math.max(longestCombo,combo);
   score += mode.reward;
   holes[index].classList.remove('wrong');
   holes[index].classList.add('hit');
-  showFeedback(`+${mode.reward} 抓到啦！`);
+  const milestone = combo % 5 === 0;
+  showFeedback(milestone ? `+${mode.reward} · ${combo} 連擊！` : `+${mode.reward} 抓到啦！`);
+  if (milestone) $('announcement').textContent = `${combo} 連擊！`;
   updateStats();
 }
 
@@ -281,7 +290,7 @@ function finish() {
   $('results').append(unit);
   $('results').hidden = false;
   $('dialog-note').textContent = failed ? '分數低於 0，回合已結束 · 再試一次！' : `今日最佳依台灣日期計算 · 結束回合列入前十名 · ${duration} 秒${mode.name}`;
-  const summary = `命中 ${hits} 次，打空 ${errors} 次，誤打紅色 ${wrongMoles} 次，漏掉棕色 ${misses} 隻。`;
+  const summary = `命中 ${hits} 次，打空 ${errors} 次，誤打紅色 ${wrongMoles} 次，漏掉棕色 ${misses} 隻。最長連擊 ${longestCombo} 次。`;
   showDialog(failed ? 'GAME OVER' : newBest ? 'TODAY\'S BEST' : 'WELL PLAYED', failed ? '負分了，遊戲結束！' : newBest ? '刷新今日最佳！' : '挑戰完成！', summary, '再玩一次');
   updateStats();
   $('announcement').textContent = `${failed ? '分數低於 0，遊戲結束' : '挑戰完成'}，${score} 分，${summary}`;
